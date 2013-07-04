@@ -9,6 +9,7 @@ The code supports all the following functionality:
 - Reject all changes
 - Accept a single change
 - Reject a single change 
+- Display timestamp and user info for each change
   
 
 ##Demo
