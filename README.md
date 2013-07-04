@@ -1,7 +1,15 @@
-ckeditor-track-changes
-======================
+##ckeditor-track-changes
 
-Track changes plugin for CKEditor, based on ICE (track changes for TinyMCE). You are welcome to take part and join.
+Track changes plugin for CKEditor, based on [ICE](https://github.com/NYTimes/ice) (NYTimes track changes for TinyMCE). 
+The code supports all the following functionality:
+
+- Enable / disable Track changes mode
+- Show / hide track changes
+- Accept all changes
+- Reject all changes
+- Accept a single change
+- Reject a single change 
+  
 
 ##Demo
 
