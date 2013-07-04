@@ -6,5 +6,17 @@ Track changes plugin for CKEditor, based on ICE (track changes for TinyMCE). You
 Demo
 ======================
 
+Site
+======================
+
 Download
+======================
+
+API
+======================
+
+Known Issues
+======================
+
+License
 ======================
