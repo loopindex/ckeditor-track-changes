@@ -3,7 +3,7 @@
 Track changes plugin for CKEditor, based on [ICE](https://github.com/NYTimes/ice) (NYTimes track changes for TinyMCE). 
 The code supports all the following functionality:
 
-- Enable / disable Track changes mode
+- Enable / disable track changes mode
 - Show / hide track changes
 - Accept all changes
 - Reject all changes
