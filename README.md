@@ -3,20 +3,21 @@ ckeditor-track-changes
 
 Track changes plugin for CKEditor, based on ICE (track changes for TinyMCE). You are welcome to take part and join.
 
-Demo
-======================
+##Demo
 
-Site
-======================
+[Demo Page](http://www.loopindex.com/demo)
 
-Download
-======================
+##Site
+[LoopIndex](http://www.loopindex.com)
 
-Implementation & API
-======================
+##Download
 
-Known Issues
-======================
 
-License
-======================
+##Implementation & API
+
+
+##Known Issues
+
+
+##License
+
