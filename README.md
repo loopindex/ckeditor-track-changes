@@ -42,5 +42,5 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this program as the file license.txt. If not, see
+along with this program as the file gpl-2.0.txt. If not, see
 <http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt>
