@@ -30,7 +30,7 @@ The code supports all the following functionality:
 
 ##License
 
-Copyright (c) ContentSimply, LoopIndex group
+Copyright (c) LoopIndex.
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License, version 2, as
