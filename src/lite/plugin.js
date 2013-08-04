@@ -6,7 +6,7 @@ The track changes plugin is free software; you can redistribute it and/or modify
 This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
 You should have received a copy of the GNU General Public License along with this program as the file gpl-2.0.txt. If not, see http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt
 **/
-CKEDITOR.plugins.add( 'ice',
+CKEDITOR.plugins.add( 'lite',
 {
 	props : {
 		deleteTag: 'span',
@@ -19,7 +19,7 @@ CKEDITOR.plugins.add( 'ice',
 		timeAttribute: 'data-time',
 		preserveOnPaste: 'p',
 		user: { name: 'Unknown', id: 141414 },
-		css: 'css/ice.css',
+		css: 'css/lite.css',
 		titleTemplate : "Changed by %u %t"
 	},
 	
@@ -28,7 +28,7 @@ CKEDITOR.plugins.add( 'ice',
 	_editor : null,
 	_tracker : null,
 	_isVisible : true, // changes are visible
-	_iceCommandNames : [],
+	_liteCommandNames : [],
 	_isTracking : false,
 	
 	/**
@@ -86,10 +86,10 @@ CKEDITOR.plugins.add( 'ice',
 		}).bind(this));
 		var path = this.path;
 
-		var iceConfig = ed.config.ice || {};
-		var jQueryPath = iceConfig.jQueryPath || "js/jquery.min.js";
+		var liteConfig = ed.config.lite || {};
+		var jQueryPath = liteConfig.jQueryPath || "js/jquery.min.js";
 		
-		var commands = iceConfig.commands || [];
+		var commands = liteConfig.commands || [];
 		var self = this;
 		
 		function add1(command, handler, label, icon, trackingOnly) {
@@ -107,20 +107,20 @@ CKEDITOR.plugins.add( 'ice',
 					toolbar: "ice"
 				}); 
 				if (trackingOnly !== false) {
-					self._iceCommandNames.push(command);
+					self._liteCommandNames.push(command);
 				}
 				
 			}
 		}
 		
 		
-		this._config = $.extend({}, iceConfig);
+		this._config = $.extend({}, liteConfig);
 		$.each(commandsMap, function(i, rec) {
 			add1(rec.command, rec.exec, rec.title, rec.icon, rec.trackingOnly);
 		});
 		
 		
-		var scripts = iceConfig.includes || [];
+		var scripts = liteConfig.includes || [];
 		
 		for (var i = 0, len = scripts.length; i < len; ++i) {
 			scripts[i] = path + scripts[i]; 
@@ -151,8 +151,8 @@ CKEDITOR.plugins.add( 'ice',
 		var tracking = (typeof(track) == "undefined") ? (! this._isTracking) : track;
 		this._isTracking = tracking;
 
-		for (var i = this._iceCommandNames.length - 1; i >= 0; --i) {
-			var cmd = this._editor.getCommand(this._iceCommandNames[i]);
+		for (var i = this._liteCommandNames.length - 1; i >= 0; --i) {
+			var cmd = this._editor.getCommand(this._liteCommandNames[i]);
 			if (cmd) {
 				if (tracking) {
 					cmd.enable();
@@ -229,9 +229,12 @@ CKEDITOR.plugins.add( 'ice',
 		if (this._tracker) {
 			this._tracker.setCurrentUser({id: info.id || "", name : info.name || ""});
 		}
-		var ice = CKEDITOR.config.ice || {};
-		ice.userId = info.id;
-		ice.userName = info.name;
+		if (this._editor) {
+			var lite = this._editor.config.lite || {};
+			lite.userId = info.id;
+			lite.userName = info.name;
+			this._editor.config.lite = lite;
+		}
 	},
 	
 	/**
@@ -269,7 +272,7 @@ CKEDITOR.plugins.add( 'ice',
 		var style = doc.createElement("link");
 		style.setAttribute("rel", "stylesheet");
 		style.setAttribute("type", "text/css");
-		style.setAttribute("href", this.path + "css/ice.css");
+		style.setAttribute("href", this.path + "css/lite.css");
 		head.appendChild(style);
 	},
 	
