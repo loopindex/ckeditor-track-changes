@@ -89,7 +89,11 @@ CKEDITOR.plugins.add( 'lite',
 		var liteConfig = ed.config.lite || {};
 		var jQueryPath = liteConfig.jQueryPath || "js/jquery.min.js";
 		
-		var commands = liteConfig.commands || [];
+		var commands = liteConfig.commands || [LITE.Commands.TOGGLE_TRACKING, LITE.Commands.TOGGLE_SHOW, LITE.Commands.ACCEPT_ALL, LITE.Commands.REJECT_ALL, LITE.Commands.ACCEPT_ONE, LITE.Commands.REJECT_ONE];
+		var scripts = liteConfig.includes || ["js/rangy/rangy-core.js", "js/ice.js", "js/dom.js", "js/selection.js", "js/bookmark.js",
+		                                      "js/icePluginManager.js", "js/icePlugin.js", "lite_interface.js"];
+		
+
 		var self = this;
 		
 		function add1(command, handler, label, icon, trackingOnly) {
@@ -104,7 +108,7 @@ CKEDITOR.plugins.add( 'lite',
 					label : label,
 					command : command,
 					icon : path + "icons/" + icon,
-					toolbar: "ice"
+					toolbar: "lite"
 				}); 
 				if (trackingOnly !== false) {
 					self._liteCommandNames.push(command);
@@ -119,8 +123,6 @@ CKEDITOR.plugins.add( 'lite',
 			add1(rec.command, rec.exec, rec.title, rec.icon, rec.trackingOnly);
 		});
 		
-		
-		var scripts = liteConfig.includes || [];
 		
 		for (var i = 0, len = scripts.length; i < len; ++i) {
 			scripts[i] = path + scripts[i]; 
@@ -348,7 +350,7 @@ CKEDITOR.plugins.add( 'lite',
 				this.toggleTracking(true, false);
 				jQuery(this._tracker).on("change", this._onIceChange.bind(this));
 				e.on("selectionChange", this._onSelectionChanged.bind(this));
-				e.fire(LITE.Events.INIT, {ice : this});
+				e.fire(LITE.Events.INIT, {lite: this});
 				this._onIceChange(null);
 			}
 			catch(e) {

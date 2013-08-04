@@ -1,0 +1,61 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<style type="text/css">
+body {
+	font-family: verdana,arial,sans-serif;
+	max-width: 960px;;
+}
+</style>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>LITE documentation</title>
+</head>
+<body>
+<h1>LITE (LoopIndex Tracking Enhancement) for CKEditor</h1>
+<h2>Installation</h2>
+<div class="doc">Drop the two folders, <code>common</code> and <code>lite</code>, into the ckeditor <code>plugins</code> folder</div>
+
+<h2>Configuration</h2>
+<div class="doc">
+<ol>
+<li>Include the lite plugin's interface in your html, e.g.
+<pre>
+	&lt;script type="text/javascript" src="ckeditor/plugins/lite/lite_interface.js"&gt;&lt;/script&gt;
+</pre>
+<li>Verify that the editor's configuation contains a <code>lite</code> section by adding the following lines to ckeditor's <code>config.js</code>:
+<pre>
+	var lite = config.lite|| {};
+	config.lite = lite;
+</pre>
+<li>Add the lite plugin to ckeditor. The simplest way to do this is by adding the following line to ckeditor's <code>config.js</code>:<pre>
+	config.extraPlugins = 'lite';
+</pre>
+If your configuration already contains some plugin tweaking, just make sure that <code>lite</code> is included in the editor's plugins list.
+<li>If your page doesn't include jQuery, the <code>lite</code> plugin will load it if you provide it with the relative path to the jquery source. If you are going to use the copy distributed with the plugin, add the following line to config.js:
+<pre>
+	config.lite.jQueryPath = "../common/jquery.min.js";
+</pre>
+
+<li>By default, lite loads an uncompressed version of <code>ice</code>, located in its <code>js</code> folder. To load <code>ice</code> from a different location, or load modified scripts, edit <code>config.js</code> and set a value to
+<code>config.lite.includes</code>, e.g.
+<pre>
+	config.lite.includes = ["js/ice-all-sources.min.js", "js/plugins/ice-plugins.min.js"];
+</pre>
+
+<li>Select the <code>lite</code> commands you want to include in ckeditor's toolbar. By default all the commands in <code>lite_interace.js</code> are available in the toolbar. To configure this, edit <code>config.js</code> and set a value to the <code>config.lite.commands</code>, e.g.
+<pre>
+// display on the show/hide, accept all and reject all commands.
+	config.lite.commands = [LITE.Commands.TOGGLE_SHOW, LITE.Commands.ACCEPT_ALL, LITE.Commands.REJECT_ALL];
+</pre>
+
+</ol>
+</div>
+
+<h2>Methods</h2>
+<div class="doc"></div>
+
+<h2>Events</h2>
+<div class="doc"></div>
+
+</body>
+</html>
