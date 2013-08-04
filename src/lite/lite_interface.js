@@ -8,21 +8,21 @@ You should have received a copy of the GNU General Public License along with thi
 **/
 var LITE = {
 	Events : {
-		INIT : "ice:init",
-		ACCEPT_SOME : "ice:acceptSome",
-		ACCEPT_ALL : "ice:acceptAll",
-		REJECT_SOME : "ice:rejectSome",
-		REJECT_ALL : "ice:rejectAll",
-		SHOW_HIDE : "ice:showHide",
-		TRACKING : "ice:tracking"
+		INIT : "lite:init",
+		ACCEPT_SOME : "lite:acceptSome",
+		ACCEPT_ALL : "lite:acceptAll",
+		REJECT_SOME : "lite:rejectSome",
+		REJECT_ALL : "lite:rejectAll",
+		SHOW_HIDE : "lite:showHide",
+		TRACKING : "lite:tracking"
 	},
 	
 	Commands : {
-		TOGGLE_TRACKING : "ice.ToggleTracking",
-		TOGGLE_SHOW : "ice.ToggleShow",
-		ACCEPT_ALL : "ice.AcceptAll",
-		REJECT_ALL : "ice.RejectAll",
-		ACCEPT_ONE : "ice.AcceptOne",
-		REJECT_ONE : "ice.RejectOne"
+		TOGGLE_TRACKING : "lite.ToggleTracking",
+		TOGGLE_SHOW : "lite.ToggleShow",
+		ACCEPT_ALL : "lite.AcceptAll",
+		REJECT_ALL : "lite.RejectAll",
+		ACCEPT_ONE : "lite.AcceptOne",
+		REJECT_ONE : "lite.RejectOne"
 	}
 }
