@@ -6,7 +6,7 @@ This program is distributed in the hope that it will be useful, but WITHOUT ANY 
 You should have received a copy of the GNU General Public License along with this program as the file gpl-2.0.txt. If not, see http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt
 
 **/
-var CKICE = {
+var LITE = {
 	Events : {
 		INIT : "ice:init",
 		ACCEPT_SOME : "ice:acceptSome",

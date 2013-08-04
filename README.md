@@ -1,6 +1,8 @@
 ##ckeditor-track-changes
 
-Track changes plugin for CKEditor, based on [ICE](https://github.com/NYTimes/ice) (NYTimes track changes for TinyMCE). 
+* Track changes plugin for CKEditor, based on [ICE](https://github.com/NYTimes/ice) (NYTimes track changes for TinyMCE). 
+* The ICE plugin contains an edited version of ICE, we hope to merge with the ICE repository in the near future.
+
 The code supports all the following functionality:
 
 - Enable / disable track changes mode
@@ -23,9 +25,10 @@ The code supports all the following functionality:
 
 
 ##Implementation & API
-
+See the documents under the docs folder
 
 ##Known Issues
+* Adjacent changes from different collaborators may affect each other if you accept/reject a single change in the sequence. This is related to an issue in ICE which we hope to resolve with the developers.
 
 
 ##License
