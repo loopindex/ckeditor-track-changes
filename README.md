@@ -30,8 +30,10 @@
 ```javascript
 	config.extraPlugins = 'lite';
 ```
-- See the [documentation](docs/doc.md) for all the configuration options.
+- See the [documentation](http://www.loopindex.com/lite/docs/) for all the configuration options.
 
+##Configuration
+The LITE plugin is automatically activated after you install it and edit <code>config.js</code> as described above. For the full details of tweaking the loading process, toolbar commands, users and more, see the [documentation page](http://www.loopindex.com/lite/docs/).
 
 ## API
 <ul>

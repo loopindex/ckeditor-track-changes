@@ -44,13 +44,13 @@ h4 {
 <li>Add the lite plugin to ckeditor. The simplest way to do this is by adding the following line to ckeditor's <code>config.js</code>:<pre>
 	config.extraPlugins = 'lite';
 </pre>
-If your configuration already contains some plugin tweaking, just make sure that <code>lite</code> is included in the editor's plugins list.
+If your configuration already contains some plugin tweaking, just make sure that <code>LITE</code> is included in the editor's plugins list.
 <li>If you wish to make any other configuration changes via <code>config.js</code>, verify that the editor's configuation contains a <code>lite</code> section by adding the following lines to ckeditor's <code>config.js</code>:
 <pre>
 	var lite = config.lite|| {};
 	config.lite = lite;
 </pre>
-<li>If your page doesn't include jQuery, the <code>lite</code> plugin will load it if you provide it with the relative path to the jquery source. If you are going to use the copy distributed with the plugin, add the following line to config.js:
+<li>If your page doesn't include jQuery, the <code>LITE</code> plugin will load it if you provide it with the relative path to the jquery source. If you are going to use the copy distributed with the plugin, add the following line to config.js:
 <pre>
 	config.lite.jQueryPath = "../common/jquery.min.js";
 </pre>
@@ -63,7 +63,7 @@ If your configuration already contains some plugin tweaking, just make sure that
 	config.lite.includes = ["js/ice-all-sources.min.js", "js/plugins/ice-plugins.min.js"];
 </pre>
 
-<li>Select the <code>lite</code> commands you want to include in ckeditor's toolbar. By default all the commands in <code>lite_interace.js</code> are available in the toolbar. To configure this, edit <code>config.js</code> and set a value to the <code>config.lite.commands</code>, e.g.
+<li>Select the <code>LITE</code> commands you want to include in ckeditor's toolbar. By default all the commands in <code>lite_interace.js</code> are available in the toolbar. To configure this, edit <code>config.js</code> and set a value to the <code>config.lite.commands</code>, e.g.
 <pre>
 // display only the show/hide, accept all and reject all commands.
 	config.lite.commands = [LITE.Commands.TOGGLE_SHOW, LITE.Commands.ACCEPT_ALL, LITE.Commands.REJECT_ALL];
@@ -82,8 +82,8 @@ If your configuration already contains some plugin tweaking, just make sure that
 <div class="doc">
 <ul>
 <li><h3>Get a reference to the lite plugin</h3>
-To interact with the <code>lite</code> plugin, either access it through the editor's <code>plugins.lite</code> property, or listen to the event <code>LITE.Events.INIT</code> fired by the editor instance. The <code>data</code> member of the event will
-contain a property called <code>lite</code> which references the lite plugin instance, initialized and ready for action.
+To interact with the <code>LITE</code> plugin, either access it through the editor's <code>plugins.lite</code> property, or listen to the event <code>LITE.Events.INIT</code> fired by the editor instance. The <code>data</code> member of the event will
+contain a property called <code>LITE</code> which references the lite plugin instance, initialized and ready for action.
 <li><h3>toggleTracking(bTrack, bNotify)</h3>
 Toggles change tracking in the editor. 
 <h4>Parameters</h4>
