@@ -1,34 +1,3 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
-<html>
-<head>
-
-<style type="text/css">
-body {
-	font-family: verdana,arial,sans-serif;
-}
-
-#content {
-	margin-left: 15px;
-	max-width: 960px;;
-}
-h3, h4 {
-	margin-bottom: 3px;
-}
-h4 {
-	margin-top: .5em;
-}
-#footer {
-	margin-top: 50px;
-	padding: 5px;
-	border-top: 1px solid #ccc;
-	border-bottom: 1px solid #ccc;
-}
-
-</style>
-<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-<title>LITE documentation</title>
-</head>
-<body>
 <h1>LITE (LoopIndex Tracking Enhancement) for CKEditor</h1>
 <div id="content">
 <h2>Installation</h2>
@@ -140,5 +109,3 @@ The track changes plugin is free software; you can redistribute it and/or modify
 This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
 You should have received a copy of the GNU General Public License along with this program as the file gpl-2.0.txt. If not, see http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt
 </pre>
-</div>
-</body>
