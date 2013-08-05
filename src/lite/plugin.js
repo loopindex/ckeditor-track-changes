@@ -77,7 +77,6 @@ CKEDITOR.plugins.add( 'lite',
 		this._editor = ed;
 		this._isVisible = true;
 		this._isTracking = true;
-		this._handlePaste = this._onPaste.bind(this);
 		this._eventsBounds = false;
 	
 		ed.on("contentDom", (function(dom) {
@@ -327,7 +326,7 @@ CKEDITOR.plugins.add( 'lite',
 				element: body,
 				isTracking: true,
 				handleEvents : true,
-//				contentEditable: !! body.getAttribute("contentEditable"),
+				mergeBlocks : false,
 				changeIdAttribute: props.changeIdAttribute,
 				userIdAttribute: props.userIdAttribute,
 				userNameAttribute: props.userNameAttribute,

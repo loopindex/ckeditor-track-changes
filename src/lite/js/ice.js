@@ -653,15 +653,20 @@
 	 * Returns the given `node` or the first parent node that matches against the list of void elements.
 	 */
 	_getVoidElement: function (node) {
-	  var voidSelector = this._getVoidElSelector();
-	  return ice.dom.is(node, voidSelector) ? node : (ice.dom.parents(node, voidSelector)[0] || null);
+		try {
+			var voidSelector = this._getVoidElSelector();
+			return ice.dom.is(node, voidSelector) ? node : (ice.dom.parents(node, voidSelector)[0] || null);
+		}
+		catch(e) {
+			return null;
+		}
 	},
 
 	/**
 	 * Returns a combined selector for delete and void elements.
 	 */
 	_getVoidElSelector: function () {
-	  return '.' + this._getIceNodeClass('deleteType') + ',' + this.avoid;
+		return '.' + this._getIceNodeClass('deleteType') + ',' + this.avoid;
 	},
 
 	/**
@@ -676,20 +681,20 @@
 	 * associated key for the alias.
 	 */
 	_getChangeTypeFromAlias: function (alias) {
-	  var type, ctnType = null;
-	  for (type in this.changeTypes) {
-		if (this.changeTypes.hasOwnProperty(type)) {
-		  if (this.changeTypes[type].alias == alias) {
-			ctnType = type;
-		  }
+		var type, ctnType = null;
+		for (type in this.changeTypes) {
+			if (this.changeTypes.hasOwnProperty(type)) {
+				if (this.changeTypes[type].alias == alias) {
+					ctnType = type;
+				}
+			}
 		}
-	  }
 
-	  return ctnType;
+		return ctnType;
 	},
 
 	_getIceNodeClass: function (changeType) {
-	  return this.attrValuePrefix + this.changeTypes[changeType].alias;
+		return this.attrValuePrefix + this.changeTypes[changeType].alias;
 	},
 
 	getUserStyle: function (userid) {

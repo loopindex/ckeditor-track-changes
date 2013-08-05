@@ -23,19 +23,19 @@ You should have received a copy of the GNU General Public License along with thi
 }
 
 .ICE-Tracking .ice-ins, .ICE-Tracking .ice-ins p  {
-	background-color: #e5ffcd;
+	background-color: #e5ffcd !important;
 }
 
 .ICE-Tracking .ice-ins.cts-1, .ICE-Tracking .ice-ins.cts-1 p  {
-	background-color: #e5ffcd;
+	background-color: #e5ffcd !important;
 }
 
 .ICE-Tracking .ice-ins.cts-2, .ICE-Tracking .ice-ins.cts-2 p  {
-	background-color: #e3ffff;
+	background-color: #e3ffff !important;
 }
 
 .ICE-Tracking .ice-ins.cts-3, .ICE-Tracking .ice-ins.cts-3 p  {
-	background-color: #d1eeee;
+	background-color: #d1eeee !important;
 }
 
 
@@ -43,18 +43,18 @@ You should have received a copy of the GNU General Public License along with thi
 	display: inline;
 	text-decoration: line-through;
 	color: #555;
-	background-color: #faf1f1;
+	background-color: #faf1f1 !important;
 }
 
 .ICE-Tracking .ice-del.cts-1 {
-	background-color: #faf1f1;
+	background-color: #faf1f1 !important;
 }
 
 .ICE-Tracking .ice-del.cts-2 {
-	background-color: #ffe1e1;
+	background-color: #ffe1e1 !important;
 }
 
 .ICE-Tracking .ice-del.cts-3 {
-	background-color: #ffdddd;
+	background-color: #ffdddd !important;
 }
 
