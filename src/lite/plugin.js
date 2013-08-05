@@ -1,4 +1,3 @@
-
 /**
 Copyright 2013 LoopIndex, This file is part of the Track Changes plugin for CKEditor.
 
