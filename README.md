@@ -1,6 +1,6 @@
 # ICE plugin for CKEditor
 
-* Track changes plugin for CKEditor, based on [ICE](https://github.com/NYTimes/ice) (NYTimes track changes for <code>contentEditable</code> documents). 
+* Track changes plugin for CKEditor, based on <a href="https://github.com/NYTimes/ice" target="_blank">ICE</a> (NYTimes track changes for <code>contentEditable</code> documents). 
 * The LITE plugin contains an edited version of ICE, we hope to merge with the ICE repository in the near future.
 
 ## Main Features
@@ -30,10 +30,10 @@
 ```javascript
 	config.extraPlugins = 'lite';
 ```
-- See the [documentation](http://www.loopindex.com/lite/docs/) for all the configuration options.
+- See the <a href="http://www.loopindex.com/lite/docs/" target="_blank">documentation</a> for all the configuration options.
 
 ##Configuration
-The LITE plugin is automatically activated after you install it and edit <code>config.js</code> as described above. For the full details of tweaking the loading process, toolbar commands, users and more, see the [documentation page](http://www.loopindex.com/lite/docs/).
+The LITE plugin is automatically activated after you install it and edit <code>config.js</code> as described above. For the full details of tweaking the loading process, toolbar commands, users and more, see the <a href="http://www.loopindex.com/lite/docs/" target="_blank">documentation</a>.
 
 ## API
 <ul>
@@ -90,7 +90,7 @@ The LITE plugin events are listen in <code>lite_interface.js</code> under <code>
 
 ##Known Issues
 * Adjacent changes from different collaborators may affect each other if you accept/reject a single change in the sequence. This is related to an issue in ICE which we hope to resolve with the developers.
-* See the [ICE page](https://github.com/NYTimes/ice/blob/master/README.md) for known issues related to ICE.
+* See the <a href="https://github.com/NYTimes/ice/blob/master/README.md" target="_blank">ICE page</a> for known issues related to ICE.
 
 ##License
 
