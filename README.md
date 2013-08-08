@@ -1,4 +1,4 @@
-# ICE plugin for CKEditor
+# Track Changes Plugin for CKEditor
 
 * Track changes plugin for CKEditor, based on <a href="https://github.com/NYTimes/ice" target="_blank">ICE</a> (NYTimes track changes for <code>contentEditable</code> documents). 
 * The LITE plugin contains an edited version of ICE, we hope to merge with the ICE repository in the near future.
