@@ -1,5 +1,6 @@
 (function () {
 
+// fomatting for the tooltips
 	function padString(s, length, padWith, bSuffix) {
 		if (null === s || (typeof(s) == "undefined")) {
 			s = "";
@@ -76,7 +77,7 @@
 	handleEvents: false,
 
 	// Sets this.element with the contentEditable element
-	contentEditable: undefined,
+	contentEditable: undefined,//dfl, start with a neutral value
 
 	// Switch for toggling track changes on/off - when `false` events will be ignored.
 	isTracking: true,
@@ -91,9 +92,9 @@
 	// paragraph break while changes are tracked.
 	mergeBlocks: true,
 	
-	titleTemplate : null,
+	titleTemplate : null, // dfl, no title by default
 	
-	isVisible : true
+	isVisible : true // dfl, state of change tracking visibility
 	
 	
   };
@@ -103,7 +104,7 @@
 	// Data structure for modelling changes in the element according to the following model:
 	//  [changeid] => {`type`, `time`, `userid`, `username`}
 	this._changes = {};
-	this._refreshInterval = null;
+	this._refreshInterval = null; // dfl
 
 	options || (options = {});
 	if (!options.element) {
@@ -159,7 +160,7 @@
 		this.initializeEnvironment();
 		this.initializeEditor();
 		this.initializeRange();
-		this._setInterval();
+		this._setInterval(); //dfl
 		
 		this.pluginsManager.fireEnabled(this.element);
 		return this;
@@ -167,6 +168,7 @@
 
 	/**
 	 * Removes contenteditability and stops event handling.
+	 * Changed by dfl to have the option of not setting contentEditable
 	 */
 	stopTracking: function (onlyICE) {
 
@@ -228,9 +230,8 @@
 		body.appendChild(ice.dom.create('<' + this.blockEl + ' ><br/></' + this.blockEl + '>'));
 	  }
 	  this.element.innerHTML = body.innerHTML;
-
-	  this._loadFromDom();
-	  this._setInterval();
+	  this._loadFromDom(); // refactored by dfl
+	  this._setInterval(); // dfl
 
 	},
 
@@ -256,7 +257,7 @@
 	 */
 	setCurrentUser: function (user) {
 	  this.currentUser = user;
-	  this._updateUserData(user);
+	  this._updateUserData(user); // dfl, update data dependant on the user details
 	},
 
 	/**
@@ -492,8 +493,8 @@
 	 */
 	acceptAll: function () {
 	  this.element.innerHTML = this.getCleanContent();
-	  this._changes = {};
-	  this.triggerChange();
+	  this._changes = {}; // dfl, reset the changes table
+	  this.triggerChange(); // notify the world that our change count has changed
 	},
 
 	/**
@@ -508,8 +509,8 @@
 	  ice.dom.each(ice.dom.find(this.element, delSel), function (i, el) {
 		ice.dom.replaceWith(el, ice.dom.contents(el));
 	  });
-	  this._changes = {};
-	  this.triggerChange();
+	  this._changes = {}; // dfl, reset the changes table
+	  this.triggerChange(); // notify the world that our change count has changed
 	},
 
 	/**
@@ -548,7 +549,7 @@
 		insSel = replaceSel = '.' + this._getIceNodeClass('insertType');
 		selector = delSel + ',' + insSel;
 		trackNode = dom.getNode(node, selector);
-		var changeId = dom.attr(trackNode, this.changeIdAttribute);
+		var changeId = dom.attr(trackNode, this.changeIdAttribute); //dfl
 		  // Some changes are done in batches so there may be other tracking
 		  // nodes with the same `changeIdAttribute` batch number.
 		changes = dom.find(this.element, '[' + this.changeIdAttribute + '=' + changeId + ']');
@@ -565,8 +566,8 @@
 		} else if (dom.is(trackNode, removeSel)) {
 			dom.remove(changes);
 		}
-		delete this._changes[changeId];
-		this.triggerChange();
+		delete this._changes[changeId]; //dfl
+		this.triggerChange(); // dfl
 	},
 
 	/**
@@ -574,7 +575,7 @@
 	 * node; otherwise, false.
 	 */
 	isInsideChange: function (node) {
-		return !! this.currentChangeNode(node);
+		return !! this.currentChangeNode(node); // refactored by dfl
 	},
 
 	/**
@@ -651,6 +652,7 @@
 
 	/**
 	 * Returns the given `node` or the first parent node that matches against the list of void elements.
+	 * dfl: added try/catch
 	 */
 	_getVoidElement: function (node) {
 		try {
@@ -731,7 +733,7 @@
 		  userid: this.currentUser.id,
 		  username: this.currentUser.name
 		};
-		this.triggerChange();
+		this.triggerChange(); //dfl
 	  }
 	  var self = this;
 	  ice.dom.foreach(ctNodes, function (i) {
@@ -752,7 +754,7 @@
 		var change = this.getChange(changeid);
 		
 		if (!ctNode.getAttribute(this.changeIdAttribute)) ctNode.setAttribute(this.changeIdAttribute, changeid);
-		
+// modified by dfl, handle missing userid, try to set username according to userid
 		var userId = ctNode.getAttribute(this.userIdAttribute); 
 		if (! userId) {
 			ctNode.setAttribute(this.userIdAttribute, userId = change.userid);

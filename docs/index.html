@@ -32,7 +32,7 @@ h4 {
 <h1>LITE (LoopIndex Tracking Enhancement) for CKEditor</h1>
 <div id="content">
 <h2>Installation</h2>
-<div class="doc">Drop the two folders, <code>common</code> and <code>lite</code>, into the ckeditor <code>plugins</code> folder</div>
+<div class="doc">If your ckeditor build does not already contain LITE, drop the <code>lite</code> folder into ckeditor's <code>plugins</code> folder</div>
 
 <h2>Getting Started</h2>
 <div class="doc">
@@ -41,7 +41,7 @@ h4 {
 <pre>
 	&lt;script type="text/javascript" src="ckeditor/plugins/lite/lite_interface.js"&gt;&lt;/script&gt;
 </pre>
-<li>Add the lite plugin to ckeditor. The simplest way to do this is by adding the following line to ckeditor's <code>config.js</code>:<pre>
+<li>If <code>LITE</code> is not included in ckedito's plugins list, add it to the editor's configuration. The simplest way to do this is by adding the following line to ckeditor's <code>config.js</code>:<pre>
 	config.extraPlugins = 'lite';
 </pre>
 If your configuration already contains some plugin tweaking, just make sure that <code>LITE</code> is included in the editor's plugins list.
@@ -50,7 +50,7 @@ If your configuration already contains some plugin tweaking, just make sure that
 	var lite = config.lite|| {};
 	config.lite = lite;
 </pre>
-<li>If your page doesn't include jQuery, the <code>LITE</code> plugin will load it if you provide it with the relative path to the jquery source. If you are going to use the copy distributed with the plugin, add the following line to config.js:
+<li>If your page doesn't include jQuery, the <code>LITE</code> plugin will load it during its initialization. By default the code is loaded from the <code>lits/js</code> folder. If you want to provide a different path, you can do so by configuring the value of <code>lite.jQueryPath</code> in ckeditor's <code>config.js</code>. The path you specify should be relative to the <code>lite</code> folder.
 <pre>
 	config.lite.jQueryPath = "../common/jquery.min.js";
 </pre>
