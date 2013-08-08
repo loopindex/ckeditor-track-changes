@@ -95,6 +95,7 @@ CKEDITOR.plugins.add( 'lite',
 		
 
 		var self = this;
+		ed.ui.addToolbarGroup('lite', 0);
 		
 		function add1(command, handler, label, icon, trackingOnly) {
 			var cmd = ed.addCommand(command, {
