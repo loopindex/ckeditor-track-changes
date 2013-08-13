@@ -55,11 +55,36 @@ Change the visibility of tracked changes. Visible changes are marked by a specia
 <li><code>bNotify</code> - boolean. If false, the <code>LITE.Events.SHOW_HIDE</code> event is not fired.
 </ul>
 
-<li><h3>acceptAll</h3>
-Accept all the pending changes.
-
-<li><h3>rejectAll</h3>
+<li><h3>acceptAll(options)</h3>
+Accept some or all the pending changes.
+<h4>Parameters</h4>
+<ul>
+<li><code>options</code> - optional object filter the changes to which this operation applies with the following properties:
+<ul><li><code>exclude</code><div>an array of user ids to exclude from the the operation (takes precedence over <code>include</code>)</div>
+<li><code>include</code><div>an array of user ids to include from the the operation</div>
+<li><code>filter</code><div>a filter function that accepts an object of the form <code>{userid, time, data}</code> and returns a <code>boolean</code>. Only changes for which the filter returns <code>true</code> are included in the operation. The <code>filter</code> option can work with both <code>exclude</code> and <code>include</code>.</div>
+</ul>
+All the fields you include in the <code>options</code> block, including custom ones, are preserved when it is sent back in the <code>ACCEPT</code> or <code>REJECT</code> events (see below).
+<li><h3>rejectAll(options)</h3>
 Reject all the pending changes.
+<h4>Parameters</h4>
+<ul>
+<li><code>options</code> - optional object to filter the changes to which this operation applies. See the <code>acceptAll</code> method for details.
+</ul>
+
+<li><h3>countChanges(options)</h3>
+Returns a count of the tracked changes in the editor.
+<h4>Parameters</h4>
+<ul>
+<li><code>options</code> - optional object to filter the counted changes. See the <code>acceptAll</code> method for details.
+</ul>
+
+<li><h3>hasChanges()</h3>
+Sets the name and id of the current user. Each tracked change is associated with a user id. 
+<h4>Parameters</h4>
+<ul>
+<li>none
+</ul>
 
 <li><h3>setUserInfo(info)</h3>
 Sets the name and id of the current user. Each tracked change is associated with a user id. 
@@ -68,18 +93,23 @@ Sets the name and id of the current user. Each tracked change is associated with
 <li><code>info</code> - An object with two members - <code>id</code> and <code>name</code>
 </ul>
 
+<li><h3>setChangeData(data)</h3>
+Associates an arbitrary string with the changes made from now on. This string is passed to the optional <code>filter</code> function in <code>options</code> block passed to various methods that accept change filtering. For example, you may associate a revision number with the current change set and later on filter changes according to their revision.
+<h4>Parameters</h4>
+<ul>
+<li><code>data</code> - Arbitrary data (converted to a string by the <code>LITE</code> plugin).
+</ul>
+
+
+
 </ul>
 
 ## Events
-The LITE plugin events are listen in <code>lite_interface.js</code> under <code>LITE.Events</code>. The following events are fired by the LITE plugin instance, with the parameter in the <code>data</code> member of the event info:
+The LITE plugin events are listen in <code>lite_interface.js</code> under <code>LITE.Events</code>. The following events are fired by the LITE plugin instance through its instance of <code>ckeditor</code>, with the parameter in the <code>data</code> member of the event info:
 <ul>
 <li>INIT (parameters: lite, the LITE instance)<div>Fired each time <code>LITE</code> creates and initializes an instance of the <code>ICE</code> change tracker. This happens, e.g., when you switch back from <code>Source</code> mode to <code>Wysiwyg</code>.</div>
-<li>ACCEPT_SOME (parameter : none)<div>Fired after some changes (but not all) were accepted. Out of the box, this is fired only when the <code>LITE.Commands.ACCEPT_ONE</code> command is executed.</div>
-<li>ACCEPT_ALL (parameter : none)
-<div>Fired after the all pending changes are accepted.</div> 
-<li>REJECT_SOME (parameter : none)<div>Fired after some changes (but not all) were rejected. Out of the box, this is fired only when the <code>LITE.Commands.REJECT_ONE</code> command is executed.</div>
-<li>REJECT_ALL (parameter : none)
-<div>Fired after the all pending changes are rejected.</div> 
+<li>ACCEPT(parameter : the <code>options</code> object passed to acceptAll, if relevant)<div>Fired after some changes (possibly all) were accepted.
+<li>REJECT (parameter : the <code>options</code> object passed to acceptAll, if relevant)<div>Fired after some changes (possibly all) were rejected. </div>
 <li>SHOW_HIDE(parameter: show &lt;boolean&gt;)
 <div>Fired after a change in the visibility of tracked changes.</div>
 <li>TRACKING (parameter: tracking&lt;boolean&gt;)
@@ -101,3 +131,5 @@ This program is free software; you can redistribute it and/or modify it under th
 This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License along with this program as the file gpl-2.0.txt. If not, see <http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt>
+
+Written by (David *)Frenkiel (https://github.com/imdfl)

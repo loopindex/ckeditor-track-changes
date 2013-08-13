@@ -14,47 +14,47 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 	white-space:pre-wrap;
 }
 
-.ICE-Tracking .ice-ins,
-.ICE-Tracking .ice-del {
+.ICE-Tracking .ice-ins:not(.ice-hide),
+.ICE-Tracking .ice-del:not(.ice-hide) {
 	-webkit-border-radius: 3px;
 	border-radius: 3px;
 	color: #000;
 	padding: 1px 0 2px;
 }
 
-.ICE-Tracking .ice-ins, .ICE-Tracking .ice-ins p  {
+.ICE-Tracking .ice-ins:not(.ice-hide), .ICE-Tracking .ice-ins:not(.ice-hide) p  {
 	background-color: #e5ffcd !important;
 }
 
-.ICE-Tracking .ice-ins.cts-1, .ICE-Tracking .ice-ins.cts-1 p  {
+.ICE-Tracking .ice-ins.ice-cts-1:not(.ice-hide), .ICE-Tracking .ice-ins.ice-cts-1:not(.ice-hide) p  {
 	background-color: #e5ffcd !important;
 }
 
-.ICE-Tracking .ice-ins.cts-2, .ICE-Tracking .ice-ins.cts-2 p  {
+.ICE-Tracking .ice-ins.ice-cts-2:not(.ice-hide), .ICE-Tracking .ice-ins.ice-cts-2:not(.ice-hide) p  {
 	background-color: #e3ffff !important;
 }
 
-.ICE-Tracking .ice-ins.cts-3, .ICE-Tracking .ice-ins.cts-3 p  {
+.ICE-Tracking .ice-ins.ice-cts-3:not(.ice-hide), .ICE-Tracking .ice-ins.ice-cts-3:not(.ice-hide) p  {
 	background-color: #d1eeee !important;
 }
 
 
-.ICE-Tracking .ice-del {
+.ICE-Tracking .ice-del:not(.ice-hide) {
 	display: inline;
 	text-decoration: line-through;
 	color: #555;
 	background-color: #faf1f1 !important;
 }
 
-.ICE-Tracking .ice-del.cts-1 {
+.ICE-Tracking .ice-del.ice-cts-1:not(.ice-hide) {
 	background-color: #faf1f1 !important;
 }
 
-.ICE-Tracking .ice-del.cts-2 {
+.ICE-Tracking .ice-del.ice-cts-2:not(.ice-hide) {
 	background-color: #ffe1e1 !important;
 }
 
-.ICE-Tracking .ice-del.cts-3 {
+.ICE-Tracking .ice-del.ice-cts-3:not(.ice-hide) {
 	background-color: #ffdddd !important;
 }
 

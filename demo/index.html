@@ -45,7 +45,7 @@
 	}
 	
 	#sidebar {
-		width:200px;
+		width:300px;
 		height:100%;
 		border: 1px solid #ccc;
 		border-top:none;
@@ -79,6 +79,60 @@
 		padding-bottom: 5px;
 		padding-top:10px;
 	}
+	
+	#accept-controls {
+		position:relative;
+		border: 1px solid black;
+		border-radius: 3px;
+		padding: 4px;
+		width:90%;
+		padding-top: 16px;
+	}
+	
+	#accept-controls #links {
+		margin-top: 15px;
+		margin-bottom: 10px;
+	}
+	
+	#accept-controls #links>div {
+		display:inline-block;
+		line-height:2em;
+	}
+	
+	#accept-controls #links>div:nth-child(1) {
+		margin-right: 15px;
+		padding-right: 10px;
+		border-right: 1px solid #999999;		
+	}
+	
+	#accept-controls #accept-title {
+		position:absolute;
+		top: -9px;
+		left: 5px;
+		background-color: #f1f1ff;
+		padding:0px 4px 0px 2px;
+	}
+	
+	#accept-controls #links label {
+		font-weight:bold;
+	}
+	
+	a.btn {
+		text-transform: capitalize;
+		padding: 3px 5px 3px 5px;
+		text-align: center;
+		border-radius: 4px;
+		border: 1px outset #aaaaaa;
+		background-color: #bbbbbb;
+		color: #fefefe;
+		text-decoration:none;
+	}
+	
+	a.btn:hover {
+		text-decoration:underline;
+	}
+	
+	
 </style>
 
 <script type="text/javascript" src="ckeditor/plugins/lite/js/jquery.min.js"></script>
@@ -86,7 +140,63 @@
 <script type="text/javascript" src="ckeditor/ckeditor.js"></script>
 <script type="text/javascript" src="ckeditor/plugins/lite/lite_interface.js"></script>
 
+
+</head>
+<body>
+<table id="main-ui">
+<tr><td colspan="2"><h2>Demo page for LITE - a Track Changes CKEditor plugin by LoopIndex</h2>
+<ul>
+<li><a href="http://ckeditor.com/" target="_blank">CKEditor</a> is an open source browser based text editor.
+<li>The plugin is based on ICE which is an open source text change tracking system developed by the CMS group at the New York Times. The ICE project is <a href="https://github.com/NYTimes/ice" target="_blank">available on Github</a>.
+<li>LoopIndex Track Changes CKEditor plugin is <a href="https://github.com/loopindex/ckeditor-track-changes" target="_blank">available on GitHub as an open source project</a>.	
+</ul>
+<p>This page demonstrates the track changes CKEditor plugin, written and distributed by LoopIndex.</p>
+</td></tr>
+<tr>
+<td id="editor-container">
+	<textarea cols="80" id="editor1" name="editor1" rows="10">
+		Add or delete text to unleash the power of the <b>Track Changes CKEditor Plugin</b>.
+	</textarea>
+</td>
+<td id="sidebar">
+<div>
+<span class="title">current user:</span>
+<select id="users"></select>
+</div>
+
+<div>Changes: <span id="show-status"></span></div>
+<div id="accept-controls">
+	<div id="accept-title">Process changes by </div>
+	<div id="filters"></div>
+	<div id="links">
+		<div>
+			<label>Accept</label><br/>
+			<a class="btn" href="" id="accept-match" title="accept matching changes">matching</a><br/>
+			<a class="btn" href="" id="accept-non-match" title="accept non-matching changes">not matching</a>
+		</div>
+		<div>
+			<label>Reject</label><br/>
+			<a class="btn" href="" id="reject-match" title="reject matching changes">matching</a><br/>
+			<a class="btn" href="" id="reject-non-match" title="reject non-matching changes">not matching</a>
+		</div>
+		<br/>
+	</div>
+</div>
+<div>
+	<a class="btn" href="" id="test-data">insert test data</a>
+</div>
+</td>
+</tr>
+<tr><td colspan="2"><div id="copyright" style="text-wrap:">Copyright 2013 LoopIndex, This file is part of the Track Changes plugin for CKEditor.
+
+The track changes plugin is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License, version 2, as published by the Free Software Foundation.
+This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+You should have received a copy of the GNU General Public License along with this program as the file gpl-2.0.txt. If not, see http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt
+</div></td></tr>
+</table>
+
 <script type="text/javascript">
+	var users = [{name: "Roger", id : 18}, {name: "David", id : 15}, {name : "Syd", id : 21}];
 	function f() {
 	/* Begin fixes for IE */
 		Function.prototype.bind = Function.prototype.bind || function () {
@@ -149,12 +259,12 @@
 	/* End fixes fo IE */
 
 		var lite = null; // an instance of the LITE plugin 
-		var users = [{name: "Roger", id : 18}, {name: "David", id : 15}, {name : "Syd", id : 21}];
 		var user = users[0];
 		var $sidebar = $("#sidebar");
 
 		var editor = CKEDITOR.replace( 'editor1' , { 
-			height: "400" 
+			height: "400" ,
+			extraPlugins: 'lite'
 			});
 		
 		// example of listening to an LITE plugin event. The events are dispatched through the editor
@@ -169,7 +279,42 @@
 			lite = event.data.lite;
 			lite.toggleShow(true);
 			lite.setUserInfo(user);
+			window.lite = lite;
 		});
+		
+		$("#test-data").click(function(event) {
+			event.stopImmediatePropagation();
+			editor.setData('<p>Aug 11 2013</p><p><span class="ice-ins ice-cts-1" data-cid="2" data-time="1376218678796" data-userid="15" data-username="David" >Added by David</span>, then <span class="ice-ins ice-cts-2" data-cid="11" data-time="1376218687062" data-userid="18" data-username="Roger" >added by Roger</span>, subsequently <span class="ice-del ice-cts-3" data-cid="3" data-time="1376243289388" data-userid="21" data-username="Syd" >deleted by Syd</span>, then <span class="ice-ins ice-cts-3" data-cid="19" data-time="1376218693458" data-userid="21" data-username="Syd" >added by Syd</span> using the <b>Track Changes CKEditor Plugin</b>.</p><p>Aug 11 2000</p><p><span class="ice-ins ice-cts-1" data-cid="21" data-time="966006011847" data-userid="15" data-username="David" >Added by David</span>, then <span class="ice-ins ice-cts-2" data-cid="111" data-time="966006011847" data-userid="18" data-username="Roger" >added by Roger</span>, subsequently <span class="ice-del ice-cts-3" data-cid="113" data-time="966006011847" data-userid="21" data-username="Syd" >deleted by Syd</span>, then <span class="ice-ins ice-cts-3" data-cid="119" data-time="966006011847" data-userid="21" data-username="Syd" >added by Syd</span> using the <b>Track Changes CKEditor Plugin</b>.</p>');
+			return false;
+		});
+		
+		$("#reject-match").click(function(event) {
+			event.stopImmediatePropagation();
+			var checked = getCheckedUsers();
+			lite.rejectAll({include:checked});
+			return false;
+		})
+
+		$("#reject-non-match").click(function(event) {
+			event.stopImmediatePropagation();
+			var checked = getCheckedUsers();
+			lite.rejectAll({exclude:checked});
+			return false;
+		})
+
+		$("#accept-match").click(function(event) {
+			event.stopImmediatePropagation();
+			var checked = getCheckedUsers();
+			lite.acceptAll({include:checked});
+			return false
+		})
+		
+		$("#accept-non-match").click(function(event) {
+			event.stopImmediatePropagation();
+			var checked = getCheckedUsers();
+			lite.acceptAll({exclude:checked});
+			return false
+		})
 		
 		var $select = $sidebar.find("#users");
 		var select = $select[0];
@@ -187,6 +332,14 @@
 			editor.focus();
 		}
 		
+		function getCheckedUsers() {
+			var checks = $("#filters input:checked");
+			var checked = checks.map(function(i,e) {
+				return $(e).attr("data-userid");
+			});
+			return checked;
+		}
+		
 
 	}
 	if (typeof(jQuery) == "undefined" || typeof(CKEDITOR) == "undefined") {
@@ -195,41 +348,17 @@
 	else {
 		$(window).load(f);
 	}
+	
+	var html = '';
+	for (var i = 0, len = users.length; i < len; ++i) {
+		var user = users[i];
+		var name = "user-" + i;
+		var h = '<input type="checkbox" id="' + name + '" name="' + name + '" data-userid="' + user.id + '" /><label for="'+ name + '">' + user.name + '</label>';
+		html += h;
+	}
+	document.getElementById("filters").innerHTML = html;
 </script>
 
-
-</head>
-<body>
-<table id="main-ui">
-<tr><td colspan="2"><h2>Demo page for LITE - a Track Changes CKEditor plugin by LoopIndex</h2>
-<ul>
-<li><a href="http://ckeditor.com/" target="_blank">CKEditor</a> is an open source browser based text editor.
-<li>The plugin is based on ICE which is an open source text change tracking system developed by the CMS group at the New York Times. The ICE project is <a href="https://github.com/NYTimes/ice" target="_blank">available on Github</a>.
-<li>LoopIndex Track Changes CKEditor plugin is <a href="https://github.com/loopindex/ckeditor-track-changes" target="_blank">available on GitHub as an open source project</a>.	
-</ul>
-<p>This page demonstrates the track changes CKEditor plugin, written and distributed by LoopIndex.</p>
-</td></tr>
-<tr>
-<td id="editor-container">
-	<textarea cols="80" id="editor1" name="editor1" rows="10">
-		Add or delete text to unleash the power of the <b>Track Changes CKEditor Plugin</b>.
-	</textarea>
-</td>
-<td id="sidebar">
-<div>
-<span class="title">current user:</span>
-<select id="users"></select>
-</div>
-<div>Changes: <span id="show-status"></span></div>
-</td>
-</tr>
-<tr><td colspan="2"><div id="copyright" style="text-wrap:">Copyright 2013 LoopIndex, This file is part of the Track Changes plugin for CKEditor.
-
-The track changes plugin is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License, version 2, as published by the Free Software Foundation.
-This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
-You should have received a copy of the GNU General Public License along with this program as the file gpl-2.0.txt. If not, see http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt
-</div></td></tr>
-</table>
 
 
 </body>

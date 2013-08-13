@@ -10,10 +10,8 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 var LITE = {
 	Events : {
 		INIT : "lite:init",
-		ACCEPT_SOME : "lite:acceptSome",
-		ACCEPT_ALL : "lite:acceptAll",
-		REJECT_SOME : "lite:rejectSome",
-		REJECT_ALL : "lite:rejectAll",
+		ACCEPT : "lite:accept",
+		REJECT : "lite:reject",
 		SHOW_HIDE : "lite:showHide",
 		TRACKING : "lite:tracking"
 	},
