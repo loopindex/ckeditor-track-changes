@@ -61,6 +61,9 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 	 * @param ed an instance of CKEditor
 	 */
 	init: function(ed) {
+		if (CKEDITOR.ELEMENT_MODE_INLINE == ed.elementMode) {
+			return;
+		}
 		ed.ui.addToolbarGroup('lite');
 		this._setPluginFeatures(ed, this.props);
 
@@ -152,10 +155,9 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		}
 		
 		
-		this._config = $.extend({}, liteConfig);
-		$.each(commandsMap, function(i, rec) {
-			add1(rec);
-		});
+		for (var i = 0, len = commandsMap.length; i < len; ++i) {
+			add1(commandsMap[i]);
+		}
 		
 		
 		for (var i = 0, len = scripts.length; i < len; ++i) {
@@ -445,13 +447,13 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 	 */
 	_cleanup : function() {
 		var body = this._getBody();
-		empty = $(body).find(self.insertSelector + ':empty,' + self.deleteSelector + ':empty');
+		empty = jQuery(body).find(self.insertSelector + ':empty,' + self.deleteSelector + ':empty');
 		empty.remove();
 		this._onSelectionChanged(null);
 	},
 	
 	_setButtonTitle : function(button, title) {
-		var e = $('#' + button._.id);
+		var e = jQuery('#' + button._.id);
 		e.attr('title', title);
 	},
 	

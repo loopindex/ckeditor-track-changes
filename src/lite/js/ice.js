@@ -1600,11 +1600,15 @@
 	mouseUp: function (e, target) {
 		if (!this.pluginsManager.fireClicked(e)) return false;
 		this.pluginsManager.fireSelectionChanged(this.getCurrentRange());
+		return true;
 	},
 
 	mouseDown: function (e, target) {
-		if (!this.pluginsManager.fireMouseDown(e)) return false;
+		if (!this.pluginsManager.fireMouseDown(e)) {
+			return false;
+		}
 		this.pluginsManager.fireCaretUpdated();
+		return true;
 	},
 	
 	/* Added by dfl */
