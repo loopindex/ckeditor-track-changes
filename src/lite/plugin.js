@@ -61,9 +61,10 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 	 * @param ed an instance of CKEditor
 	 */
 	init: function(ed) {
-		if (CKEDITOR.ELEMENT_MODE_INLINE == ed.elementMode) {
+		if (this._inited) { // (CKEDITOR.ELEMENT_MODE_INLINE == ed.elementMode) {
 			return;
 		}
+		this._inited = true;
 		ed.ui.addToolbarGroup('lite');
 		this._setPluginFeatures(ed, this.props);
 
@@ -339,6 +340,11 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 	
 	_getBody : function() {
 		try {
+			var mode = this._editor.elementMode;
+			if (CKEDITOR.ELEMENT_MODE_INLINE == mode) {
+				return this._editor.element.$;
+			}
+				
 			return this._editor.document.$.body;
 		}
 		catch (e) {
@@ -350,7 +356,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		var e = this._editor;
 		var doc = e.document.$;
 		this._loadCSS(doc);
-		var body = doc.body;
+		var body = this._getBody();
 		var props = this.props;
 		
 		if (! this._eventsBounds) {
