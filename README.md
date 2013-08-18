@@ -127,10 +127,12 @@ The LITE plugin events are listen in <code>lite_interface.js</code> under <code>
 
 Copyright (c) LoopIndex.
 
-This program is free software; you can redistribute it and/or modify it under the terms of the GNU Lesser General Public License, version 2, as published by the Free Software Foundation.
+This program is free software; you can redistribute it and/or modify it under the terms of the GNU Lesser General Public License as published by the Free Software Foundation.
 
 This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more details.
 
 You should have received a copy of the GNU Lesser General Public License along with this program as the file lgpl.txt. If not, see <http://www.gnu.org/licenses/lgpl.txt>
+
+This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0. If a copy of the MPL was not distributed with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 Written by (David *)Frenkiel (https://github.com/imdfl)
