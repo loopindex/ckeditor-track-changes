@@ -1,9 +1,9 @@
 /**
 Copyright 2013 LoopIndex, This file is part of the Track Changes plugin for CKEditor.
 
-The track changes plugin is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License, version 2, as published by the Free Software Foundation.
+The track changes plugin is free software; you can redistribute it and/or modify it under the terms of the GNU Lesser General Public License, version 2, as published by the Free Software Foundation.
 This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
-You should have received a copy of the GNU General Public License along with this program as the file gpl-2.0.txt. If not, see http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt
+You should have received a copy of the GNU Lesser General Public License along with this program as the file lgpl.txt. If not, see http://www.gnu.org/licenses/lgpl.html.
 
 Written by (David *)Frenkiel - https://github.com/imdfl
 **/
@@ -65,6 +65,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			return;
 		}
 		this._inited = true;
+		this._ieFix();
 		ed.ui.addToolbarGroup('lite');
 		this._setPluginFeatures(ed, this.props);
 
@@ -586,5 +587,65 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		catch (e){
 			console && console.error && console.error(e);
 		}
+	},
+	
+	_ieFix : function() {
+		/* Begin fixes for IE */
+			Function.prototype.bind = Function.prototype.bind || function () {
+				"use strict";
+				var fn = this, args = Array.prototype.slice.call(arguments),
+				object = args.shift();
+				return function () {
+					return fn.apply(object,
+				args.concat(Array.prototype.slice.call(arguments)));
+				};
+			};
+
+			/* Mozilla fix for MSIE indexOf */
+			Array.prototype.indexOf = Array.prototype.indexOf || function (searchElement /*, fromIndex */) {
+				"use strict";
+				if (this == null) {
+					throw new TypeError();
+				}
+				var t = Object(this);
+				var len = t.length >>> 0;
+				if (len === 0) {
+					return -1;
+				}
+				var n = 0;
+				if (arguments.length > 1) {
+					n = Number(arguments[1]);
+					if (n != n) { // shortcut for verifying if it's NaN
+						n = 0;
+					} else if (n != 0 && n != Infinity && n != -Infinity) {
+						n = (n > 0 || -1) * Math.floo1r(Math.abs(n));
+					}
+				}
+				if (n >= len) {
+					return -1;
+				}
+				var k = n >= 0 ? n : Math.max(len - Math.abs(n), 0);
+				for (; k < len; k++) {
+					if (k in t && t[k] === searchElement) {
+						return k;
+					}
+				}
+				return -1;
+			};
+
+			Array.prototype.lastIndexOf = Array.prototype.indexOf || function (searchElement) {
+				"use strict";
+				if (this == null) {
+					throw new TypeError();
+				}
+				var t = Object(this);
+				var len = t.length >>> 0;
+				while(--len >= 0) {
+					if (len in t && t[len] === searchElement) {
+						return len;
+					}
+				}
+				return -1;
+			};
 	}
 });})();

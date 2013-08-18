@@ -175,16 +175,23 @@
 	 */
 	stopTracking: function (onlyICE) {
 
-		// If we are handling events setup the delegate to handle various events on `this.element`.
-		if (this.element) {
-			ice.dom.unbind(this.element, 'keyup.ice keydown.ice keypress.ice mousedown.ice mouseup.ice');
+		this._isTracking = false;
+		try { // dfl added try/catch for ie
+			// If we are handling events setup the delegate to handle various events on `this.element`.
+			if (this.element) {
+				ice.dom.unbind(this.element, 'keyup.ice keydown.ice keypress.ice mousedown.ice mouseup.ice');
+			}
+	
+			// dfl:reset contenteditable unless requested not to do so
+			if (! onlyICE && (typeof(this.contentEditable) != "undefined")) {
+				this.element.setAttribute('contentEditable', !this.contentEditable);
+			}
 		}
-
-		// dfl:reset contenteditable unless requested not to do so
-		if (! onlyICE && (typeof(this.contentEditable) != "undefined")) {
-			this.element.setAttribute('contentEditable', !this.contentEditable);
+		catch (e){}
+		try { // dfl added try/catch for ie8
+			this.pluginsManager.fireDisabled(this.element);
 		}
-		this.pluginsManager.fireDisabled(this.element);
+		catch(e){}
 		this._setInterval();
 		return this;
 	},
