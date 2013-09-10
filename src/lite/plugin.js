@@ -68,6 +68,9 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		this._ieFix();
 		ed.ui.addToolbarGroup('lite');
 		this._setPluginFeatures(ed, this.props);
+		this._emptyRegex = /^[\s\r\n]*$/; // for getting the clean text
+		this._changeTimeout = null;
+		this._boundNotifyChange = this._notifyChange.bind(this);
 
 		var liteConfig = ed.config.lite || {};
 		
@@ -308,6 +311,49 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		return true;
 	},
 	
+	getCleanText : function() {
+		var root = this._getBody();
+		if (! root){
+			return "";
+		}
+		var textFragments = new Array();
+		textFragments.push("");
+		var deleteClass = this._tracker.getDeleteClass();
+		this._getCleanText(root, textFragments, deleteClass);
+		var str = textFragments.join("\n");
+		str = str.replace(/&nbsp(;)?/ig, ' ');
+		return str;
+	},
+
+	_getCleanText : function(e, textFragments, deleteClass) { // assumed never to be called with a text node
+		var cls = e.getAttribute("class");
+		if (cls && cls.indexOf(deleteClass) >= 0) {
+			return;
+		}
+		
+		var isBlock;
+		if (isBlock = ((e.nodeName && e.nodeName.toUpperCase() == "BR") || ("block" == jQuery(e).css("display")))) {
+			if (this._emptyRegex.test(textFragments[textFragments.length - 1])) {
+				textFragments[textFragments.length - 1] = "";
+			}
+			else {
+				textFragments.push("");
+			}
+		}
+		for (var child = e.firstChild; child; child = child.nextSibling) {
+			var nodeType = child.nodeType;
+			if (3 == nodeType) {
+				textFragments[textFragments.length - 1] += String(child.nodeValue);
+			}
+			else if (1 == nodeType || 9 == nodeType || 11 == nodeType) {
+				this._getCleanText(child, textFragments, deleteClass);
+			}
+		}
+		if (isBlock) {
+			textFragments.push("");
+		}
+	},
+	
 	_onDomLoaded : function(dom) {
 		this._domLoaded = true;
 		this._editor = dom.editor;
@@ -402,13 +448,13 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			try {
 				this._tracker.startTracking();
 				this.toggleTracking(true, false);
-				jQuery(this._tracker).on("change", this._onIceChange.bind(this));
+				jQuery(this._tracker).on("change", this._onIceChange.bind(this)).on("textChange", this._onIceTextChanged.bind(this));
 				e.on("selectionChange", this._onSelectionChanged.bind(this));
 				e.fire(LITE.Events.INIT, {lite: this});
 				this._onIceChange(null);
 			}
 			catch(e) {
-				console && console.error && console.error("ICE plugin init:", e);
+				this._logError("ICE plugin init:", e);
 			}
 		}
 	},
@@ -487,10 +533,11 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 					newNode = nextNode;
 				}
 				evt.cancel();
+				this._onIceTextChanged();
 				return false;
 			}
 			catch (e) {
-				console && console.error && console.error("ice plugin paste:", e);
+				this._logError("ice plugin paste:", e);
 			};
 			
 		}
@@ -528,6 +575,22 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		var state = hasChanges && this._canAcceptReject ? CKEDITOR.TRISTATE_OFF : CKEDITOR.TRISTATE_DISABLED;
 		this._setCommandsState([LITE.Commands.ACCEPT_ALL, LITE.Commands.REJECT_ALL], state);
 		this._onSelectionChanged();
+		this._triggerChange();
+	},
+	
+	_onIceTextChanged : function(e) {
+		this._triggerChange();
+	},
+	
+	_triggerChange : function() {
+		if (! this._changeTimeout) {
+			this._changeTimeout = setTimeout(this._boundNotifyChange, 1);
+		}
+	},
+	
+	_notifyChange : function() {
+		this._changeTimeout = null;
+		this._editor.fire('change');
 	},
 	
 	_commandNameToUIName : function(command) {
@@ -585,7 +648,16 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			}); */
 		}
 		catch (e){
-			console && console.error && console.error(e);
+			this._logError(e);
+		}
+	},
+	
+	
+	_logError : function() {
+		var t = typeof console;
+		if (t != "undefined" && console.error) {
+			var args = Array.prototype.slice.apply(arguments);
+			console.error(args.join(' '));
 		}
 	},
 	
