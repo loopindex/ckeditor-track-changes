@@ -85,7 +85,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			{
 				command: LITE.Commands.TOGGLE_SHOW, 
 				exec: this._onToggleShow, 
-				title: "Toggle Tracking Changes",
+				title: "Toggle Tracked Changes Visiblity",
 				icon: "show_hide.png",
 				readOnly : true
 			},
@@ -121,7 +121,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 	
 		this._editor = ed;
 		this._isVisible = true;
-		this._isTracking = true;
+		this._isTracking = liteConfig.isTracking !== false;
 		this._eventsBounds = false;
 	
 		ed.on("contentDom", (function(dom) {
@@ -164,12 +164,49 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			add1(commandsMap[i]);
 		}
 		
+		ed.addMenuGroup ( 'lite', 50);
+
+		if ( ed.addMenuItems )
+		{
+			var params = {};
+			params[LITE.Commands.ACCEPT_ONE] = {
+				label : 'Accept Change',
+				command : LITE.Commands.ACCEPT_ONE,
+				group : 'lite',
+				order : 1,
+				icon : path + 'icons/accept_one.png'
+			};
+			params[LITE.Commands.REJECT_ONE] = {
+				label : 'Reject Change',
+				command : LITE.Commands.REJECT_ONE,
+				group : 'lite',
+				order : 2,
+				icon : path + 'icons/reject_one.png'
+			};
+
+			ed.addMenuItems(params);
+		}
+
+		if ( ed.contextMenu )
+		{
+			ed.contextMenu.addListener( (function( element, selection ) {
+				 if (element && this._tracker && this._tracker.currentChangeNode(element)) {
+					 var ret = {};
+					 ret[LITE.Commands.ACCEPT_ONE] = CKEDITOR.TRISTATE_OFF;
+					 ret[LITE.Commands.REJECT_ONE]= CKEDITOR.TRISTATE_OFF;
+					 return ret;
+				 }
+				 else {
+					 return null;
+				 }
+			}).bind(this) );
+		}
 		
 		for (var i = 0, len = scripts.length; i < len; ++i) {
 			scripts[i] = path + scripts[i]; 
 		}
 		if (typeof(jQuery) == "undefined") {
-			scripts.splice(0, 0, this.path + jQueryPath)
+			scripts.splice(0, 0, this.path + jQueryPath);
 		}
 		
 		var load1 = function(_scripts) {
@@ -177,9 +214,9 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 				self._onScriptsLoaded();
 			}
 			else {
-				CKEDITOR.scriptLoader.load(_scripts.shift(), function() {load1(_scripts);}, self)
+				CKEDITOR.scriptLoader.load(_scripts.shift(), function() {load1(_scripts);}, self);
 			}
-		}
+		};
 		
 		load1(scripts);		
 	},
@@ -277,7 +314,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			lite.userId = info.id;
 			lite.userName = info.name;
 			this._editor.config.lite = lite;
-		}
+		};
 	},
 	
 	/**
@@ -447,7 +484,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			this._tracker = new ice.InlineChangeEditor(iceprops);
 			try {
 				this._tracker.startTracking();
-				this.toggleTracking(true, false);
+				this.toggleTracking(this._isTracking, false);
 				jQuery(this._tracker).on("change", this._onIceChange.bind(this)).on("textChange", this._onIceTextChanged.bind(this));
 				e.on("selectionChange", this._onSelectionChanged.bind(this));
 				e.fire(LITE.Events.INIT, {lite: this});
