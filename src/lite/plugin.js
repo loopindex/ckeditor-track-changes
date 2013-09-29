@@ -85,7 +85,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			{
 				command: LITE.Commands.TOGGLE_SHOW, 
 				exec: this._onToggleShow, 
-				title: "Toggle Tracked Changes Visiblity",
+				title: "Toggle Tracking Changes",
 				icon: "show_hide.png",
 				readOnly : true
 			},
@@ -154,7 +154,8 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 				}); 
 				if (rec.trackingOnly !== false) {
 					self._liteCommandNames.push(rec.command);
-				}	
+				}
+				
 			}
 		}
 		
@@ -555,7 +556,6 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		if (data && 'html' == data.type && data.dataValue) {
 			var changeid = this._tracker.startBatchChange();
 			try {
-				var range = this._tracker.getCurrentRange();
 				var doc = this._editor.document.$;
 				var container = doc.createElement("div");
 				container.innerHTML = String(data.dataValue);
