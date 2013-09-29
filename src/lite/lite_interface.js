@@ -6,6 +6,8 @@ This program is distributed in the hope that it will be useful, but WITHOUT ANY 
 You should have received a copy of the GNU Lesser General Public License along with this program as the file lgpl.txt. If not, see http://www.gnu.org/licenses/lgpl.html.
 
 Written by (David *)Frenkiel - https://github.com/imdfl
+
+** Source Version **
 **/
 var LITE = {
 	Events : {

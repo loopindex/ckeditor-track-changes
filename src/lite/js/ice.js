@@ -220,8 +220,12 @@
 			range.setStart(ice.dom.find(this.element, this.blockEls.join(', '))[0], 0);
 			range.collapse(true);
 			this.selection.addRange(range);
-			if (this.env.frame) this.env.frame.contentWindow.focus();
-			else this.element.focus();
+			if (this.env.frame) {
+				this.env.frame.contentWindow.focus();
+			}
+			else {
+				this.element.focus();
+			}
 		},
 	
 		/**
@@ -232,18 +236,20 @@
 			// Clean the element html body - add an empty block if there is no body, or remove any
 			// content between elements.
 			var self = this,
-			body = this.env.document.createElement('div');
+				body = this.env.document.createElement('div');
 			if (this.element.childNodes.length) {
-			body.innerHTML = this.element.innerHTML;
-			ice.dom.removeWhitespace(body);
-			if (body.innerHTML === '') body.appendChild(ice.dom.create('<' + this.blockEl + ' ><br/></' + this.blockEl + '>'));
-			} else {
-			body.appendChild(ice.dom.create('<' + this.blockEl + ' ><br/></' + this.blockEl + '>'));
+				body.innerHTML = this.element.innerHTML;
+				ice.dom.removeWhitespace(body);
+				if (body.innerHTML === '') {
+					body.appendChild(ice.dom.create('<' + this.blockEl + ' ><br/></' + this.blockEl + '>'));
+				} 
+			}
+			else {
+				body.appendChild(ice.dom.create('<' + this.blockEl + ' ><br/></' + this.blockEl + '>'));
 			}
 			this.element.innerHTML = body.innerHTML;
 			this._loadFromDom(); // refactored by dfl
 			this._setInterval(); // dfl
-	
 		},
 	
 		/**
@@ -280,22 +286,26 @@
 		handleEvent: function (e) {
 			if (!this.isTracking) return;
 			if (e.type == 'mouseup') {
-			var self = this;
-			setTimeout(function () {
-				self.mouseUp(e);
-			}, 200);
-			} else if (e.type == 'mousedown') {
-			return this.mouseDown(e);
-			} else if (e.type == 'keypress') {
-			var needsToBubble = this.keyPress(e);
-			if (!needsToBubble) e.preventDefault();
-			return needsToBubble;
-			} else if (e.type == 'keydown') {
-			var needsToBubble = this.keyDown(e);
-			if (!needsToBubble) e.preventDefault();
-			return needsToBubble;
-			} else if (e.type == 'keyup') {
-			this.pluginsManager.fireCaretUpdated();
+				var self = this;
+				setTimeout(function () {
+					self.mouseUp(e);
+				}, 200);
+			} 
+			else if (e.type == 'mousedown') {
+				return this.mouseDown(e);
+			} 
+			else if (e.type == 'keypress') {
+				var needsToBubble = this.keyPress(e);
+				if (!needsToBubble) e.preventDefault();
+				return needsToBubble;
+			} 
+			else if (e.type == 'keydown') {
+				var needsToBubble = this.keyDown(e);
+				if (!needsToBubble) e.preventDefault();
+				return needsToBubble;
+			} 
+			else if (e.type == 'keyup') {
+				this.pluginsManager.fireCaretUpdated();
 			}
 		},
 	
@@ -326,14 +336,18 @@
 			var isPropagating = !node;
 			node || (node = '\uFEFF');
 	
-			if (range) this.selection.addRange(range);
-			else range = this.getCurrentRange();
-	
+			if (range) {
+				this.selection.addRange(range);
+			}
+			else {
+				range = this.getCurrentRange();
+			}
 			if (typeof node === "string") {
 				node = document.createTextNode(node);
 			}
 	
-			// If we have any nodes selected, then we want to delete them before inserting the new text.
+			var changeid = this._batchChangeid ? null : this.startBatchChange();
+		// If we have any nodes selected, then we want to delete them before inserting the new text.
 			if (!range.collapsed) {
 				this.deleteContents(false, null, true); //don't trigger text changed
 			// Update the range
@@ -350,11 +364,9 @@
 			// If we are in a non-tracking/void element, move the range to the end/outside.
 			this._moveRangeToValidTrackingPos(range);
 	
-			var changeid = this.startBatchChange();
 			// Send a dummy node to be inserted, if node is undefined
 			this._insertNode(node, range, isPropagating);
 			this.pluginsManager.fireNodeInserted(node, range);
-			this._triggerChangeText();
 			this.endBatchChange(changeid);
 			return isPropagating;
 		},
@@ -371,14 +383,14 @@
 		placeholdDeletes: function () {
 			var self = this;
 			if (this.isPlaceholdingDeletes) {
-			this.revertDeletePlaceholders();
+				this.revertDeletePlaceholders();
 			}
 			this.isPlaceholdingDeletes = true;
 			this._deletes = [];
 			var deleteSelector = '.' + this._getIceNodeClass('deleteType');
 			ice.dom.each(ice.dom.find(this.element, deleteSelector), function (i, el) {
-			self._deletes.push(ice.dom.cloneNode(el));
-			ice.dom.replaceWith(el, '<' + self._delBookmark + ' data-allocation="' + (self._deletes.length - 1) + '"/>');
+				self._deletes.push(ice.dom.cloneNode(el));
+				ice.dom.replaceWith(el, '<' + self._delBookmark + ' data-allocation="' + (self._deletes.length - 1) + '"/>');
 			});
 			return true;
 		},
@@ -395,10 +407,10 @@
 		revertDeletePlaceholders: function () {
 			var self = this;
 			if (!this.isPlaceholdingDeletes) {
-			return false;
+				return false;
 			}
 			ice.dom.each(this._deletes, function (i, el) {
-			ice.dom.find(self.element, self._delBookmark + '[data-allocation=' + i + ']').replaceWith(el);
+				ice.dom.find(self.element, self._delBookmark + '[data-allocation=' + i + ']').replaceWith(el);
 			});
 			this.isPlaceholdingDeletes = false;
 			return true;
@@ -411,14 +423,14 @@
 		 *
 		 * @return true if deletion was handled.
 		 */
-		deleteContents: function (right, range, dontNotify) {
+		deleteContents: function (right, range) {
 			var prevent = true;
 			if (range) {
 				this.selection.addRange(range);
 			} else {
 				range = this.getCurrentRange();
 			}
-			var changeid = this.startBatchChange(this.changeTypes['deleteType'].alias);
+			var changeid = this._batchChangeid ? null : this.startBatchChange();
 			if (range.collapsed === false) {
 				this._deleteSelection(range);
 			} else {
@@ -427,9 +439,6 @@
 			}
 			this.selection.addRange(range);
 			this.endBatchChange(changeid);
-			if (dontNotify !== true) {
-				this._triggerChangeText();
-			}
 			return prevent;
 		},
 	
@@ -448,12 +457,13 @@
 			var result = [];
 			var keys = Object.keys(this._changes);
 	
-			for (var key in keys)
-			result.push(this._changes[keys[key]].userid);
+			for (var key in keys) {
+				result.push(this._changes[keys[key]].userid);
+			}
 	
 			return result.sort().filter(function (el, i, a) {
-			if (i == a.indexOf(el)) return 1;
-			return 0;
+				if (i == a.indexOf(el)) return 1;
+				return 0;
 			});
 		},
 	
@@ -475,6 +485,21 @@
 		 * prepare gets run before the body is cleaned by ice.
 		 */
 		getCleanContent: function (body, callback, prepare) {
+			var newBody = this.getCleanDOM(body, callback, prepare);
+			return (newBody && newBody.innerHTML) || "";
+		},
+		
+		/**
+		 * Returns a clone of the DOM, without tracking tags, for `this.element` or
+		 * the optional `body` param which can be of either type string or node.
+		 * Delete tags, and their html content, are completely removed; all other
+		 * change type tags are removed, leaving the html content in place. After
+		 * cleaning, the optional `callback` is executed, which should further
+		 * modify and return the element body.
+		 *
+		 * prepare gets run before the body is cleaned by ice.
+		 */
+		getCleanDOM : function(body, callback, prepare) {
 			var classList = '';
 			var self = this;
 			ice.dom.each(this.changeTypes, function (type, i) {
@@ -504,7 +529,7 @@
 	
 			body = callback ? callback.call(this, body) : body;
 	
-			return body.innerHTML;
+			return body;
 		},
 	
 		/**
@@ -794,12 +819,11 @@
 		 * @param ctNode The element to add for the change.
 		 */
 		addNodeToChange: function (changeid, ctNode) {
-			if (this._batchChangeid !== null) changeid = this._batchChangeid;
-	
+			changeid = this._batchChangeid || changeid;
 			var change = this.getChange(changeid);
 			
 			if (!ctNode.getAttribute(this.changeIdAttribute)) ctNode.setAttribute(this.changeIdAttribute, changeid);
-	// modified by dfl, handle missing userid, try to set username according to userid
+// modified by dfl, handle missing userid, try to set username according to userid
 			var userId = ctNode.getAttribute(this.userIdAttribute); 
 			if (! userId) {
 				ctNode.setAttribute(this.userIdAttribute, userId = change.userid);
@@ -808,7 +832,7 @@
 				ctNode.setAttribute(this.userNameAttribute, change.username);
 			}
 			
-	// dfl add change data
+// dfl add change data
 			var changeData = ctNode.getAttribute(this.changeDataAttribute);
 			if (null == changeData) {
 				ctNode.setAttribute(this.changeDataAttribute, this.changeData || "");
@@ -849,6 +873,7 @@
 		endBatchChange: function (changeid) {
 			if (changeid !== this._batchChangeid) return;
 			this._batchChangeid = null;
+			this._triggerChangeText();
 		},
 	
 		getCurrentRange: function () {
@@ -861,13 +886,11 @@
 		},
 	
 		_insertNode: function (node, range, insertingDummy) {
-			var origNode = node;
 			if (!ice.dom.isBlockElement(range.startContainer) && !ice.dom.canContainTextElement(ice.dom.getBlockParent(range.startContainer, this.element)) && range.startContainer.previousSibling) {
-			range.setStart(range.startContainer.previousSibling, 0);
-	
+				range.setStart(range.startContainer.previousSibling, 0);
 			}
 			var startContainer = range.startContainer;
-			var parentBlock = ice.dom.isBlockElement(range.startContainer) && range.startContainer || ice.dom.getBlockParent(range.startContainer, this.element) || null;
+			var parentBlock = ice.dom.isBlockElement(startContainer) && startContainer || ice.dom.getBlockParent(startContainer, this.element) || null;
 			if (parentBlock === this.element) {
 				var firstPar = document.createElement(this.blockEl);
 				parentBlock.appendChild(firstPar);
@@ -1435,32 +1458,31 @@
 		_handleAncillaryKey: function (e) {
 			var key = e.keyCode;
 			var preventDefault = true;
-			var shiftKey = e.shiftKey;
 	
 			switch (key) {
-			case ice.dom.DOM_VK_DELETE:
-				preventDefault = this.deleteContents();
-				this.pluginsManager.fireKeyPressed(e);
-				break;
-	
-			case 46:
-				// Key 46 is the DELETE key.
-				preventDefault = this.deleteContents(true);
-				this.pluginsManager.fireKeyPressed(e);
-				break;
-	
-			case ice.dom.DOM_VK_DOWN:
-			case ice.dom.DOM_VK_UP:
-			case ice.dom.DOM_VK_LEFT:
-			case ice.dom.DOM_VK_RIGHT:
-				this.pluginsManager.fireCaretPositioned();
-				preventDefault = false;
-				break;
-	
-			default:
-				// Ignore key.
-				preventDefault = false;
-				break;
+				case ice.dom.DOM_VK_DELETE:
+					preventDefault = this.deleteContents();
+					this.pluginsManager.fireKeyPressed(e);
+					break;
+		
+				case 46:
+					// Key 46 is the DELETE key.
+					preventDefault = this.deleteContents(true);
+					this.pluginsManager.fireKeyPressed(e);
+					break;
+		
+				case ice.dom.DOM_VK_DOWN:
+				case ice.dom.DOM_VK_UP:
+				case ice.dom.DOM_VK_LEFT:
+				case ice.dom.DOM_VK_RIGHT:
+					this.pluginsManager.fireCaretPositioned();
+					preventDefault = false;
+					break;
+		
+				default:
+					// Ignore key.
+					preventDefault = false;
+					break;
 			} //end switch
 	
 			if (preventDefault === true) {

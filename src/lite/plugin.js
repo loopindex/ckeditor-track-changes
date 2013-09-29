@@ -11,23 +11,23 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 (function() {
 
 	var LITE = {
-			Events : {
-				INIT : "lite:init",
-				ACCEPT : "lite:accept",
-				REJECT : "lite:reject",
-				SHOW_HIDE : "lite:showHide",
-				TRACKING : "lite:tracking"
-			},
-			
-			Commands : {
-				TOGGLE_TRACKING : "lite.ToggleTracking",
-				TOGGLE_SHOW : "lite.ToggleShow",
-				ACCEPT_ALL : "lite.AcceptAll",
-				REJECT_ALL : "lite.RejectAll",
-				ACCEPT_ONE : "lite.AcceptOne",
-				REJECT_ONE : "lite.RejectOne"
-			}
+		Events : {
+			INIT : "lite:init",
+			ACCEPT : "lite:accept",
+			REJECT : "lite:reject",
+			SHOW_HIDE : "lite:showHide",
+			TRACKING : "lite:tracking"
+		},
+		
+		Commands : {
+			TOGGLE_TRACKING : "lite.ToggleTracking",
+			TOGGLE_SHOW : "lite.ToggleShow",
+			ACCEPT_ALL : "lite.AcceptAll",
+			REJECT_ALL : "lite.RejectAll",
+			ACCEPT_ONE : "lite.AcceptOne",
+			REJECT_ONE : "lite.RejectOne"
 		}
+	};
 	CKEDITOR.plugins.add( 'lite',
 	{
 	props : {
@@ -139,7 +139,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		var self = this;
 		
 		function add1(rec) {
-			var cmd = ed.addCommand(rec.command, {
+			ed.addCommand(rec.command, {
 				exec : rec.exec.bind(self),
 				readOnly: rec.readOnly || false
 			});
@@ -154,8 +154,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 				}); 
 				if (rec.trackingOnly !== false) {
 					self._liteCommandNames.push(rec.command);
-				}
-				
+				}	
 			}
 		}
 		
@@ -164,10 +163,9 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			add1(commandsMap[i]);
 		}
 		
-		ed.addMenuGroup ( 'lite', 50);
 
-		if ( ed.addMenuItems )
-		{
+		if ( ed.addMenuItems ) {
+			ed.addMenuGroup ( 'lite', 50);
 			var params = {};
 			params[LITE.Commands.ACCEPT_ONE] = {
 				label : 'Accept Change',
@@ -187,8 +185,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			ed.addMenuItems(params);
 		}
 
-		if ( ed.contextMenu )
-		{
+		if ( ed.contextMenu ) {
 			ed.contextMenu.addListener( (function( element, selection ) {
 				 if (element && this._tracker && this._tracker.currentChangeNode(element)) {
 					 var ret = {};
@@ -257,7 +254,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			this._setButtonTitle(ui, tracking ? 'Stop tracking changes' : 'Start tracking changes');
 		}
 		if (bNotify !== false) {
-			this._editor.fire(LITE.Events.TRACKING, {tracking:tracking})
+			this._editor.fire(LITE.Events.TRACKING, {tracking:tracking});
 		}
 	},
 	
@@ -441,7 +438,6 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		var doc = e.document.$;
 		this._loadCSS(doc);
 		var body = this._getBody();
-		var props = this.props;
 		
 		if (! this._eventsBounds) {
 			this._eventsBounds = true;
@@ -557,25 +553,29 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		var data = evt && evt.data;
 	
 		if (data && 'html' == data.type && data.dataValue) {
+			var changeid = this._tracker.startBatchChange();
 			try {
+				var range = this._tracker.getCurrentRange();
 				var doc = this._editor.document.$;
 				var container = doc.createElement("div");
 				container.innerHTML = String(data.dataValue);
+				container = this._tracker.getCleanDOM(container);
 				var childNode = container.firstChild;
-				var newNode = childNode.cloneNode(true);
-				this._tracker.insert(newNode);
-				while (childNode = childNode.nextSibling) {
+				do {
 					var nextNode = childNode.cloneNode(true);
-					newNode.parentNode.insertBefore(nextNode, newNode.nextSibling);
-					newNode = nextNode;
+					this._tracker.insert(nextNode);
 				}
+				while (childNode = childNode.nextSibling);
 				evt.cancel();
 				this._onIceTextChanged();
 				return false;
 			}
 			catch (e) {
 				this._logError("ice plugin paste:", e);
-			};
+			}
+			finally {
+				this._tracker.endBatchChange(changeid);
+			}
 			
 		}
 		return true;
