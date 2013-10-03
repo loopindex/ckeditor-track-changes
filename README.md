@@ -125,7 +125,7 @@ The LITE plugin events are listen in <code>lite_interface.js</code> under <code>
 * Note that the ICE engine adds markup to the editor content. 
 
 ##Browser Compatibility
-LITE has been tested on Firefox 15+, Chrome 13+ and MSIE 9+. Support for MSIE 8 is not guaranteed, altho the current version seems to work on it.
+LITE has been tested on Firefox 15+, Chrome 13+ and MSIE 9+. Support for MSIE 8 is not guaranteed, although the current version seems to work on it.
 
 ##License
 
