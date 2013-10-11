@@ -465,7 +465,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 					element: body,
 					isTracking: true,
 					handleEvents : true,
-					mergeBlocks : false,
+					mergeBlocks : true,
 					currentUser: {
 						id: config.userId || "",
 						name: config.userName || ""
