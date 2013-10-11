@@ -914,7 +914,8 @@
 //			var textLength = (node && node.nodeType == ice.dom.TEXT_NODE) ? ((node.nodeValue && node.nodeValue.length) || 1) : 1
 	
 			range.insertNode(node);
-			range.setStartAfter(node);
+			range.setStartAfter(node); // dfl set selection to end of insert node instead of 1 offset into itgit status
+			
 //			range.setEnd(node, textLength);
 	
 			if (insertingDummy) {
