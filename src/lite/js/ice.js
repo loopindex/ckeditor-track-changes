@@ -911,10 +911,11 @@
 			if (insertingDummy && inCurrentUserInsert) return;
 			// If we aren't in an insert node which belongs to the current user, then create a new ins node
 			else if (!inCurrentUserInsert) node = this.createIceNode('insertType', node);
-			var textLength = (node && node.nodeType == ice.dom.TEXT_NODE) ? ((node.nodeValue && node.nodeValue.length) || 1) : 1
+//			var textLength = (node && node.nodeType == ice.dom.TEXT_NODE) ? ((node.nodeValue && node.nodeValue.length) || 1) : 1
 	
 			range.insertNode(node);
-			range.setEnd(node, textLength);
+			range.setStartAfter(node);
+//			range.setEnd(node, textLength);
 	
 			if (insertingDummy) {
 			// Create a selection of the dummy character we inserted
