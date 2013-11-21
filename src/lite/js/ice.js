@@ -65,41 +65,39 @@
 				alias: 'ins',
 				action: 'Inserted'
 		},
-		deleteType: {
-			tag: 'span',
-			alias: 'del',
-			action: 'Deleted'
-		}
-	},
+			deleteType: {
+				tag: 'span',
+				alias: 'del',
+				action: 'Deleted'
+			}
+		},
 
-	// If `true`, setup event listeners on `this.element` and handle events - good option for a basic
-	// setup without a text editor. Otherwise, when set to `false`, events need to be manually passed
-	// to `handleEvent`, which is good for a text editor with an event callback handler, like tinymce.
-	handleEvents: false,
-
-	// Sets this.element with the contentEditable element
-	contentEditable: undefined,//dfl, start with a neutral value
-
-	// Switch for toggling track changes on/off - when `false` events will be ignored.
-	isTracking: true,
-
-	// NOT IMPLEMENTED - Selector for elements that will not get track changes
-	noTrack: '.ice-no-track',
-
-	// Selector for elements to avoid - move range before or after - similar handling to deletes
-	avoid: '.ice-avoid',
-
-	// Switch for whether paragraph breaks should be removed when the user is deleting over a
-	// paragraph break while changes are tracked.
-	mergeBlocks: true,
+		// If `true`, setup event listeners on `this.element` and handle events - good option for a basic
+		// setup without a text editor. Otherwise, when set to `false`, events need to be manually passed
+		// to `handleEvent`, which is good for a text editor with an event callback handler, like tinymce.
+		handleEvents: false,
 	
-	titleTemplate : null, // dfl, no title by default
+		// Sets this.element with the contentEditable element
+		contentEditable: undefined,//dfl, start with a neutral value
 	
-	isVisible : true, // dfl, state of change tracking visibility
+		// Switch for toggling track changes on/off - when `false` events will be ignored.
+		isTracking: true,
 	
-	changeData : null //dfl, a string you can associate with the current change set, e.g. version
+		// NOT IMPLEMENTED - Selector for elements that will not get track changes
+		noTrack: '.ice-no-track',
 	
+		// Selector for elements to avoid - move range before or after - similar handling to deletes
+		avoid: '.ice-avoid',
 	
+		// Switch for whether paragraph breaks should be removed when the user is deleting over a
+		// paragraph break while changes are tracked.
+		mergeBlocks: true,
+		
+		titleTemplate : null, // dfl, no title by default
+		
+		isVisible : true, // dfl, state of change tracking visibility
+		
+		changeData : null //dfl, a string you can associate with the current change set, e.g. version
 	};
 
 	InlineChangeEditor = function (options) {
@@ -107,6 +105,10 @@
 		// Data structure for modelling changes in the element according to the following model:
 		//	[changeid] => {`type`, `time`, `userid`, `username`}
 		this._changes = {};
+		// Tracks all of the styles for users according to the following model:
+		//	[userId] => styleId; where style is "this.stylePrefix" + "this.uniqueStyleIndex"
+		this._userStyles = {}; // dfl, moved from prototype
+		this._styles = {}; // dfl, moved from prototype
 		this._refreshInterval = null; // dfl
 		this.$this = jQuery(this);
 	
@@ -122,10 +124,6 @@
 	};
 
 	InlineChangeEditor.prototype = {
-		// Tracks all of the styles for users according to the following model:
-		//	[userId] => styleId; where style is "this.stylePrefix" + "this.uniqueStyleIndex"
-		_userStyles: {},
-		_styles: {},
 	
 		// Incremented for each new user and appended to they style prefix, and dropped in the
 		// ice node class attribute.
@@ -769,9 +767,16 @@
 		},
 	
 		getUserStyle: function (userid) {
+			if (userid === null || userid === "" || "undefined" == typeof userid) {
+				return this.stylePrefix;
+			};
 			var styleIndex = null;
-			if (this._userStyles[userid]) styleIndex = this._userStyles[userid];
-			else styleIndex = this.setUserStyle(userid, this.getNewStyleId());
+			if (this._userStyles[userid]) {
+				styleIndex = this._userStyles[userid];
+			}
+			else {
+				styleIndex = this.setUserStyle(userid, this.getNewStyleId());
+			}
 			return styleIndex;
 		},
 	
@@ -787,8 +792,8 @@
 			// Dupe.. create another..
 			return this.getNewStyleId();
 			} else {
-			this._styles[id] = true;
-			return id;
+				this._styles[id] = true;
+				return id;
 			}
 		},
 	
@@ -911,11 +916,12 @@
 			if (insertingDummy && inCurrentUserInsert) return;
 			// If we aren't in an insert node which belongs to the current user, then create a new ins node
 			else if (!inCurrentUserInsert) node = this.createIceNode('insertType', node);
-//			var textLength = (node && node.nodeType == ice.dom.TEXT_NODE) ? ((node.nodeValue && node.nodeValue.length) || 1) : 1
 	
 			range.insertNode(node);
 			range.setStartAfter(node); // dfl set selection to end of insert node instead of 1 offset into itgit status
-			
+			if (inCurrentUserInsert) {
+				this._normalizeNode(ctNode);
+			}
 //			range.setEnd(node, textLength);
 	
 			if (insertingDummy) {
@@ -950,48 +956,48 @@
 			betweenBlocks = new Array(); 
 	
 			for (var i = 0; i < elements.length; i++) {
-			var elem = elements[i];
-			if (ice.dom.isBlockElement(elem)) {
-				betweenBlocks.push(elem);
-				if (!ice.dom.canContainTextElement(elem)) {
-				// Ignore containers that are not supposed to contain text. Check children instead.
-				for (var k = 0; k < elem.childNodes.length; k++) {
-					elements.push(elem.childNodes[k]);
-				}
-				continue;
-				}
-			}
-			// Ignore empty space nodes
-			if (elem.nodeType === ice.dom.TEXT_NODE && ice.dom.getNodeTextContent(elem).length === 0) continue;
-	
-			if (!this._getVoidElement(elem)) {
-				// If the element is not a text or stub node, go deeper and check the children.
-				if (elem.nodeType !== ice.dom.TEXT_NODE) {
-				// Browsers like to insert breaks into empty paragraphs - remove them
-				if (ice.dom.BREAK_ELEMENT == ice.dom.getTagName(elem)) {
+				var elem = elements[i];
+				if (ice.dom.isBlockElement(elem)) {
+					betweenBlocks.push(elem);
+					if (!ice.dom.canContainTextElement(elem)) {
+					// Ignore containers that are not supposed to contain text. Check children instead.
+					for (var k = 0; k < elem.childNodes.length; k++) {
+						elements.push(elem.childNodes[k]);
+					}
 					continue;
+					}
 				}
-	
-				if (ice.dom.isStubElement(elem)) {
-					this._addNodeTracking(elem, false, true);
+				// Ignore empty space nodes
+				if (elem.nodeType === ice.dom.TEXT_NODE && ice.dom.getNodeTextContent(elem).length === 0) continue;
+		
+				if (!this._getVoidElement(elem)) {
+					// If the element is not a text or stub node, go deeper and check the children.
+					if (elem.nodeType !== ice.dom.TEXT_NODE) {
+					// Browsers like to insert breaks into empty paragraphs - remove them
+					if (ice.dom.BREAK_ELEMENT == ice.dom.getTagName(elem)) {
+						continue;
+					}
+		
+					if (ice.dom.isStubElement(elem)) {
+						this._addNodeTracking(elem, false, true);
+						continue;
+					}
+					if (ice.dom.hasNoTextOrStubContent(elem)) {
+						ice.dom.remove(elem);
+					}
+		
+					for (j = 0; j < elem.childNodes.length; j++) {
+						var child = elem.childNodes[j];
+						elements.push(child);
+					}
 					continue;
+					}
+					var parentBlock = ice.dom.getBlockParent(elem);
+					this._addNodeTracking(elem, false, true, true);
+					if (ice.dom.hasNoTextOrStubContent(parentBlock)) {
+					ice.dom.remove(parentBlock);
+					}
 				}
-				if (ice.dom.hasNoTextOrStubContent(elem)) {
-					ice.dom.remove(elem);
-				}
-	
-				for (j = 0; j < elem.childNodes.length; j++) {
-					var child = elem.childNodes[j];
-					elements.push(child);
-				}
-				continue;
-				}
-				var parentBlock = ice.dom.getBlockParent(elem);
-				this._addNodeTracking(elem, false, true, true);
-				if (ice.dom.hasNoTextOrStubContent(parentBlock)) {
-				ice.dom.remove(parentBlock);
-				}
-			}
 			}
 	
 			if (this.mergeBlocks && b1 !== b2) {

@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Testing LITE</title>
+	<meta charset="utf-8">
+	<script src="http://code.jquery.com/jquery-1.10.1.min.js"></script>
+	<script src="ckeditor/ckeditor.js"></script>
+	<style>
+		body {
+			font-family: sans-serif;
+			font-size: 12pt;
+		}
+		
+		div {
+			margin-top: 15px;
+			margin-bottom: 10px;
+			border-top: 1px solid black;
+			border-bottom: 1px solid #cccccc;
+		}
+		
+		div:nth-child(odd) {
+			background-color: #efefff;
+		}
+	</style>
+</head>
+<body>
+
+
+<h1>This has config.extraPlugins = 'lite';</h1>
+
+	
+		<div id="editable1" contenteditable="true">
+		This is contenteditable="true" 
+		</div>
+	
+
+		
+		<div id="editable2" contenteditable="true">
+		This is contenteditable="true" also
+		</div>		
+		
+		
+		<div id="nonedit"> this is not marked contenteditable="true" </div>
+		(<a href="javascript:makeEditable()">But it can be made editable.</a>)
+
+
+
+
+	<script type="application/javascript" language="javascript">
+		function makeEditable() {
+			var e = document.getElementById("nonedit");
+			e.setAttribute("contentEditable", "true");
+			CKEDITOR.inline(e);
+		}
+		// We need to turn off the automatic editor creation first.
+		//CKEDITOR.disableAutoInline = true;
+		//$(document).ready(function() {
+			//var editable1 = CKEDITOR.inline(document.getElementById( 'editable1' ));
+			//var editable2 = CKEDITOR.inline(document.getElementById( 'editable2' ));
+		//});
+	</script>
+
+</body>
+</html>
