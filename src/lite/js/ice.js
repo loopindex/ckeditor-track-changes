@@ -1816,6 +1816,8 @@
 		_loadFromDom : function() {
 			this._changes = {};
 			this._userStyles = {};
+			this._styles = {};
+			this._uniqueStyleIndex = 0;
 			var myUserId = this.currentUser && this.currentUser.id;
 			var myUserName = (this.currentUser && this.currentUser.name) || "";
 			var now = (new Date()).getTime();
