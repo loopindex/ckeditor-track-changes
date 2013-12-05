@@ -30,11 +30,35 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 	};
 	
 	var _emptyRegex = /^[\s\r\n]*$/; // for getting the clean text
+	var _pluginMap = [];
+	function _findPluginIndex(editor) {
+		for (var i = _pluginMap.length; i--;) {
+			var rec = _pluginMap[i];
+			if (rec.editor == editor) {
+				return i;
+			}
+		}
+		return -1;
+	}
 	
-
+	function _findPluginRec (editor) {
+		var ind = _findPluginIndex(editor);
+		return ind >= 0 ? _pluginMap[ind] : null;
+	}
+	
+	function _findPlugin(editor) {
+		var rec = _findPluginRec(editor);
+		return rec && rec.plugin;
+	}
+	
+	function addPlugin(editor, plugin) {
+		_pluginMap.push({
+			plugin: plugin,
+			editor : editor
+		});
+	}
 	CKEDITOR.plugins.add( 'lite',
 	{
-	_pluginMap : [],
 
 	props : {
 		deleteTag: 'span',
@@ -59,7 +83,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 	 * @param ed an instance of CKEditor
 	 */
 	init: function(ed) {
-		var rec = this.findPluginRec(ed);
+		var rec = _findPluginRec(ed);
 		if (rec) { // should not happen
 			return;
 		}
@@ -70,19 +94,19 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		}
 		var path = this.path;
 		var plugin = new LITEPlugin(this.props, path);
-		this.addPlugin(ed, plugin);
+		addPlugin(ed, plugin);
 		plugin.init(ed);
 
 		var liteConfig = ed.config.lite || {};
 		
 	
 		ed.on("destroy", (function(editor) {
-			var ind = this.findPluginIndex(editor);
+			var ind = this._findPluginIndex(editor);
 			if (ind >= 0) {
-				this._pluginMap.splice(ind, 1);
+				_pluginMap.splice(ind, 1);
 			}
 		}).bind(this));
-	
+		
 	
 		
 		if (this._scriptsLoaded == true) {
@@ -109,7 +133,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		var load1 = function() {
 			if (scripts.length < 1) {
 				self._scriptsLoaded = true;
-				jQuery.each(self._pluginMap, (function(i, rec) {
+				jQuery.each(_pluginMap, (function(i, rec) {
 					rec.plugin._onScriptsLoaded();
 				}));
 			}
@@ -122,32 +146,15 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		load1(scripts);		
 	},
 	
-	findPluginIndex: function(editor) {
-		for (var i = this._pluginMap.length; i--;) {
-			var rec = this._pluginMap[i];
-			if (rec.editor == editor) {
-				return i;
-			}
-		}
-		return -1;
-	},
-	
-	findPluginRec: function(editor) {
-		var ind = this.findPluginIndex(editor);
-		return ind >= 0 ? this._pluginMap[ind] : null;
-	},
-	
-	findPlugin: function(editor) {
-		var rec = this.findPluginRec(editor);
-		return rec && rec.plugin;
-	},
-	
-	addPlugin: function(editor, plugin) {
-		this._pluginMap.push({
-			plugin: plugin,
-			editor : editor
-		});
+	/**
+	 * returns the plugin instance associated with an editor
+	 * @param editor
+	 * @returns {Object} A LITE plugin instance
+	 */
+	findPlugin : function(editor) {
+		return _findPlugin(editor);
 	}
+	
 });
 	
 	LITEPlugin = function(props, path) {
@@ -360,6 +367,22 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			if (bNotify !== false) {
 				this._editor.fire(LITE.Events.SHOW_HIDE, {show:vis});
 			}
+		},
+		
+		/**
+		 * Are tracked changes visible?
+		 * @returns {Boolean} true if tracked changes are visible
+		 */
+		isVisible : function() {
+			return this._isVisible;
+		},
+		
+		/**
+		 * Are changes tracked?
+		 * @returns {Boolean} true if changes are tracked
+		 */
+		isTracking : function() {
+			return this._isTracking;
 		},
 		
 		/**
@@ -684,6 +707,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		},
 		
 		_onSelectionChanged : function(event) {
+			console.log("selection changed event");
 			var inChange = this._isTracking && this._tracker && this._tracker.isInsideChange();
 			var state = inChange && this._canAcceptReject ? CKEDITOR.TRISTATE_OFF : CKEDITOR.TRISTATE_DISABLED;
 			this._setCommandsState([LITE.Commands.ACCEPT_ONE, LITE.Commands.REJECT_ONE], state);

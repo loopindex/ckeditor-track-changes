@@ -34,7 +34,7 @@
 		userIdAttribute: 'data-userid',
 		userNameAttribute: 'data-username',
 		timeAttribute: 'data-time',
-		changeDataAttribute: 'data-changedata', // dfl, arbitrary data to associate with the node, e.g. version
+		changeDataAttribute: 'data-changeData', // dfl, arbitrary data to associate with the node, e.g. version
 		
 		// Prepended to `changeType.alias` for classname uniqueness, if needed
 		attrValuePrefix: '',
@@ -86,9 +86,6 @@
 		// NOT IMPLEMENTED - Selector for elements that will not get track changes
 		noTrack: '.ice-no-track',
 	
-		// Selector for elements to avoid - move range before or after - similar handling to deletes
-		avoid: '.ice-avoid',
-	
 		// Switch for whether paragraph breaks should be removed when the user is deleting over a
 		// paragraph break while changes are tracked.
 		mergeBlocks: true,
@@ -97,7 +94,9 @@
 		
 		isVisible : true, // dfl, state of change tracking visibility
 		
-		changeData : null //dfl, a string you can associate with the current change set, e.g. version
+		_changeData : null, //dfl, a string you can associate with the current change set, e.g. version
+		
+		_handleSelectAll: false // dfl, if true, handle ctrl/cmd-A in the change tracker
 	};
 
 	InlineChangeEditor = function (options) {
@@ -675,29 +674,34 @@
 			var onEdge = false;
 			var voidEl = this._getVoidElement(range.endContainer);
 			while (voidEl) {
-			// Move end of range to position it inside of any potential adjacent containers
-			// E.G.:	test|<em>text</em>	->	test<em>|text</em>
-			try {
-				range.moveEnd(ice.dom.CHARACTER_UNIT, 1);
-				range.moveEnd(ice.dom.CHARACTER_UNIT, -1);
-			} catch (e) {
-				// Moving outside of the element and nothing is left on the page
-				onEdge = true;
-			}
-			if (onEdge || ice.dom.onBlockBoundary(range.endContainer, range.startContainer, this.blockEls)) {
-				range.setStartAfter(voidEl);
-				range.collapse(true);
-				break;
-			}
-			voidEl = this._getVoidElement(range.endContainer);
-			if (voidEl) {
-				range.setEnd(range.endContainer, 0);
-				range.moveEnd(ice.dom.CHARACTER_UNIT, ice.dom.getNodeCharacterLength(range.endContainer));
-				range.collapse();
-			} else {
-				range.setStart(range.endContainer, 0);
-				range.collapse(true);
-			}
+				// Move end of range to position it inside of any potential adjacent containers
+				// E.G.:	test|<em>text</em>	->	test<em>|text</em>
+				try {
+					range.moveEnd(ice.dom.CHARACTER_UNIT, 1);
+					//dfl				range.moveEnd(ice.dom.CHARACTER_UNIT, -1);					
+					
+					range.moveEnd(ice.dom.CHARACTER_UNIT, -1);
+				} catch (e) {
+					// Moving outside of the element and nothing is left on the page
+					onEdge = true;
+				}
+				if (onEdge || ice.dom.onBlockBoundary(range.endContainer, range.startContainer, this.blockEls)) {
+					range.setStartAfter(voidEl);
+					range.collapse(true);
+					break;
+				}
+				var newVoidEl = this._getVoidElement(range.endContainer);
+				if (newVoidEl == voidEl) {
+					voidEl = null;
+				}
+				if (voidEl){
+					range.setEnd(range.endContainer, 0);
+					range.moveEnd(ice.dom.CHARACTER_UNIT, ice.dom.getNodeCharacterLength(range.endContainer));
+					range.collapse();
+				} else {
+					range.setStart(range.endContainer, 0);
+					range.collapse(true);
+				}
 			}
 		},
 	
@@ -732,10 +736,10 @@
 		},
 	
 		/**
-		 * Returns a combined selector for delete and void elements.
+		 * Returns a css selector for delete .
 		 */
 		_getVoidElSelector: function () {
-			return '.' + this._getIceNodeClass('deleteType') + ',' + this.avoid;
+			return '.' + this._getIceNodeClass('deleteType');
 		},
 	
 		/**
@@ -806,7 +810,7 @@
 					time: (new Date()).getTime(),
 					userid: String(this.currentUser.id),// dfl: must stringify for consistency - when we read the props from dom attrs they are strings
 					username: this.currentUser.name,
-					data : this.changeData || ""
+					data : this._changeData || ""
 				};
 				this._triggerChange(); //dfl
 			}
@@ -840,7 +844,7 @@
 // dfl add change data
 			var changeData = ctNode.getAttribute(this.changeDataAttribute);
 			if (null == changeData) {
-				ctNode.setAttribute(this.changeDataAttribute, this.changeData || "");
+				ctNode.setAttribute(this.changeDataAttribute, this._changeData || "");
 			}
 			
 			if (!ctNode.getAttribute(this.timeAttribute)) ctNode.setAttribute(this.timeAttribute, change.time);
@@ -1601,38 +1605,41 @@
 			var keyCode = e.which;
 			if (keyCode === null) {
 			// IE.
-			keyCode = e.keyCode;
+				keyCode = e.keyCode;
 			}
 	
 			var preventDefault = false;
 			switch (keyCode) {
 			case 65:
+				if (! this._handleSelectAll) {
+					return true;
+				}
 				// Check for CTRL/CMD + A (select all).
 				if (e.ctrlKey === true || e.metaKey === true) {
-				preventDefault = true;
-				var range = this.getCurrentRange();
-	
-				if (ice.dom.isBrowser('msie') === true) {
-					var selStart = this.env.document.createTextNode('');
-					var selEnd = this.env.document.createTextNode('');
-	
-					if (this.element.firstChild) {
-					ice.dom.insertBefore(this.element.firstChild, selStart);
+					preventDefault = true;
+					var range = this.getCurrentRange();
+		
+					if (ice.dom.isBrowser('msie') === true) {
+						var selStart = this.env.document.createTextNode('');
+						var selEnd = this.env.document.createTextNode('');
+		
+						if (this.element.firstChild) {
+						ice.dom.insertBefore(this.element.firstChild, selStart);
+						} else {
+						this.element.appendChild(selStart);
+						}
+		
+						this.element.appendChild(selEnd);
+		
+						range.setStart(selStart, 0);
+						range.setEnd(selEnd, 0);
 					} else {
-					this.element.appendChild(selStart);
-					}
-	
-					this.element.appendChild(selEnd);
-	
-					range.setStart(selStart, 0);
-					range.setEnd(selEnd, 0);
-				} else {
-					range.setStart(range.getFirstSelectableChild(this.element), 0);
-					var lastSelectable = range.getLastSelectableChild(this.element);
-					range.setEnd(lastSelectable, lastSelectable.length);
-				} //end if
-	
-				this.selection.addRange(range);
+						range.setStart(range.getFirstSelectableChild(this.element), 0);
+						var lastSelectable = range.getLastSelectableChild(this.element);
+						range.setEnd(lastSelectable, lastSelectable.length);
+					} //end if
+		
+					this.selection.addRange(range);
 				} //end if
 				break;
 	
@@ -1642,8 +1649,8 @@
 			} //end switch
 	
 			if (preventDefault === true) {
-			ice.dom.preventDefault(e);
-			return false;
+				ice.dom.preventDefault(e);
+				return false;
 			}
 	
 			return true;
@@ -1730,11 +1737,15 @@
 			if (null == data || (typeof data == "undefined")) {
 				data = "";
 			}
-			this.changeData = String(data);
+			this._changeData = String(data);
 		},
 		
 		getDeleteClass : function() {
 			return this._getIceNodeClass('deleteType');
+		},
+		
+		toString : function() {
+			return "ICE " + ((this.element && this.element.id) || "(no element id)");
 		},
 		
 		_triggerChange : function() {
