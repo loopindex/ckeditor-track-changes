@@ -101,8 +101,14 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		
 	
 		ed.on("destroy", (function(editor) {
-			var ind = this._findPluginIndex(editor);
+			var ind = _findPluginIndex(editor.editor);
 			if (ind >= 0) {
+				if (_pluginMap[ind].plugin._tracker) {
+						_pluginMap[ind].plugin._tracker.stopTracking(true);
+						jQuery(_pluginMap[ind].plugin._tracker).unbind();
+						_pluginMap[ind].plugin._tracker = null;
+
+				}
 				_pluginMap.splice(ind, 1);
 			}
 		}).bind(this));
@@ -707,7 +713,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		},
 		
 		_onSelectionChanged : function(event) {
-			console.log("selection changed event");
+			// console.log("selection changed event");
 			var inChange = this._isTracking && this._tracker && this._tracker.isInsideChange();
 			var state = inChange && this._canAcceptReject ? CKEDITOR.TRISTATE_OFF : CKEDITOR.TRISTATE_DISABLED;
 			this._setCommandsState([LITE.Commands.ACCEPT_ONE, LITE.Commands.REJECT_ONE], state);
