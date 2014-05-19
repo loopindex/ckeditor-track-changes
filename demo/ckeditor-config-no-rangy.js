@@ -18,10 +18,7 @@ CKEDITOR.editorConfig = function( config ) {
 	
 	var lite = config.lite = config.lite || {};
 	config.extraPlugins = 'divarea,lite';
-	lite.includes_debug = ["js/rangy/rangy-core.js", "js/ice.js", "js/dom.js", "js/selection.js", "js/bookmark.js",
-			  "js/icePluginManager.js", "js/icePlugin.js", "lite_interface.js"];
-	lite.includes = ["ice-includes.min.js"];
-	lite.includes_full = ["ice-includes.js"];
+	lite.includes = ["js/ice.js", "js/dom.js", "js/selection-ckeditor.js", "js/bookmark.js","lite_interface.js"];
 	lite.isTracking = true;
 //	lite.commands = [/*LITE.Commands.TOGGLE_TRACKING, */LITE.Commands.TOGGLE_SHOW/*, LITE.Commands.ACCEPT_ALL, LITE.Commands.REJECT_ALL, LITE.Commands.ACCEPT_ONE, LITE.Commands.REJECT_ONE */];
 	

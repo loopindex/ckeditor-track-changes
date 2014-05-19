@@ -135,7 +135,7 @@
 			frag.appendChild(child);
 		}
 		return frag;
-	},
+  };
 
 	/**
 	 * Returns this `node` or the first parent tracking node that matches the given `selector`.
@@ -776,11 +776,15 @@
 		};
 
 		var matched = uaMatch( navigator.userAgent );
-		var browser = {};
+		var browser = {
+			type: "unknown",
+			version : 0
+		};
 
 		if ( matched.browser ) {
 			browser[ matched.browser ] = true;
-			browser.version = matched.version;
+			browser.version = matched.version || 0;
+			browser.type = matched.browser;
 		}
 
 		// Chrome is Webkit, but Webkit is also Safari.
@@ -789,19 +793,12 @@
 		} else if ( browser.webkit ) {
 			browser.safari = true;
 		}
-		
-		var result = {};
-		result.version = browser.version || 0;
-		if (browser.mozilla === true) {
-			result.type = 'mozilla';
-		} else if (browser.msie === true) {
-			result.type = 'msie';
-		} else if (browser.opera === true) {
-			result.type = 'opera';
-		} else if (browser.webkit === true) {
-			result.type = 'webkit';
+		if (browser.webkit) {
+			browser.type = "webkit";
 		}
-		return result;
+		browser.firefox = (/Firefox/.test(navigator.userAgent) == true);
+		
+		return browser;
 	};
 
 	dom.getBrowserType = function () {

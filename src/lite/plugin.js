@@ -29,7 +29,11 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		}
 	};
 	
-	var _emptyRegex = /^[\s\r\n]*$/; // for getting the clean text
+	var _emptyRegex = /^[\s\r\n]*$/, // for getting the clean text
+		_cleanRE = [{regex: /[\s]*title=\"[^\"]+\"/g, replace: "" },
+		            {regex: /[\s]*data-selected=\"[^\"]+\"/g, replace:""}
+					];
+	
 	var _pluginMap = [];
 	function _findPluginIndex(editor) {
 		for (var i = _pluginMap.length; i--;) {
@@ -65,12 +69,14 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		insertTag: 'span',
 		deleteClass: 'ice-del',
 		insertClass: 'ice-ins',
-		changeIdAttribute: 'data-cid',
-		userIdAttribute: 'data-userid',
-		userNameAttribute: 'data-username',
-		changeDataAttribute: 'data-changedata',
+		attributes: {
+				changeId: 'data-cid',
+				userId: 'data-userid',
+				userName: 'data-username',
+				changeData: 'data-changedata',
+				time: 'data-time'
+		},
 		stylePrefix: 'ice-cts',
-		timeAttribute: 'data-time',
 		preserveOnPaste: 'p',
 		css: 'css/lite.css',
 		titleTemplate : "Changed by %u %t"
@@ -98,10 +104,9 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		plugin.init(ed);
 
 		var liteConfig = ed.config.lite || {};
-		
 	
 		ed.on("destroy", (function(editor) {
-			var ind = this._findPluginIndex(editor);
+			var ind = _findPluginIndex(editor);
 			if (ind >= 0) {
 				_pluginMap.splice(ind, 1);
 			}
@@ -118,21 +123,24 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		}
 		
 		this._scriptsLoaded = false;
-		var self = this,
+		var	jQueryLoaded = (typeof(jQuery) == "function"),
+			self = this,
 			jQueryPath = liteConfig.jQueryPath || "js/jquery.min.js",
-			scripts = liteConfig.includes || ["js/rangy/rangy-core.js", "js/ice.js", "js/dom.js", "js/selection.js", "js/bookmark.js",
-											  "js/icePluginManager.js", "js/icePlugin.js", "lite_interface.js"];
+			scripts = (liteConfig.includeType ? liteConfig["includes_" + liteConfig.includeType] : liteConfig.includes) || ["ice-includes.js"];
 		
 		for (var i = 0, len = scripts.length; i < len; ++i) {
 			scripts[i] = path + scripts[i]; 
 		}
-		if (typeof(jQuery) == "undefined") {
+		if (! jQueryLoaded) {
 			scripts.splice(0, 0, this.path + jQueryPath);
 		}
 		
 		var load1 = function() {
 			if (scripts.length < 1) {
 				self._scriptsLoaded = true;
+				if (! jQueryLoaded) {
+					jQuery.noConflict();
+				}
 				jQuery.each(_pluginMap, (function(i, rec) {
 					rec.plugin._onScriptsLoaded();
 				}));
@@ -451,6 +459,16 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			return true;
 		},
 		
+		getCleanMarkup: function(text) {
+			if (null === text || undefined === text) {
+				text = (this._editor && this._editor.getData())  || "";
+			}
+			for (var i = _cleanRE.length - 1; i >= 0; --i) {
+				text = text.replace(_cleanRE[i].regex, _cleanRE[i].replace);
+			}
+			return text;
+		},
+		
 		getCleanText : function() {
 			var root = this._getBody();
 			if (! root){
@@ -544,20 +562,28 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		},
 		
 		_afterReady : function() {
-			var e = this._editor;
-			var doc = e.document.$;
+			var e = this._editor,
+				doc = e.document.$,
+				body = this._getBody();
+
 			this._loadCSS(doc);
-			var body = this._getBody();
 			
 			if (! this._eventsBounds) {
 				this._eventsBounds = true;
+				var paste = this._onPaste.bind(this);
 				e.on("afterCommandExec", (function(event) {
 					var name = this._tracker && event.data && event.data.name;
 					if (name == "undo" || name == "redo") {
 						this._tracker.reload();
 					}
 				}).bind(this));
-				e.on("paste", this._onPaste.bind(this));
+				e.on("beforeCommandExec", (function(event) {
+					var name = this._tracker && event.data && event.data.name;
+				}).bind(this));
+				e.on("paste", paste, null, null, 1);
+				e.on("insertHtml", paste, null, null, 1);
+				e.on("insertText", paste, null, null, 1);
+				e.on("insertElement", paste, null, null, 1);
 			}
 			
 			if (this._tracker) {
@@ -579,11 +605,12 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 							id: config.userId || "",
 							name: config.userName || ""
 						},
+						userStyles: config.userStyles,
 						plugins: [
 						],
 						changeTypes: {
-							insertType: {tag: this.props.insertTag, alias: this.props.insertClass},
-							deleteType: {tag: this.props.deleteTag, alias: this.props.deleteClass}
+							insertType: {tag: this.props.insertTag, alias: this.props.insertClass, action:"Inserted"},
+							deleteType: {tag: this.props.deleteTag, alias: this.props.deleteClass, action:"Deleted"}
 						}
 				};
 				jQuery.extend(iceprops, this.props);
@@ -660,32 +687,55 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			if (! this._tracker || ! this._isTracking) {
 				return true;
 			}
-			var data = evt && evt.data;
-		
-			if (data && 'html' == data.type && data.dataValue) {
-				var changeid = this._tracker.startBatchChange();
+			var data = evt && evt.data,
+				ignore = false;
+			if (! data) {
+				return;
+			}
+			if (data instanceof CKEDITOR.dom.element) {
+				ignore = data.getAttribute("data-track-changes-ignore");
+			}
+			else if ("html" == data.type && data.dataValue) {
 				try {
-					var doc = this._editor.document.$;
-					var container = doc.createElement("div");
-					container.innerHTML = String(data.dataValue);
-					container = this._tracker.getCleanDOM(container);
-					var childNode = container.firstChild;
-					do {
-						var nextNode = childNode.cloneNode(true);
-						this._tracker.insert(nextNode);
+					var node = jQuery(data.dataValue);
+					ignore = node && node.attr("data-track-changes-ignore");
+				}
+				catch (e) {}
+			}
+			if (ignore) {
+				return true;
+			}
+			if (true) {
+				if (data) {
+					this._tracker.insert();
+				}
+				return true;
+			}
+			else {			
+				if (data && 'html' == data.type && data.dataValue) {
+					var changeid = this._tracker.startBatchChange();
+					try {
+						var doc = this._editor.document.$;
+						var container = doc.createElement("div");
+						container.innerHTML = String(data.dataValue);
+						container = this._tracker.getCleanDOM(container);
+						var childNode = container.firstChild;
+						do {
+							var nextNode = childNode.cloneNode(true);
+							this._tracker.insert(nextNode);
+						}
+						while (childNode = childNode.nextSibling);
+						evt.cancel();
+						this._onIceTextChanged();
+						return false;
 					}
-					while (childNode = childNode.nextSibling);
-					evt.cancel();
-					this._onIceTextChanged();
-					return false;
+					catch (e) {
+						this._logError("ice plugin paste:", e);
+					}
+					finally {
+						this._tracker.endBatchChange(changeid);
+					}
 				}
-				catch (e) {
-					this._logError("ice plugin paste:", e);
-				}
-				finally {
-					this._tracker.endBatchChange(changeid);
-				}
-				
 			}
 			return true;
 		},
@@ -707,7 +757,6 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		},
 		
 		_onSelectionChanged : function(event) {
-			console.log("selection changed event");
 			var inChange = this._isTracking && this._tracker && this._tracker.isInsideChange();
 			var state = inChange && this._canAcceptReject ? CKEDITOR.TRISTATE_OFF : CKEDITOR.TRISTATE_DISABLED;
 			this._setCommandsState([LITE.Commands.ACCEPT_ONE, LITE.Commands.REJECT_ONE], state);
@@ -755,21 +804,21 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 					for (var i = 0; i < 10;++i) {
 						classes.push(props.stylePrefix + "-" + i);
 					}
-					return tag + '(' + classes.join(',') + ')';
+					return /*tag + */'(' + classes.join(',') + ')';
 				}
 				
 				function makeAttributes(tag) {
 		//			allowedContent:'span[data-cid,data-time,data-userdata,data-userid,data-username,title]'
 					var attrs = ['title'];
-					for (var key in props) {
-						if (props.hasOwnProperty(key)) {
-							var value = props[key];
+					for (var key in props.attributes) {
+						if (props.attributes.hasOwnProperty(key)) {
+							var value = props.attributes[key];
 							if ((typeof value == "string") && value.indexOf("data-") == 0) {
 								attrs.push(value);
 							};
 						};
 					};
-					return tag + '[' + attrs.join(',') + ']';
+					return /*tag + */'[' + attrs.join(',') + ']';
 				}
 				
 				var features = [];
@@ -777,14 +826,22 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 				if (props.insertTag) {
 					features.push(makeClasses(props.insertTag));
 					features.push(makeAttributes(props.insertTag));
+					editor.filter.addFeature({
+						name: "lite1",
+						allowedContent: props.insertTag+features.join("")
+					});
 				}
 				if (props.deleteTag && props.deleteTag != props.insertTag) {
 					features.push(makeClasses(props.deleteTag));
 					features.push(makeAttributes(props.deleteTag));
+					editor.filter.addFeature({
+						name: "lite2",
+						allowedContent: props.insertTag+features.join("")
+					});
 				}
 				
 				for (var i = 0; i < features.length; ++i) {
-					editor.filter.addFeature({ allowedContent: features[i] });
+//					editor.filter.addFeature({ allowedContent: features[i] });
 				}
 				
 		/*		ed.filter.addFeature({

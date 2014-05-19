@@ -29,7 +29,7 @@ function f() {
 		var editor = CKEDITOR.replace( 'editor1' , { 
 			height: "400" ,
 //			extraPlugins: 'lite',
-			customConfig: "../ckeditor-config.js"
+			customConfig: "../ckeditor-config-no-rangy.js"
 		});
 		
 		function onConfigLoaded(e) {

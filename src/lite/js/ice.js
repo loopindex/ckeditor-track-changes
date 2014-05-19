@@ -30,12 +30,13 @@
 
 	defaults = {
 	// ice node attribute names:
-		changeIdAttribute: 'data-cid',
-		userIdAttribute: 'data-userid',
-		userNameAttribute: 'data-username',
-		timeAttribute: 'data-time',
-		changeDataAttribute: 'data-changeData', // dfl, arbitrary data to associate with the node, e.g. version
-		
+		attributes: {
+			changeId: 'data-cid',
+			userId: 'data-userid',
+			userName: 'data-username',
+			time: 'data-time',
+			changeData: 'data-changedata', // dfl, arbitrary data to associate with the node, e.g. version
+		},
 		// Prepended to `changeType.alias` for classname uniqueness, if needed
 		attrValuePrefix: '',
 		
@@ -103,20 +104,33 @@
 
 		// Data structure for modelling changes in the element according to the following model:
 		//	[changeid] => {`type`, `time`, `userid`, `username`}
+		options || (options = {});
 		this._changes = {};
 		// Tracks all of the styles for users according to the following model:
 		//	[userId] => styleId; where style is "this.stylePrefix" + "this.uniqueStyleIndex"
-		this._userStyles = {}; // dfl, moved from prototype
+		this._userStyles = {};
 		this._styles = {}; // dfl, moved from prototype
 		this._refreshInterval = null; // dfl
 		this.$this = jQuery(this);
-	
-		options || (options = {});
+		this._browser = ice.dom.browser();
+		
 		if (!options.element) {
 			throw Error("`options.element` must be defined for ice construction.");
 		}
 	
 		ice.dom.extend(true, this, defaults, options);
+		var us = options.userStyles || {}; // dfl, moved from prototype, allow preconfig
+		for (var id in us) {
+			if (us.hasOwnProperty(id)) {
+				var st = us[id];
+				if (! isNaN(st)) {
+					this._userStyles[id] = this.stylePrefix + '-' + st;
+					this._uniqueStyleIndex = Math.max(st, this._uniqueStyleIndex);
+					this._styles[st] = true;
+				}
+			}
+		}
+	
 	
 		this.pluginsManager = new ice.IcePluginManager(this);
 		if (options.plugins) this.pluginsManager.usePlugins('ice-init', options.plugins);
@@ -305,7 +319,14 @@
 				this.pluginsManager.fireCaretUpdated();
 			}
 		},
-	
+
+		visible: function(el) {
+			if(el.nodeType === ice.dom.TEXT_NODE) el = el.parentNode;
+			var rect = el.getBoundingClientRect();
+			return ( rect.top > 0 && rect.left > 0);
+		},
+
+	 	
 		/**
 		 * Returns a tracking tag for the given `changeType`, with the optional `childNode` appended.
 		 */
@@ -421,7 +442,8 @@
 		 * @return true if deletion was handled.
 		 */
 		deleteContents: function (right, range) {
-			var prevent = true;
+			var prevent = true,
+				browser = this._browser;
 			if (range) {
 				this.selection.addRange(range);
 			} else {
@@ -429,11 +451,112 @@
 			}
 			var changeid = this._batchChangeid ? null : this.startBatchChange();
 			if (range.collapsed === false) {
-				this._deleteSelection(range);
-			} else {
-				if (right) prevent = this._deleteRight(range);
-				else prevent = this._deleteLeft(range);
+				if(this._currentUserIceNode(range.startContainer.parentNode)){
+					this._deleteSelection(range);
+				}
+				else {
+					this._deleteSelection(range);
+					if(this._browser.mozilla){
+						if(range.startContainer.parentNode.previousSibling){
+							range.setEnd(range.startContainer.parentNode.previousSibling, 0);
+							range.moveEnd(ice.dom.CHARACTER_UNIT, ice.dom.getNodeCharacterLength(range.endContainer));
+						}
+						else {
+							range.setEndAfter(range.startContainer.parentNode);
+						}
+						range.collapse(false);
+					}
+					else {
+						if(!this.visible(range.endContainer)){
+							range.setEnd(range.endContainer, range.endOffset - 1);
+						range.collapse(false);
+						}
+					}
+				}
 			}
+			else {
+		        if (right) {
+					// RIGHT DELETE
+					if(browser["type"] === "mozilla"){
+						prevent = this._deleteRight(range);
+						// Handling track change show/hide
+						if(!this.visible(range.endContainer)){
+							if(range.endContainer.parentNode.nextSibling){
+		//						range.setEnd(range.endContainer.parentNode.nextSibling, 0);
+								range.setEndBefore(range.endContainer.parentNode.nextSibling);
+							} else {
+								range.setEndAfter(range.endContainer);
+							}
+							range.collapse(false);
+						}
+					}
+					else {
+						// Calibrate Cursor before deleting
+						if(range.endOffset === ice.dom.getNodeCharacterLength(range.endContainer)){
+							var next = range.startContainer.nextSibling;
+							if (ice.dom.is(next,  '.' + this._getIceNodeClass('deleteType'))) {
+								while(next){
+									if (ice.dom.is(next,  '.' + this._getIceNodeClass('deleteType'))) {
+										next = next.nextSibling;
+										continue;
+									}
+									range.setStart(next, 0);
+									range.collapse(true);
+									break;
+								}
+							}
+						}
+		
+						// Delete
+						prevent = this._deleteRight(range);
+		
+						// Calibrate Cursor after deleting
+						if(!this.visible(range.endContainer)){
+							if (ice.dom.is(range.endContainer.parentNode,  '.' + this._getIceNodeClass('insertType') + ', .' + this._getIceNodeClass('deleteType'))) {
+		//						range.setStart(range.endContainer.parentNode.nextSibling, 0);
+								range.setStartAfter(range.endContainer.parentNode);
+								range.collapse(true);
+							}
+						}
+					}
+				}
+				else {
+					// LEFT DELETE
+					if(browser.mozilla){
+						prevent = this._deleteLeft(range);
+						// Handling track change show/hide
+						if(!this.visible(range.startContainer)){
+							if(range.startContainer.parentNode.previousSibling){
+								range.setEnd(range.startContainer.parentNode.previousSibling, 0);
+							} else {
+								range.setEnd(range.startContainer.parentNode, 0);
+							}
+							range.moveEnd(ice.dom.CHARACTER_UNIT, ice.dom.getNodeCharacterLength(range.endContainer));
+							range.collapse(false);
+						}
+					}
+					else {
+						if(!this.visible(range.startContainer)){
+							if(range.endOffset === ice.dom.getNodeCharacterLength(range.endContainer)){
+								var prev = range.startContainer.previousSibling;
+								if (ice.dom.is(prev,  '.' + this._getIceNodeClass('deleteType'))) {
+									while(prev){
+										if (ice.dom.is(prev,  '.' + this._getIceNodeClass('deleteType'))) {
+											prev = prev.prevSibling;
+											continue;
+										}
+										range.setEndBefore(prev.nextSibling, 0);
+										range.collapse(false);
+										break;
+									}
+								}
+							}
+						}
+						prevent = this._deleteLeft(range);
+					}
+				}
+			}
+	
 			this.selection.addRange(range);
 			this.endBatchChange(changeid);
 			return prevent;
@@ -603,10 +726,10 @@
 			insSel = replaceSel = '.' + this._getIceNodeClass('insertType');
 			selector = delSel + ',' + insSel;
 			trackNode = dom.getNode(node, selector);
-			var changeId = dom.attr(trackNode, this.changeIdAttribute); //dfl
+			var changeId = dom.attr(trackNode, this.attributes.changeId); //dfl
 				// Some changes are done in batches so there may be other tracking
 				// nodes with the same `changeIdAttribute` batch number.
-			changes = dom.find(this.element, '[' + this.changeIdAttribute + '=' + changeId + ']');
+			changes = dom.find(this.element, '[' + this.attributes.changeId + '=' + changeId + ']');
 		
 			if (!isAccept) {
 				removeSel = insSel;
@@ -691,7 +814,7 @@
 					break;
 				}
 				var newVoidEl = this._getVoidElement(range.endContainer);
-				if (newVoidEl == voidEl) {
+				if (null == newVoidEl || newVoidEl == voidEl) {
 					voidEl = null;
 				}
 				if (voidEl){
@@ -746,7 +869,7 @@
 		 * Returns true if node has a user id attribute that matches the current user id.
 		 */
 		_currentUserIceNode: function (node) {
-			return ice.dom.attr(node, this.userIdAttribute) == this.currentUser.id;
+			return ice.dom.attr(node, this.attributes.userId) == this.currentUser.id;
 		},
 	
 		/**
@@ -786,7 +909,9 @@
 	
 		setUserStyle: function (userid, styleIndex) {
 			var style = this.stylePrefix + '-' + styleIndex;
-			if (!this._styles[styleIndex]) this._styles[styleIndex] = true;
+			if (!this._styles[styleIndex]) {
+				this._styles[styleIndex] = true;
+			}
 			return this._userStyles[userid] = style;
 		},
 	
@@ -794,8 +919,9 @@
 			var id = ++this._uniqueStyleIndex;
 			if (this._styles[id]) {
 			// Dupe.. create another..
-			return this.getNewStyleId();
-			} else {
+				return this.getNewStyleId();
+			} 
+			else {
 				this._styles[id] = true;
 				return id;
 			}
@@ -831,23 +957,23 @@
 			changeid = this._batchChangeid || changeid;
 			var change = this.getChange(changeid);
 			
-			if (!ctNode.getAttribute(this.changeIdAttribute)) ctNode.setAttribute(this.changeIdAttribute, changeid);
+			if (!ctNode.getAttribute(this.attributes.changeId)) ctNode.setAttribute(this.attributes.changeId, changeid);
 // modified by dfl, handle missing userid, try to set username according to userid
-			var userId = ctNode.getAttribute(this.userIdAttribute); 
+			var userId = ctNode.getAttribute(this.attributes.userId); 
 			if (! userId) {
-				ctNode.setAttribute(this.userIdAttribute, userId = change.userid);
+				ctNode.setAttribute(this.attributes.userId, userId = change.userid);
 			}
 			if (userId == change.userid) {
-				ctNode.setAttribute(this.userNameAttribute, change.username);
+				ctNode.setAttribute(this.attributes.userName, change.username);
 			}
 			
 // dfl add change data
-			var changeData = ctNode.getAttribute(this.changeDataAttribute);
+			var changeData = ctNode.getAttribute(this.attributes.changeData);
 			if (null == changeData) {
-				ctNode.setAttribute(this.changeDataAttribute, this._changeData || "");
+				ctNode.setAttribute(this.attributes.changeData, this._changeData || "");
 			}
 			
-			if (!ctNode.getAttribute(this.timeAttribute)) ctNode.setAttribute(this.timeAttribute, change.time);
+			if (!ctNode.getAttribute(this.attributes.time)) ctNode.setAttribute(this.attributes.time, change.time);
 			
 			if (!ice.dom.hasClass(ctNode, this._getIceNodeClass(change.type))) ice.dom.addClass(ctNode, this._getIceNodeClass(change.type));
 	
@@ -895,6 +1021,7 @@
 		},
 	
 		_insertNode: function (node, range, insertingDummy) {
+      		var origNode = node;
 			if (!ice.dom.isBlockElement(range.startContainer) && !ice.dom.canContainTextElement(ice.dom.getBlockParent(range.startContainer, this.element)) && range.startContainer.previousSibling) {
 				range.setStart(range.startContainer.previousSibling, 0);
 			}
@@ -907,7 +1034,7 @@
 				range.collapse();
 				return this._insertNode(node, range, insertingDummy);
 			}
-			if (ice.dom.hasNoTextOrStubContent(parentBlock)) {
+			if (parentBlock && ice.dom.hasNoTextOrStubContent(parentBlock)) {
 				ice.dom.empty(parentBlock);
 				ice.dom.append(parentBlock, '<br>');
 				range.setStart(parentBlock, 0);
@@ -922,7 +1049,8 @@
 			else if (!inCurrentUserInsert) node = this.createIceNode('insertType', node);
 	
 			range.insertNode(node);
-			range.setStartAfter(node); // dfl set selection to end of insert node instead of 1 offset into itgit status
+			range.setEnd(node, 1);
+//			range.setStartAfter(node); // dfl set selection to end of insert node instead of 1 offset into itgit status
 			if (inCurrentUserInsert) {
 				this._normalizeNode(ctNode);
 			}
@@ -950,6 +1078,7 @@
 			return false;
 		},
 	
+// compared OK
 		_deleteSelection: function (range) {
 	
 			// Bookmark the range and get elements between.
@@ -1014,10 +1143,11 @@
 			}
 	
 			bookmark.selectBookmark();
-			range.collapse(false);
+			range.collapse(true);
 		},
 	
 		// Delete
+		// passed compare
 		_deleteRight: function (range) {
 	
 			var parentBlock = ice.dom.isBlockElement(range.startContainer) && range.startContainer || ice.dom.getBlockParent(range.startContainer, this.element) || null,
@@ -1159,6 +1289,7 @@
 		},
 	
 		// Backspace
+		// passed compare
 		_deleteLeft: function (range) {
 	
 			var parentBlock = ice.dom.isBlockElement(range.startContainer) && range.startContainer || ice.dom.getBlockParent(range.startContainer, this.element) || null,
@@ -1470,9 +1601,12 @@
 		 * return {void|boolean} Returns false if default event needs to be blocked.
 		 */
 		_handleAncillaryKey: function (e) {
-			var key = e.keyCode;
-			var preventDefault = true;
-	
+			var key = e.keyCode ? e.keyCode : e.which,
+	    		browser = this._browser,
+				preventDefault = true,
+				shiftKey = e.shiftKey,
+				self = this,
+				range = self.getCurrentRange();
 			switch (key) {
 				case ice.dom.DOM_VK_DELETE:
 					preventDefault = this.deleteContents();
@@ -1485,13 +1619,46 @@
 					this.pluginsManager.fireKeyPressed(e);
 					break;
 		
+		/************************************************************************************/
+		/** BEGIN: Handling of caret movements inside hidden .ins/.del elements on Firefox **/
+		/**  *Fix for carets getting stuck in .del elements when track changes are hidden  **/
 				case ice.dom.DOM_VK_DOWN:
 				case ice.dom.DOM_VK_UP:
 				case ice.dom.DOM_VK_LEFT:
+					this.pluginsManager.fireCaretPositioned();
+					if(browser["type"] === "mozilla"){
+						if(!this.visible(range.startContainer)){
+							// if Previous sibling exists in the paragraph, jump to the previous sibling
+							if(range.startContainer.parentNode.previousSibling){
+								// When moving left and moving into a hidden element, skip it and go to the previousSibling
+								range.setEnd(range.startContainer.parentNode.previousSibling, 0);
+								range.moveEnd(ice.dom.CHARACTER_UNIT, ice.dom.getNodeCharacterLength(range.endContainer));
+								range.collapse(false);
+							}
+							// if Previous sibling doesn't exist, get out of the hidden zone by moving to the right
+							else {
+								range.setEnd(range.startContainer.parentNode.nextSibling, 0);
+								range.collapse(false);
+							}
+						}
+					  }	
+			          preventDefault = false;
+			          break;
 				case ice.dom.DOM_VK_RIGHT:
 					this.pluginsManager.fireCaretPositioned();
+					if(browser["type"] === "mozilla"){
+						if(!this.visible(range.startContainer)){
+							if(range.startContainer.parentNode.nextSibling){
+								// When moving right and moving into a hidden element, skip it and go to the nextSibling
+								range.setStart(range.startContainer.parentNode.nextSibling,0);
+								range.collapse(true);
+							}
+						}
+					}
 					preventDefault = false;
 					break;
+		/** END: Handling of caret movements inside hidden .ins/.del elements ***************/
+		/************************************************************************************/
 		
 				default:
 					// Ignore key.
@@ -1500,8 +1667,8 @@
 			} //end switch
 	
 			if (preventDefault === true) {
-			ice.dom.preventDefault(e);
-			return false;
+				ice.dom.preventDefault(e);
+				return false;
 			}
 			return true;
 	
@@ -1509,43 +1676,44 @@
 	
 		keyDown: function (e) {
 			if (!this.pluginsManager.fireKeyDown(e)) {
-			ice.dom.preventDefault(e);
-			return false;
+				ice.dom.preventDefault(e);
+				return false;
 			}
 	
 			var preventDefault = false;
 	
 			if (this._handleSpecialKey(e) === false) {
-			if (ice.dom.isBrowser('msie') !== true) {
-				this._preventKeyPress = true;
-			}
-	
-			return false;
-			} else if ((e.ctrlKey === true || e.metaKey === true) && (ice.dom.isBrowser('msie') === true || ice.dom.isBrowser('chrome') === true)) {
+				if (ice.dom.isBrowser('msie') !== true) {
+					this._preventKeyPress = true;
+				}
+		
+				return false;
+			} 
+			else if ((e.ctrlKey === true || e.metaKey === true) && (ice.dom.isBrowser('msie') === true || ice.dom.isBrowser('chrome') === true)) {
 			// IE does not fire keyPress event if ctrl is also pressed.
 			// E.g. CTRL + B (Bold) will not fire keyPress so this.plugins
 			// needs to be notified here for IE.
-			if (!this.pluginsManager.fireKeyPressed(e)) {
-				return false;
-			}
+				if (!this.pluginsManager.fireKeyPressed(e)) {
+					return false;
+				}
 			}
 	
 			switch (e.keyCode) {
-			case 27:
-				// ESC
-				break;
-			default:
-				// If not Firefox then check if event is special arrow key etc.
-				// Firefox will handle this in keyPress event.
-				if (/Firefox/.test(navigator.userAgent) !== true) {
-				preventDefault = !(this._handleAncillaryKey(e));
-				}
-				break;
+				case 27:
+					// ESC
+					break;
+				default:
+					// If not Firefox then check if event is special arrow key etc.
+					// Firefox will handle this in keyPress event.
+					if (! this._browser.firefox) {
+						preventDefault = !(this._handleAncillaryKey(e));
+					}
+					break;
 			}
 	
 			if (preventDefault) {
-			ice.dom.preventDefault(e);
-			return false;
+				ice.dom.preventDefault(e);
+				return false;
 			}
 	
 			return true;
@@ -1553,15 +1721,16 @@
 	
 		keyPress: function (e) {
 			if (this._preventKeyPress === true) {
-			this._preventKeyPress = false;
-			return;
+				this._preventKeyPress = false;
+				return;
 			}
 			var c = null;
 			if (e.which == null) {
 			// IE.
-			c = String.fromCharCode(e.keyCode);
-			} else if (e.which > 0) {
-			c = String.fromCharCode(e.which);
+				c = String.fromCharCode(e.keyCode);
+			} 
+			else if (e.which > 0) {
+				c = String.fromCharCode(e.which);
 			}
 	
 			if (!this.pluginsManager.fireKeyPress(e)) { return false; }
@@ -1569,18 +1738,20 @@
 				return true;
 			}
 	
-		// Inside a br - most likely in a placeholder of a new block - delete before handling.
-		var range = this.getCurrentRange();
-		var br = range && ice.dom.parents(range.startContainer, 'br')[0] || null;
-		if (br) {
-			range.moveToNextEl(br);
-			br.parentNode.removeChild(br);
-		}
+			// Inside a br - most likely in a placeholder of a new block - delete before handling.
+			var range = this.getCurrentRange();
+			var br = range && ice.dom.parents(range.startContainer, 'br')[0] || null;
+			if (br) {
+				range.moveToNextEl(br);
+				br.parentNode.removeChild(br);
+			}
 	
 			// Ice will ignore the keyPress event if CMD or CTRL key is also pressed
 			if (c !== null && e.ctrlKey !== true && e.metaKey !== true) {
-				switch (e.keyCode) {
+				var key = e.keyCode ? e.keyCode : e.which;
+    		    switch (key) {
 					case ice.dom.DOM_VK_DELETE:
+					case 32: // space
 					// Handle delete key for Firefox.
 						return this._handleAncillaryKey(e);
 					case ice.dom.DOM_VK_ENTER:
@@ -1588,7 +1759,7 @@
 					default:
 						// If we are in a deletion, move the range to the end/outside.
 						this._moveRangeToValidTrackingPos(range, range.startContainer);
-						return this.insert(c);
+						return this.insert(); // TEST, was insert(c)
 				}
 			}
 	
@@ -1597,7 +1768,9 @@
 	
 		_handleEnter: function () {
 			var range = this.getCurrentRange();
-			if (range && !range.collapsed) this.deleteContents();
+			if (range && !range.collapsed) {
+				this.deleteContents();
+			}
 			return true;
 		},
 	
@@ -1761,9 +1934,9 @@
 				return null;
 			}
 			var title = this.titleTemplate;
-			var time = change ? change.time : parseInt(node.getAttribute(this.timeAttribute) || 0);
+			var time = change ? change.time : parseInt(node.getAttribute(this.attributes.time) || 0);
 			time = new Date(time);
-			var userName = (change ? change.username : (node.getAttribute(this.userNameAttribute) || "")) || "(Unknown)";
+			var userName = (change ? change.username : (node.getAttribute(this.attributes.userName) || "")) || "(Unknown)";
 			title = title.replace(/%t/g, this._relativeDateFormat(time));
 			title = title.replace(/%u/g, userName);
 			title = title.replace(/%dd/g, padNumber(time.getDate(), 2));
@@ -1787,7 +1960,7 @@
 			}).bind(this);
 			var changes = this._filterChanges(options);
 			for (var id in changes.changes) {
-				var nodes = ice.dom.find(this.element, '[' + this.changeIdAttribute + '=' + id + ']');
+				var nodes = ice.dom.find(this.element, '[' + this.attributes.changeId + '=' + id + ']');
 				nodes.each(f);
 			}
 			if (changes.count) {
@@ -1826,8 +1999,8 @@
 		
 		_loadFromDom : function() {
 			this._changes = {};
-			this._userStyles = {};
-			this._styles = {};
+//			this._userStyles = {};
+//			this._styles = {};
 			this._uniqueStyleIndex = 0;
 			var myUserId = this.currentUser && this.currentUser.id;
 			var myUserName = (this.currentUser && this.currentUser.name) || "";
@@ -1850,26 +2023,26 @@
 					var ctnReg = new RegExp('(' + changeTypeClasses.join('|') + ')').exec(classList[i]);
 					if (ctnReg) ctnType = this._getChangeTypeFromAlias(ctnReg[1]);
 				}
-				var userid = ice.dom.attr(el, this.userIdAttribute);
+				var userid = ice.dom.attr(el, this.attributes.userId);
 				var userName;
 				if (myUserId && (userid == myUserId)) {
 					userName = myUserName;
-					el.setAttribute(this.userNameAttribute, myUserName)
+					el.setAttribute(this.attributes.userName, myUserName)
 				}
 				else {
-					userName = el.getAttribute(this.userNameAttribute);
+					userName = el.getAttribute(this.attributes.userName);
 				}
 				this.setUserStyle(userid, Number(styleIndex));
-				var changeid = parseInt(ice.dom.attr(el, this.changeIdAttribute) || "");
+				var changeid = parseInt(ice.dom.attr(el, this.attributes.changeId) || "");
 				if (isNaN(changeid)) {
 					changeid = this.getNewChangeId();
-					el.setAttribute(this.changeIdAttribute, changeid);
+					el.setAttribute(this.attributes.changeId, changeid);
 				}
-				var timeStamp = parseInt(el.getAttribute(this.timeAttribute) || "");
+				var timeStamp = parseInt(el.getAttribute(this.attributes.time) || "");
 				if (isNaN(timeStamp)) {
 					timeStamp = now;
 				}
-				var changeData = ice.dom.attr(el, this.changeDataAttribute) || "";
+				var changeData = ice.dom.attr(el, this.attributes.changeData) || "";
 				var change = {
 					type: ctnType,
 					userid: String(userid),// dfl: must stringify for consistency - when we read the props from dom attrs they are strings
@@ -1895,24 +2068,24 @@
 			}
 			var nodes = this.getIceNodes();
 			nodes.each((function(i,node) {
-				var match = (! user) || (user.id == node.getAttribute(this.userIdAttribute));
+				var match = (! user) || (user.id == node.getAttribute(this.attributes.userId));
 				if (user && match) {
 					node.setAttribute(this.userNameAttribute, user.name);
 				}
 				if (match && this._isVisible) {
-					var change = this._changes[node.getAttribute(this.changeIdAttribute)];
+					var change = this._changes[node.getAttribute(this.attributes.changeId)];
 					if (change) {
 						this._setNodeTitle(node, change);
 					}
 				}
-			}).bind(this))
+			}).bind(this));
 		},
 		
 		_showTitles : function(bShow) {
 			var nodes = this.getIceNodes();
 			if (bShow) {
 				jQuery(nodes).each((function(i, node) {
-					var changeId = node.getAttribute(this.changeIdAttribute);
+					var changeId = node.getAttribute(this.attributes.changeId);
 					var change = changeId && this._changes[changeId];
 					if (change) {
 						this._setNodeTitle(node, change)

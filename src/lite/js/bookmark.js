@@ -13,13 +13,13 @@
       this.removeBookmarks(this.element);
     }
 
-    var currRange = range || this.selection.getRangeAt(0);
-    range = currRange.cloneRange();
-    var startContainer = range.startContainer;
-    var endContainer = range.endContainer;
-    var startOffset  = range.startOffset;
-    var endOffset = range.endOffset;
-    var tmp;
+    var currRange = range || this.selection.getRangeAt(0),
+    	range = currRange.cloneRange(),
+    	startContainer = range.startContainer,
+    	endContainer = range.endContainer,
+    	startOffset  = range.startOffset,
+    	endOffset = range.endOffset,
+    	tmp;
 
     // Collapse to the end of range.
     range.collapse(false);
