@@ -122,6 +122,7 @@ The LITE plugin events are listed in <code>lite_interface.js</code> under <code>
 * Adjacent changes from different collaborators may affect each other if you accept/reject a single change in the sequence. This is related to an issue in ICE which we hope to resolve with the developers.
 * See the <a href="https://github.com/NYTimes/ice/blob/master/README.md" target="_blank">ICE page</a> for known issues related to ICE.
 * Note that the ICE engine adds markup to the editor content. 
+* LITE tracks only text insertion and deletion. Other changes, such as style edits, are not tracked.
 
 ##Browser Compatibility
 LITE has been tested on Firefox 15+, Chrome 13+ and MSIE 9+. Support for MSIE 8 is not guaranteed, although the current version seems to work on it.
