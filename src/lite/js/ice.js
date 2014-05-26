@@ -131,9 +131,6 @@
 			}
 		}
 	
-	
-		this.pluginsManager = new ice.IcePluginManager(this);
-		if (options.plugins) this.pluginsManager.usePlugins('ice-init', options.plugins);
 	};
 
 	InlineChangeEditor.prototype = {
@@ -167,7 +164,7 @@
 			// If we are handling events setup the delegate to handle various events on `this.element`.
 			if (this.handleEvents) {
 				var self = this;
-				ice.dom.bind(self.element, 'keyup.ice keydown.ice keypress.ice mousedown.ice mouseup.ice', function (e) {
+				ice.dom.bind(self.element, 'keyup.ice keydown.ice keypress.ice', function (e) {
 					return self.handleEvent(e);
 				});
 			}
@@ -177,7 +174,6 @@
 			this.initializeRange();
 			this._setInterval(); //dfl
 			
-			this.pluginsManager.fireEnabled(this.element);
 			return this;
 		},
 	
@@ -191,7 +187,7 @@
 			try { // dfl added try/catch for ie
 				// If we are handling events setup the delegate to handle various events on `this.element`.
 				if (this.element) {
-					ice.dom.unbind(this.element, 'keyup.ice keydown.ice keypress.ice mousedown.ice mouseup.ice');
+					ice.dom.unbind(this.element, 'keyup.ice keydown.ice keypress.ice');
 				}
 		
 				// dfl:reset contenteditable unless requested not to do so
@@ -200,10 +196,7 @@
 				}
 			}
 			catch (e){}
-			try { // dfl added try/catch for ie8
-				this.pluginsManager.fireDisabled(this.element);
-			}
-			catch(e){}
+
 			this._setInterval();
 			return this;
 		},
@@ -227,7 +220,7 @@
 		 * Initializes the internal range object and sets focus to the editing element.
 		 */
 		initializeRange: function () {
-			var range = this.selection.createRange();
+/*			var range = this.selection.createRange();
 			range.setStart(ice.dom.find(this.element, this.blockEls.join(', '))[0], 0);
 			range.collapse(true);
 			this.selection.addRange(range);
@@ -236,7 +229,7 @@
 			}
 			else {
 				this.element.focus();
-			}
+			} */
 		},
 	
 		/**
@@ -246,19 +239,19 @@
 		initializeEditor: function () {
 			// Clean the element html body - add an empty block if there is no body, or remove any
 			// content between elements.
-			var self = this,
+/*			var self = this,
 				body = this.env.document.createElement('div');
 			if (this.element.childNodes.length) {
 				body.innerHTML = this.element.innerHTML;
 				ice.dom.removeWhitespace(body);
 				if (body.innerHTML === '') {
-					body.appendChild(ice.dom.create('<' + this.blockEl + ' ><br/></' + this.blockEl + '>'));
+//					body.appendChild(ice.dom.create('<' + this.blockEl + ' ><br/></' + this.blockEl + '>'));
 				} 
 			}
 			else {
-				body.appendChild(ice.dom.create('<' + this.blockEl + ' ><br/></' + this.blockEl + '>'));
+//				body.appendChild(ice.dom.create('<' + this.blockEl + ' ><br/></' + this.blockEl + '>'));
 			}
-			this.element.innerHTML = body.innerHTML;
+//			this.element.innerHTML = body.innerHTML; */
 			this._loadFromDom(); // refactored by dfl
 			this._setInterval(); // dfl
 		},
@@ -268,7 +261,6 @@
 		 */
 		enableChangeTracking: function () {
 			this.isTracking = true;
-			this.pluginsManager.fireEnabled(this.element);
 		},
 	
 		/**
@@ -276,7 +268,6 @@
 		 */
 		disableChangeTracking: function () {
 			this.isTracking = false;
-			this.pluginsManager.fireDisabled(this.element);
 		},
 	
 		/**
@@ -295,29 +286,23 @@
 		 * was fully handled.
 		 */
 		handleEvent: function (e) {
-			if (!this.isTracking) return;
-			if (e.type == 'mouseup') {
-				var self = this;
-				setTimeout(function () {
-					self.mouseUp(e);
-				}, 200);
-			} 
-			else if (e.type == 'mousedown') {
-				return this.mouseDown(e);
-			} 
-			else if (e.type == 'keypress') {
+			if (!this.isTracking) {
+				return true;
+			}
+			if (e.type == 'keypress') {
 				var needsToBubble = this.keyPress(e);
-				if (!needsToBubble) e.preventDefault();
+				if (!needsToBubble) {
+					e.preventDefault();
+				}
 				return needsToBubble;
 			} 
 			else if (e.type == 'keydown') {
 				var needsToBubble = this.keyDown(e);
-				if (!needsToBubble) e.preventDefault();
+				if (!needsToBubble) {
+					e.preventDefault();
+				}
 				return needsToBubble;
 			} 
-			else if (e.type == 'keyup') {
-				this.pluginsManager.fireCaretUpdated();
-			}
 		},
 
 		visible: function(el) {
@@ -334,12 +319,11 @@
 			var node = this.env.document.createElement(this.changeTypes[changeType].tag);
 			ice.dom.addClass(node, this._getIceNodeClass(changeType));
 	
-			node.appendChild(childNode ? childNode : this.env.document.createTextNode(''));
+			if (childNode) {
+				node.appendChild(childNode);
+			}
 			this.addChange(this.changeTypes[changeType].alias, [node]);
 	
-			this.pluginsManager.fireNodeCreated(node, {
-				'action': this.changeTypes[changeType].action
-			});
 			return node;
 		},
 	
@@ -348,97 +332,41 @@
 		 * the range first if needed. If range is undefined, then the range from the Selection object
 		 * is used. If the range is in a parent delete node, then the range is positioned after the delete.
 		 */
-		insert: function (node, range) {
-			// If the node is not defined, then we need to insert an
-			// invisible space and force propagation to the browser.
-			var isPropagating = !node;
-			node || (node = '\uFEFF');
-	
-			if (range) {
-				this.selection.addRange(range);
-			}
-			else {
-				range = this.getCurrentRange();
-			}
-			if (typeof node === "string") {
-				node = document.createTextNode(node);
-			}
-	
-			var changeid = this._batchChangeid ? null : this.startBatchChange();
+		insert: function (nodes) {
+			var range = this.getCurrentRange();
+				changeid = this._batchChangeid ? null : this.startBatchChange();
 		// If we have any nodes selected, then we want to delete them before inserting the new text.
-			if (!range.collapsed) {
+			if (range && !range.collapsed) {
 				this.deleteContents(false, null, true); //don't trigger text changed
 			// Update the range
 				range = this.getCurrentRange();
 				if (range.startContainer === range.endContainer && this.element === range.startContainer) {
 					// The whole editable element is selected. Need to remove everything and init its contents.
 					ice.dom.empty(this.element);
-					var firstSelectable = range.getLastSelectableChild(this.element);
-					range.setStartAfter(firstSelectable);
+					range = this.selection.getRangeAt(0);
+//					var firstSelectable = range.getLastSelectableChild(this.element);
+//					range.setStartAfter(firstSelectable);
 					range.collapse(true);
 				}
+			}
+			
+			if (nodes && ! jQuery.isArray(nodes)) {
+				nodes = [nodes];
 			}
 	
 			// If we are in a non-tracking/void element, move the range to the end/outside.
 			this._moveRangeToValidTrackingPos(range);
 	
-			// Send a dummy node to be inserted, if node is undefined
-			this._insertNode(node, range, isPropagating);
-			this.pluginsManager.fireNodeInserted(node, range);
+			this._insertNodes(range, nodes);
 			this.endBatchChange(changeid);
-			return isPropagating;
-		},
-	
-		/**
-		 * This command will drop placeholders in place of delete tags in the element
-		 * body and store references in the `_deletes` array to the original delete nodes.
-		 *
-		 * A placeholder tag is of the following structure:
-		 *	 <tempdel data-allocation="[NUM]" />
-		 * Where [NUM] is the referenced allocation in the `_deletes` array where the
-		 * original delete node is stored.
-		 */
-		placeholdDeletes: function () {
-			var self = this;
-			if (this.isPlaceholdingDeletes) {
-				this.revertDeletePlaceholders();
-			}
-			this.isPlaceholdingDeletes = true;
-			this._deletes = [];
-			var deleteSelector = '.' + this._getIceNodeClass('deleteType');
-			ice.dom.each(ice.dom.find(this.element, deleteSelector), function (i, el) {
-				self._deletes.push(ice.dom.cloneNode(el));
-				ice.dom.replaceWith(el, '<' + self._delBookmark + ' data-allocation="' + (self._deletes.length - 1) + '"/>');
-			});
-			return true;
-		},
-	
-		/**
-		 * Replaces all delete placeholders in the element body with the referenced
-		 * delete nodes in the `_deletes` array.
-		 *
-		 * A placeholder tag is of the following structure:
-		 *	 <tempdel data-allocation="[NUM]" />
-		 * Where [NUM] is the referenced allocation in the `_deletes` array where the
-		 * original delete node is stored.
-		 */
-		revertDeletePlaceholders: function () {
-			var self = this;
-			if (!this.isPlaceholdingDeletes) {
-				return false;
-			}
-			ice.dom.each(this._deletes, function (i, el) {
-				ice.dom.find(self.element, self._delBookmark + '[data-allocation=' + i + ']').replaceWith(el);
-			});
-			this.isPlaceholdingDeletes = false;
-			return true;
+			return true;//isPropagating;
 		},
 	
 		/**
 		 * Deletes the contents in the given range or the range from the Selection object. If the range
 		 * is not collapsed, then a selection delete is handled; otherwise, it deletes one character
 		 * to the left or right if the right parameter is false or true, respectively.
-		 *
+		 * compared OK
 		 * @return true if deletion was handled.
 		 */
 		deleteContents: function (right, range) {
@@ -772,11 +700,13 @@
 		 */
 		addChangeType: function (typeName, tag, alias, action) {
 			var changeType = {
-			tag: tag,
-			alias: alias
+				tag: tag,
+				alias: alias
 			};
 	
-			if (action) changeType.action = action;
+			if (action) {
+				changeType.action = action;
+			}
 	
 			this.changeTypes[typeName] = changeType;
 		},
@@ -795,7 +725,7 @@
 		 */
 		_moveRangeToValidTrackingPos: function (range) {
 			var onEdge = false;
-			var voidEl = this._getVoidElement(range.endContainer);
+			var voidEl = this._getVoidElement(range && range.endContainer);
 			while (voidEl) {
 				// Move end of range to position it inside of any potential adjacent containers
 				// E.G.:	test|<em>text</em>	->	test<em>|text</em>
@@ -928,7 +858,9 @@
 		},
 	
 		addChange: function (ctnType, ctNodes) {
-			var changeid = this._batchChangeid || this.getNewChangeId();
+			var changeid = this._batchChangeid || this.getNewChangeId(),
+				self = this;
+
 			if (!this._changes[changeid]) {
 				// Create the change object.
 				this._changes[changeid] = {
@@ -940,7 +872,6 @@
 				};
 				this._triggerChange(); //dfl
 			}
-			var self = this;
 			ice.dom.foreach(ctNodes, function (i) {
 				self.addNodeToChange(changeid, ctNodes[i]);
 			});
@@ -1020,60 +951,107 @@
 			}
 		},
 	
-		_insertNode: function (node, range, insertingDummy) {
-      		var origNode = node;
-			if (!ice.dom.isBlockElement(range.startContainer) && !ice.dom.canContainTextElement(ice.dom.getBlockParent(range.startContainer, this.element)) && range.startContainer.previousSibling) {
+		// passed compare, 2 changes below
+		_insertNodes: function (range, nodes) {
+			if (!ice.dom.isBlockElement(range.startContainer) && 
+					!ice.dom.canContainTextElement(ice.dom.getBlockParent(range.startContainer, this.element)) && 
+					range.startContainer.previousSibling) {
 				range.setStart(range.startContainer.previousSibling, 0);
 			}
-			var startContainer = range.startContainer;
-			var parentBlock = ice.dom.isBlockElement(startContainer) && startContainer || ice.dom.getBlockParent(startContainer, this.element) || null;
-			if (parentBlock === this.element) {
+//			var startContainer = range.startContainer;
+//				parentBlock = ice.dom.isBlockElement(startContainer) && startContainer || ice.dom.getBlockParent(startContainer, this.element) || null;
+/*			if (parentBlock === this.element) {
 				var firstPar = document.createElement(this.blockEl);
 				parentBlock.appendChild(firstPar);
 				range.setStart(firstPar, 0);
 				range.collapse();
-				return this._insertNode(node, range, insertingDummy);
+				return this._insertNodes(node, range, insertingDummy);
 			}
+			//dfl added null check on parentBlock
 			if (parentBlock && ice.dom.hasNoTextOrStubContent(parentBlock)) {
 				ice.dom.empty(parentBlock);
 				ice.dom.append(parentBlock, '<br>');
 				range.setStart(parentBlock, 0);
-			}
+			} */
 	
-			var ctNode = this.getIceNode(range.startContainer, 'insertType');
-			var inCurrentUserInsert = this._currentUserIceNode(ctNode);
+			var ctNode = this.getIceNode(range.startContainer, 'insertType'),
+				inCurrentUserInsert = this._currentUserIceNode(ctNode);
 	
 			// Do nothing, let this bubble-up to insertion handler.
-			if (insertingDummy && inCurrentUserInsert) return;
-			// If we aren't in an insert node which belongs to the current user, then create a new ins node
-			else if (!inCurrentUserInsert) node = this.createIceNode('insertType', node);
-	
-			range.insertNode(node);
-			range.setEnd(node, 1);
-//			range.setStartAfter(node); // dfl set selection to end of insert node instead of 1 offset into itgit status
 			if (inCurrentUserInsert) {
-				this._normalizeNode(ctNode);
+				if (nodes && nodes[0]) {
+					range.insertNode(nodes[0]);
+					var parent = nodes[0].parentNode,
+						sibling = nodes[0].nextSibling;
+					for (var i = 1; i < nodes.length; ++i) {
+						if (sibling) {
+							parent.insertBefore(nodes[i], sibling);
+						}
+						else {
+							parent.appendChild(nodes[i]);
+						}
+					}
+				}
 			}
-//			range.setEnd(node, textLength);
+			else {
+				// If we aren't in an insert node which belongs to the current user, then create a new ins node
+				var node = this.createIceNode('insertType');
+				if (ctNode) {
+					var nChildren = ctNode.childNodes.length;
+					ctNode.normalize();
+					if (nChildren != ctNode.childNodes.length) {
+						range = this.getCurrentRange();
+					}
+					if (ctNode && (range.endOffset < range.endContainer.length)) {
+						ctNode = this._splitNode(ctNode, range.endContainer, range.endOffset);
+		//				range.setEndAfter(ctNode);
+		//				range.collapse();
+					}
+				}
+				if (ctNode) {
+					range.setStartAfter(ctNode);
+					range.collapse(true);
+				}
 	
-			if (insertingDummy) {
+				range.insertNode(node);
+				var len = nodes && nodes.length;
+				if (len) {
+					for (var i = 0; i < len; ++i) {
+						node.appendChild(nodes[i]);
+					}
+					range.setStartAfter(node.lastChild);
+				}
+				else {
+					var tn = this.element.ownerDocument.createTextNode('\uFEFF');
+					node.appendChild(tn);
+					range.setStartAndEnd(tn, 0, tn, 1);
+				}
+				this.selection.addRange(range);
+			}			
+
+// Added by dfl
+//			if (inCurrentUserInsert) {
+//				this._normalizeNode(ctNode);
+//			}
+	
+/*			if (insertingDummy) {
 			// Create a selection of the dummy character we inserted
 			// which will be removed after it bubbles up to the final handler.
 				range.setStart(node, 0);
 			} else {
 				range.collapse();
-			}
-	
-			this.selection.addRange(range);
+			} */
+			
 		},
 	
+// compared OK
 		_handleVoidEl: function(el, range) {
 			// If `el` is or is in a void element, but not a delete
 			// then collapse the `range` and return `true`.
 			var voidEl = this._getVoidElement(el);
 			if (voidEl && !this.getIceNode(voidEl, 'deleteType')) {
-			range.collapse(true);
-			return true;
+				range.collapse(true);
+				return true;
 			}
 			return false;
 		},
@@ -1475,6 +1453,7 @@
 		},
 	
 		// Marks text and other nodes for deletion
+		// compared OK
 		_addNodeTracking: function (contentNode, range, moveLeft) {
 	
 			var contentAddNode = this.getIceNode(contentNode, 'insertType');
@@ -1599,6 +1578,7 @@
 		 *
 		 * @param {event} e The event object.
 		 * return {void|boolean} Returns false if default event needs to be blocked.
+		 * compared OK
 		 */
 		_handleAncillaryKey: function (e) {
 			var key = e.keyCode ? e.keyCode : e.which,
@@ -1610,13 +1590,11 @@
 			switch (key) {
 				case ice.dom.DOM_VK_DELETE:
 					preventDefault = this.deleteContents();
-					this.pluginsManager.fireKeyPressed(e);
 					break;
 		
 				case 46:
 					// Key 46 is the DELETE key.
 					preventDefault = this.deleteContents(true);
-					this.pluginsManager.fireKeyPressed(e);
 					break;
 		
 		/************************************************************************************/
@@ -1625,7 +1603,6 @@
 				case ice.dom.DOM_VK_DOWN:
 				case ice.dom.DOM_VK_UP:
 				case ice.dom.DOM_VK_LEFT:
-					this.pluginsManager.fireCaretPositioned();
 					if(browser["type"] === "mozilla"){
 						if(!this.visible(range.startContainer)){
 							// if Previous sibling exists in the paragraph, jump to the previous sibling
@@ -1645,7 +1622,6 @@
 			          preventDefault = false;
 			          break;
 				case ice.dom.DOM_VK_RIGHT:
-					this.pluginsManager.fireCaretPositioned();
 					if(browser["type"] === "mozilla"){
 						if(!this.visible(range.startContainer)){
 							if(range.startContainer.parentNode.nextSibling){
@@ -1659,7 +1635,13 @@
 					break;
 		/** END: Handling of caret movements inside hidden .ins/.del elements ***************/
 		/************************************************************************************/
-		
+// dfl deleted space handling code
+/*				case 32:
+					preventDefault = true;
+					var range = this.getCurrentRange();
+					this._moveRangeToValidTrackingPos(range, range.startContainer);
+					this.insert('\u00A0' , range);
+					break; */
 				default:
 					// Ignore key.
 					preventDefault = false;
@@ -1674,12 +1656,8 @@
 	
 		},
 	
+		// compared OK
 		keyDown: function (e) {
-			if (!this.pluginsManager.fireKeyDown(e)) {
-				ice.dom.preventDefault(e);
-				return false;
-			}
-	
 			var preventDefault = false;
 	
 			if (this._handleSpecialKey(e) === false) {
@@ -1689,14 +1667,6 @@
 		
 				return false;
 			} 
-			else if ((e.ctrlKey === true || e.metaKey === true) && (ice.dom.isBrowser('msie') === true || ice.dom.isBrowser('chrome') === true)) {
-			// IE does not fire keyPress event if ctrl is also pressed.
-			// E.g. CTRL + B (Bold) will not fire keyPress so this.plugins
-			// needs to be notified here for IE.
-				if (!this.pluginsManager.fireKeyPressed(e)) {
-					return false;
-				}
-			}
 	
 			switch (e.keyCode) {
 				case 27:
@@ -1718,7 +1688,7 @@
 	
 			return true;
 		},
-	
+	// compared OK
 		keyPress: function (e) {
 			if (this._preventKeyPress === true) {
 				this._preventKeyPress = false;
@@ -1733,14 +1703,13 @@
 				c = String.fromCharCode(e.which);
 			}
 	
-			if (!this.pluginsManager.fireKeyPress(e)) { return false; }
 			if (e.ctrlKey || e.metaKey) {
 				return true;
 			}
 	
 			// Inside a br - most likely in a placeholder of a new block - delete before handling.
-			var range = this.getCurrentRange();
-			var br = range && ice.dom.parents(range.startContainer, 'br')[0] || null;
+			var range = this.getCurrentRange(),
+				br = range && ice.dom.parents(range.startContainer, 'br')[0] || null;
 			if (br) {
 				range.moveToNextEl(br);
 				br.parentNode.removeChild(br);
@@ -1751,21 +1720,22 @@
 				var key = e.keyCode ? e.keyCode : e.which;
     		    switch (key) {
 					case ice.dom.DOM_VK_DELETE:
-					case 32: // space
+//					case 32: // space
 					// Handle delete key for Firefox.
 						return this._handleAncillaryKey(e);
 					case ice.dom.DOM_VK_ENTER:
 						return this._handleEnter();
 					default:
 						// If we are in a deletion, move the range to the end/outside.
-						this._moveRangeToValidTrackingPos(range, range.startContainer);
-						return this.insert(); // TEST, was insert(c)
+						this._moveRangeToValidTrackingPos(range);
+						return this.insert();
 				}
 			}
 	
 			return this._handleAncillaryKey(e);
 		},
 	
+		// compared OK
 		_handleEnter: function () {
 			var range = this.getCurrentRange();
 			if (range && !range.collapsed) {
@@ -1773,7 +1743,7 @@
 			}
 			return true;
 		},
-	
+	// compared OK
 		_handleSpecialKey: function (e) {
 			var keyCode = e.which;
 			if (keyCode === null) {
@@ -1784,6 +1754,7 @@
 			var preventDefault = false;
 			switch (keyCode) {
 			case 65:
+				// added by dfl
 				if (! this._handleSelectAll) {
 					return true;
 				}
@@ -1829,23 +1800,9 @@
 			return true;
 		},
 	
-		mouseUp: function (e, target) {
-			if (!this.pluginsManager.fireClicked(e)) return false;
-			this.pluginsManager.fireSelectionChanged(this.getCurrentRange());
-			return true;
-		},
-	
-		mouseDown: function (e, target) {
-			if (!this.pluginsManager.fireMouseDown(e)) {
-				return false;
-			}
-			this.pluginsManager.fireCaretUpdated();
-			return true;
-		},
-		
 		/* Added by dfl */
 		
-		getContentElement : function() {
+		getContentElement: function() {
 			return this.element;
 		},
 		
@@ -1919,6 +1876,19 @@
 		
 		toString : function() {
 			return "ICE " + ((this.element && this.element.id) || "(no element id)");
+		},
+		
+		_splitNode: function(node, atNode, atOffset) {
+			var parent = node.parentNode,
+			  	parentOffset = rangy.dom.getNodeIndex(node),
+			  	doc = atNode.ownerDocument, 
+			  	leftRange = doc.createRange(),
+			  	left;
+			  leftRange.setStart(parent, parentOffset);
+			  leftRange.setEnd(atNode, atOffset);
+			  left = leftRange.extractContents();
+			  parent.insertBefore(left, node);
+			  return node.previousSibling;
 		},
 		
 		_triggerChange : function() {

@@ -837,12 +837,12 @@
 		if (node) {
 			while (node.parentNode) {
 				node = node.parentNode;
-				if (node === container) {
-					return null;
-				}
 
 				if (dom.isBlockElement(node) === true) {
 					return node;
+				}
+				if (node === container) {
+					return null;
 				}
 			}
 		}

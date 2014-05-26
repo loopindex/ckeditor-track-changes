@@ -195,6 +195,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			this._boundNotifyChange = this._notifyChange.bind(this);
 
 			var liteConfig = ed.config.lite || {};
+			this._config = CKEDITOR.tools.extend({}, liteConfig);
 			
 			var allow = liteConfig.acceptRejectInReadOnly === true;
 			var commandsMap = 	[	
@@ -322,7 +323,6 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		 * @param bNotify if not false, dispatch the TRACKING event
 		 */	
 		toggleTracking: function(track, bNotify) {
-			//console.log("plugin.toggleTracking", !!track);
 			var tracking = (typeof(track) == "undefined") ? (! this._isTracking) : track;
 			this._isTracking = tracking;
 		
@@ -519,13 +519,11 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		},
 		
 		_onScriptsLoaded : function(completed, failed) {
-			//console.log("ICE: scripts loaded");
 			this._scriptsLoaded = true;
 			this._onReady();
 		},
 		
 		_loadCSS : function(doc) {
-			//console.log("plugin load CSS")
 			var head = doc.getElementsByTagName("head")[0];
 			var style = jQuery(head).find("#__lite__css__");
 			if (! style.length) {
@@ -540,7 +538,6 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		
 		_onReady : function() {
 			if (! this._scriptsLoaded || ! this._domLoaded) {
-				//console.log("ICE: cannot proceed");
 				return;
 			}
 			// leave some time for initing, seems to help...
@@ -549,12 +546,12 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		
 		_getBody : function() {
 			try {
-				var mode = this._editor.elementMode;
+/*				var mode = this._editor.elementMode;
 				if (CKEDITOR.ELEMENT_MODE_INLINE == mode) {
 					return this._editor.element.$;
-				}
+				} */
 					
-				return this._editor.document.$.body;
+				return this._editor.editable().$;
 			}
 			catch (e) {
 				return null;
@@ -565,25 +562,23 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			var e = this._editor,
 				doc = e.document.$,
 				body = this._getBody();
-
+			
 			this._loadCSS(doc);
 			
 			if (! this._eventsBounds) {
 				this._eventsBounds = true;
 				var paste = this._onPaste.bind(this);
-				e.on("afterCommandExec", (function(event) {
+				e.on("afterCommandExec", this._onAfterCommand.bind(this));
+/*				e.on("beforeCommandExec", (function(event) {
 					var name = this._tracker && event.data && event.data.name;
-					if (name == "undo" || name == "redo") {
-						this._tracker.reload();
-					}
-				}).bind(this));
-				e.on("beforeCommandExec", (function(event) {
-					var name = this._tracker && event.data && event.data.name;
-				}).bind(this));
-				e.on("paste", paste, null, null, 1);
+				}).bind(this)); */
+				if (this._config.handlePaste) {
+					e.on("paste", paste, null, null, 1);
+				}
 				e.on("insertHtml", paste, null, null, 1);
 				e.on("insertText", paste, null, null, 1);
 				e.on("insertElement", paste, null, null, 1);
+				e.on("mode", this._onModeChange.bind(this), null, null, 1);
 			}
 			
 			if (this._tracker) {
@@ -611,7 +606,11 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 						changeTypes: {
 							insertType: {tag: this.props.insertTag, alias: this.props.insertClass, action:"Inserted"},
 							deleteType: {tag: this.props.deleteTag, alias: this.props.deleteClass, action:"Deleted"}
-						}
+						},
+						insertHook: (function(node) {
+							debugger
+							this._editor.getSelection().selectElement(new CKEDITOR.dom.element(node));
+						}).bind(this)
 				};
 				jQuery.extend(iceprops, this.props);
 				this._tracker = new ice.InlineChangeEditor(iceprops);
@@ -680,64 +679,86 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			e.attr('title', title);
 		},
 		
+		_onAfterCommand: function(event) {
+			var name = this._tracker && this._isTracking && event.data && event.data.name;
+			if ("undo" == name || "redo" == name) {
+				this._tracker.reload();
+			}
+		},
+		
+		_onModeChange: function(evt){
+			var mode = evt.editor && evt.editor.mode;
+			switch (mode) {
+				case "source":
+					this._tracker && this._tracker.disableChangeTracking();
+					break;
+				case "wysiwyg":
+					if (this._tracker && this._isTracking) {
+						this._tracker.enableChangeTracking();
+					}
+					break;
+			}
+			
+		},
+
 		/**
 		 * Paste the content of the clipboard through ICE
 		 */
 		_onPaste : function(evt){
-			if (! this._tracker || ! this._isTracking) {
+			if (! this._tracker || ! this._isTracking || ! evt) {
 				return true;
 			}
-			var data = evt && evt.data,
-				ignore = false;
+			var data = evt.data || {},
+				ignore = false,
+				toInsert = null,
+				node = (evt.name == "insertElement") && data.$;
 			if (! data) {
 				return;
 			}
-			if (data instanceof CKEDITOR.dom.element) {
-				ignore = data.getAttribute("data-track-changes-ignore");
+			if (node) {
+				ignore = node.getAttribute("data-track-changes-ignore");
 			}
-			else if ("html" == data.type && data.dataValue) {
+			else if (data.dataValue && "html" == (data.type || data.mode)) {
 				try {
-					var node = jQuery(data.dataValue);
+					node = jQuery(data.dataValue);
 					ignore = node && node.attr("data-track-changes-ignore");
 				}
 				catch (e) {}
 			}
+			
 			if (ignore) {
 				return true;
 			}
-			if (true) {
-				if (data) {
-					this._tracker.insert();
+			//TODO check if we can just clean datavalue, call insert() and proceed
+			if ("string" == typeof data.dataValue) {
+				try {
+					var doc = this._editor.document.$,
+						container = doc.createElement("div");
+					container.innerHTML = String(data.dataValue);
+					container = this._tracker.getCleanDOM(container);
+					if (! container.innerHTML) {
+						return true;
+					}
+					toInsert = jQuery.makeArray(container.childNodes);
 				}
+				catch (e) {
+					this._logError("ice plugin paste:", e);
+				}
+			}
+			else if (node) {
+				toInsert = node;
+			}
+			else {
 				return true;
 			}
-			else {			
-				if (data && 'html' == data.type && data.dataValue) {
-					var changeid = this._tracker.startBatchChange();
-					try {
-						var doc = this._editor.document.$;
-						var container = doc.createElement("div");
-						container.innerHTML = String(data.dataValue);
-						container = this._tracker.getCleanDOM(container);
-						var childNode = container.firstChild;
-						do {
-							var nextNode = childNode.cloneNode(true);
-							this._tracker.insert(nextNode);
-						}
-						while (childNode = childNode.nextSibling);
-						evt.cancel();
-						this._onIceTextChanged();
-						return false;
-					}
-					catch (e) {
-						this._logError("ice plugin paste:", e);
-					}
-					finally {
-						this._tracker.endBatchChange(changeid);
-					}
-				}
+			if (toInsert) {
+				this._beforeInsert();
+				this._tracker.insert(toInsert);
+				this._afterInsert();
 			}
-			return true;
+			evt.cancel();
+			this._onIceTextChanged();
+			return false;
 		},
 		
 		/**
@@ -856,6 +877,25 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			}
 		},
 		
+		/**
+		 * Copied from ckeditor
+		 */
+		_beforeInsert: function() {
+			this._editor.fire( 'saveSnapshot' );
+		},
+
+		/**
+		 * Copied from ckeditor
+		 */
+		_afterInsert: function( ) {
+			var editor = this._editor;
+
+			editor.getSelection().scrollIntoView();
+			setTimeout( function() {
+				editor.fire( 'saveSnapshot' );
+			}, 0 );
+		},
+
 		_logError : function() {
 			var t = typeof console;
 			if (t != "undefined" && console.error) {
