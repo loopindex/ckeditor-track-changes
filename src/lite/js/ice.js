@@ -727,33 +727,16 @@
 			var onEdge = false;
 			var voidEl = this._getVoidElement(range && range.endContainer);
 			while (voidEl) {
-				// Move end of range to position it inside of any potential adjacent containers
-				// E.G.:	test|<em>text</em>	->	test<em>|text</em>
 				try {
-					range.moveEnd(ice.dom.CHARACTER_UNIT, 1);
-					//dfl				range.moveEnd(ice.dom.CHARACTER_UNIT, -1);					
-					
-					range.moveEnd(ice.dom.CHARACTER_UNIT, -1);
-				} catch (e) {
-					// Moving outside of the element and nothing is left on the page
-					onEdge = true;
-				}
-				if (onEdge || ice.dom.onBlockBoundary(range.endContainer, range.startContainer, this.blockEls)) {
 					range.setStartAfter(voidEl);
 					range.collapse(true);
+					var newVoidEl = this._getVoidElement(range && range.endContainer);
+					if (! newVoidEl || newVoidEl == voidEl) {
+						break;
+					}
+				}
+				catch (e) {
 					break;
-				}
-				var newVoidEl = this._getVoidElement(range.endContainer);
-				if (null == newVoidEl || newVoidEl == voidEl) {
-					voidEl = null;
-				}
-				if (voidEl){
-					range.setEnd(range.endContainer, 0);
-					range.moveEnd(ice.dom.CHARACTER_UNIT, ice.dom.getNodeCharacterLength(range.endContainer));
-					range.collapse();
-				} else {
-					range.setStart(range.endContainer, 0);
-					range.collapse(true);
 				}
 			}
 		},
