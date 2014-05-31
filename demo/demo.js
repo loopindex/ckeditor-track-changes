@@ -39,9 +39,9 @@ function f() {
 				lt.includeType = "debug";
 			} 
 			lt.userStyles = {
-				"21": 1,
-				"15": 2,
-				"18": 3
+				"21": 3,
+				"15": 1,
+				"18": 2
 			};
 		}
 	

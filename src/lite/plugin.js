@@ -25,16 +25,28 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			ACCEPT_ALL : "lite.AcceptAll",
 			REJECT_ALL : "lite.RejectAll",
 			ACCEPT_ONE : "lite.AcceptOne",
-			REJECT_ONE : "lite.RejectOne"
+			REJECT_ONE : "lite.RejectOne",
+			TOGGLE_TOOLTIPS: "lite.ToggleTooltips"
 		}
-	};
+	},
 	
-	var _emptyRegex = /^[\s\r\n]*$/, // for getting the clean text
+	tooltipDefaults = {
+		show: true,
+		path: "js/opentip-adapter.js",
+		classPath: "OpentipAdapter",
+		cssPath: "css/opentip.css",
+		delay: 500
+	},
+	
+	defaultTooltipTemplate = "Changed by %u %t",
+	
+	_emptyRegex = /^[\s\r\n]*$/, // for getting the clean text
 		_cleanRE = [{regex: /[\s]*title=\"[^\"]+\"/g, replace: "" },
 		            {regex: /[\s]*data-selected=\"[^\"]+\"/g, replace:""}
-					];
+					],
 	
-	var _pluginMap = [];
+	_pluginMap = [];
+	
 	function _findPluginIndex(editor) {
 		for (var i = _pluginMap.length; i--;) {
 			var rec = _pluginMap[i];
@@ -61,6 +73,70 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			editor : editor
 		});
 	}
+
+	function padString(s, length, padWith, bSuffix) {
+		if (null === s || (typeof(s) == "undefined")) {
+			s = "";
+		}
+		else {
+			s = String(s);
+		}
+		padWith = String(padWith);
+		var padLength = padWith.length;
+		for (var i = s.length; i < length; i += padLength) {
+			if (bSuffix) {
+				s += padWidth;
+			}
+			else {
+				s = padWith + s;
+			}
+		}
+		return s;
+	}
+	
+	function padNumber(s, length) {
+		return padString(s, length, '0');
+	}
+	
+	function relativeDateFormat(date) {
+		var now = new Date();
+		var today = now.getDate();
+		var month = now.getMonth();
+		var year = now.getFullYear();
+		
+		var t = typeof(date);
+		if (t == "string" || t == "number") {
+			date = new Date(date);
+		}
+		
+		var months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+		
+		if (today == date.getDate() && month == date.getMonth() && year == date.getFullYear()) {
+			var minutes = Math.floor((now.getTime() - date.getTime()) / 60000);
+			if (minutes < 1) {
+				return "now";
+			}
+			else if (minutes < 2) {
+				return "1 minute ago";
+			}
+			else if (minutes < 60) {
+				return (minutes + " minutes ago");
+			}
+			else {
+				var hours = date.getHours();
+				var minutes = date.getMinutes();
+				return "on " + padNumber(hours, 2) + ":" + padNumber(minutes, 2, "0");
+			}
+		} 
+		else if (year == date.getFullYear()) {
+			return "on " + months[date.getMonth()] + " " + date.getDate();
+		}
+		else {
+			return "on " + months[date.getMonth()] + " " + date.getDate() + ", " + date.getFullYear();
+		}
+	}	
+	
+	
 	CKEDITOR.plugins.add( 'lite',
 	{
 
@@ -78,8 +154,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		},
 		stylePrefix: 'ice-cts',
 		preserveOnPaste: 'p',
-		css: 'css/lite.css',
-		titleTemplate : "Changed by %u %t"
+		css: 'css/lite.css'
 	},
 	
 	_scriptsLoaded : null, // not false, which means we're loading
@@ -98,12 +173,20 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			_ieFix();
 			this._inited = true;
 		}
-		var path = this.path;
-		var plugin = new LITEPlugin(this.props, path);
+		var path = this.path,
+			plugin = new LITEPlugin(this.props, path),
+			liteConfig = jQuery.extend({}, ed.config.lite || {}),
+			ttConfig = liteConfig.tooltips || {};
+			
+		if (ttConfig === true) {
+			ttConfig = tooltipDefaults;
+		}
+		liteConfig.tooltips = ttConfig;
+		
 		addPlugin(ed, plugin);
-		plugin.init(ed);
+		
+		plugin.init(ed, liteConfig);
 
-		var liteConfig = ed.config.lite || {};
 	
 		ed.on("destroy", (function(editor) {
 			var ind = _findPluginIndex(editor);
@@ -112,13 +195,11 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			}
 		}).bind(this));
 		
-	
-		
-		if (this._scriptsLoaded == true) {
+		if (this._scriptsLoaded) {
 			plugin._onScriptsLoaded();
 			return;
 		}
-		else if (this._scriptsLoaded === false) {
+		else if (this._scriptsLoaded === false) { // still loading, initial value was null
 			return;
 		}
 		
@@ -126,13 +207,18 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		var	jQueryLoaded = (typeof(jQuery) == "function"),
 			self = this,
 			jQueryPath = liteConfig.jQueryPath || "js/jquery.min.js",
-			scripts = (liteConfig.includeType ? liteConfig["includes_" + liteConfig.includeType] : liteConfig.includes) || ["ice-includes.js"];
+			scripts = (liteConfig.includeType ? liteConfig["includes_" + liteConfig.includeType] : liteConfig.includes) || ["lite-includes.js"];
+		
+		scripts = scripts.slice(); // create a copy not referenced by the config
 		
 		for (var i = 0, len = scripts.length; i < len; ++i) {
 			scripts[i] = path + scripts[i]; 
 		}
 		if (! jQueryLoaded) {
 			scripts.splice(0, 0, this.path + jQueryPath);
+		}
+		if (ttConfig.path) {
+			scripts.push(this.path + ttConfig.path);
 		}
 		
 		var load1 = function() {
@@ -173,14 +259,15 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 				this.props[key] = props[key];
 			}
 		}
-	}
+	};
 
 	LITEPlugin.prototype = {
 		/**
 		 * Called by CKEditor to init the plugin
 		 * @param ed an instance of CKEditor
+		 * @param {Object} config a configuration object, not null, ready to be used as a local copy
 		 */
-		init: function(ed) {
+		init: function(ed, config) {
 			this._editor = ed;
 			this._domLoaded =  false;
 			this._editor =  null;
@@ -194,10 +281,9 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			this._changeTimeout = null;
 			this._boundNotifyChange = this._notifyChange.bind(this);
 
-			var liteConfig = ed.config.lite || {};
-			this._config = CKEDITOR.tools.extend({}, liteConfig);
+			this._config = config;
 			
-			var allow = liteConfig.acceptRejectInReadOnly === true;
+			var allow = config.acceptRejectInReadOnly === true;
 			var commandsMap = 	[	
 				{ command : LITE.Commands.TOGGLE_TRACKING,
 					exec : this._onToggleTracking, 
@@ -239,10 +325,15 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 					title:"Reject Change",
 					icon:"reject_one.png",
 					readOnly : allow
+				},
+				{
+					command:LITE.Commands.TOGGLE_TOOLTIPS,
+					exec:this._onToggleTooltips,
+					readOnly : true
 				}
 			];
 		
-			this._isTracking = liteConfig.isTracking !== false;
+			this._isTracking = config.isTracking !== false;
 			this._eventsBounds = false;
 		
 			ed.on("contentDom", (function(dom) {
@@ -250,7 +341,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			}).bind(this));
 			var path = this.path;
 		
-			var commands = liteConfig.commands || [LITE.Commands.TOGGLE_TRACKING, LITE.Commands.TOGGLE_SHOW, LITE.Commands.ACCEPT_ALL, LITE.Commands.REJECT_ALL, LITE.Commands.ACCEPT_ONE, LITE.Commands.REJECT_ONE];
+			var commands = config.commands || [LITE.Commands.TOGGLE_TRACKING, LITE.Commands.TOGGLE_SHOW, LITE.Commands.ACCEPT_ALL, LITE.Commands.REJECT_ALL, LITE.Commands.ACCEPT_ONE, LITE.Commands.REJECT_ONE];
 		
 			var self = this;
 			
@@ -260,7 +351,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 					readOnly: rec.readOnly || false
 				});
 		
-				if (commands.indexOf(rec.command) >= 0) { // configuration doens't include this command
+				if (rec.icon && rec.title && commands.indexOf(rec.command) >= 0) { // configuration doens't include this command
 					var name = self._commandNameToUIName(rec.command);
 					ed.ui.addButton(name, {
 						label : rec.title,
@@ -318,16 +409,18 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		},
 		
 		/**
-		 * Change the state of change tracking for the change editor associated with this plugin
-		 * @param track if bool, set the tracking state to this value, otherwise toggle the state
-		 * @param bNotify if not false, dispatch the TRACKING event
+		 * Change the state of change tracking for the change editor associated with this plugin.
+		 * Toggles tracking visibility in accordance with the tracking state. 
+		 * @param {Boolean} track if undefined - toggle the state, otherwise set the tracking state to this value, 
+		 * @param {Boolean} bNotify if not false, dispatch the TRACKING event
 		 */	
 		toggleTracking: function(track, bNotify) {
-			var tracking = (typeof(track) == "undefined") ? (! this._isTracking) : track;
+			var tracking = (undefined === track) ? ! this._isTracking : track,
+				e = this._editor;
 			this._isTracking = tracking;
 		
 			for (var i = this._liteCommandNames.length - 1; i >= 0; --i) {
-				var cmd = this._editor.getCommand(this._liteCommandNames[i]);
+				var cmd = e.getCommand(this._liteCommandNames[i]);
 				if (cmd) {
 					if (tracking) {
 						cmd.enable();
@@ -338,21 +431,16 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 				}
 			}
 			
-			if (tracking) {
-				this._tracker.enableChangeTracking();
-				this.toggleShow(true);
-			}
-			else {
-				this._tracker.disableChangeTracking();
-				this.toggleShow(false);
-			}
-			var ui = this._editor.ui.get(this._commandNameToUIName(LITE.Commands.TOGGLE_TRACKING));
+			this._updateTrackingState();
+			this.toggleShow(tracking, false);
+
+			var ui = e.ui.get(this._commandNameToUIName(LITE.Commands.TOGGLE_TRACKING));
 			if (ui) {
 				ui.setState(tracking ? CKEDITOR.TRISTATE_ON : CKEDITOR.TRISTATE_OFF);
 				this._setButtonTitle(ui, tracking ? 'Stop tracking changes' : 'Start tracking changes');
 			}
 			if (bNotify !== false) {
-				this._editor.fire(LITE.Events.TRACKING, {tracking:tracking});
+				e.fire(LITE.Events.TRACKING, {tracking:tracking});
 			}
 		},
 		
@@ -417,15 +505,15 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		 */
 		setUserInfo : function(info) {
 			info = info || {};
+			this._config.userId = String(info.id);
+			this._config.userName = info.name || "";
 			if (this._tracker) {
-				this._tracker.setCurrentUser({id: info.id || "14", name : info.name || "user"});
+				this._tracker.setCurrentUser({ id: this._config.userId, name : this._config.userName });
 			}
-			if (this._editor) {
+/*			if (this._editor) {
 				var lite = this._editor.config.lite || {};
-				lite.userId = info.id;
-				lite.userName = info.name;
 				this._editor.config.lite = lite;
-			};
+			}; */
 		},
 		
 		/**
@@ -525,14 +613,21 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		
 		_loadCSS : function(doc) {
 			var head = doc.getElementsByTagName("head")[0];
-			var style = jQuery(head).find("#__lite__css__");
-			if (! style.length) {
-				var style = doc.createElement("link");
-				style.setAttribute("rel", "stylesheet");
-				style.setAttribute("type", "text/css");
-				style.setAttribute("id", "__lite__css__");
-				style.setAttribute("href", this.path + "css/lite.css");
-				head.appendChild(style);
+			function load(path, id) {
+				var style = jQuery(head).find('#' + id);
+				if (! style.length) {
+					style = doc.createElement("link");
+					style.setAttribute("rel", "stylesheet");
+					style.setAttribute("type", "text/css");
+					style.setAttribute("id", id);
+					style.setAttribute("href", path);
+					head.appendChild(style);
+				}
+			}
+			load(this.path + "css/lite.css", "__lite__css__");
+			
+			if (this._config.tooltips.cssPath) {
+				load(this.path + this._config.tooltips.cssPath, "__lite_tt_css__");
 			}
 		},
 		
@@ -541,16 +636,11 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 				return;
 			}
 			// leave some time for initing, seems to help...
-			setTimeout(this._afterReady.bind(this), 20);
+			setTimeout(this._afterReady.bind(this), 5);
 		},
 		
 		_getBody : function() {
 			try {
-/*				var mode = this._editor.elementMode;
-				if (CKEDITOR.ELEMENT_MODE_INLINE == mode) {
-					return this._editor.element.$;
-				} */
-					
 				return this._editor.editable().$;
 			}
 			catch (e) {
@@ -561,7 +651,8 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		_afterReady : function() {
 			var e = this._editor,
 				doc = e.document.$,
-				body = this._getBody();
+				body = this._getBody(),
+				config = this._config;
 			
 			this._loadCSS(doc);
 			
@@ -579,6 +670,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 				e.on("insertText", paste, null, null, 1);
 				e.on("insertElement", paste, null, null, 1);
 				e.on("mode", this._onModeChange.bind(this), null, null, 1);
+				e.on("readOnly", this._onReadOnly.bind(this));
 			}
 			
 			if (this._tracker) {
@@ -590,28 +682,42 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			}
 		
 			if (null == this._tracker) {
-				var config = e.config.lite || {};
 				var iceprops = {
-						element: body,
-						isTracking: true,
-						handleEvents : true,
-						mergeBlocks : true,
-						currentUser: {
-							id: config.userId || "",
-							name: config.userName || ""
+					element: body,
+					isTracking: true,
+					handleEvents : true,
+					mergeBlocks : true,
+					currentUser: {
+						id: config.userId || "",
+						name: config.userName || ""
+					},
+					userStyles: config.userStyles,
+					changeTypes: {
+						insertType: {tag: this.props.insertTag, alias: this.props.insertClass, action:"Inserted"},
+						deleteType: {tag: this.props.deleteTag, alias: this.props.deleteClass, action:"Deleted"}
+					},
+					hostMethods: {
+						getHostRange : this._getHostRange.bind(this),
+						makeHostElement: function(node) {
+							return new CKEDITOR.dom.element(node);
 						},
-						userStyles: config.userStyles,
-						plugins: [
-						],
-						changeTypes: {
-							insertType: {tag: this.props.insertTag, alias: this.props.insertClass, action:"Inserted"},
-							deleteType: {tag: this.props.deleteTag, alias: this.props.deleteClass, action:"Deleted"}
-						},
-						insertHook: (function(node) {
-							debugger
-							this._editor.getSelection().selectElement(new CKEDITOR.dom.element(node));
-						}).bind(this)
+						setHostRange: this._setHostRange.bind(this)
+					},
+					tooltips: config.tooltips.show,
+					tooltipsDelay: config.tooltips.delay
 				};
+				if (config.tooltips.classPath) {
+					this._tooltipsHandler = new window[config.tooltips.classPath]();
+					if (! this._tooltipsHandler) {
+						this._logError("Unable to create tooltip handler", config.tooltips.classPath);
+					}
+					else {
+						this._tooltipsHandler.init(config.tooltips);
+						iceprops.hostMethods.showTooltip = this._showTooltip.bind(this);
+						iceprops.hostMethods.hideTooltip = this._hideTooltip.bind(this);
+					}
+				}
+
 				jQuery.extend(iceprops, this.props);
 				this._tracker = new ice.InlineChangeEditor(iceprops);
 				try {
@@ -664,6 +770,10 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			}
 		},
 		
+		_onToggleTooltips: function(event) {
+			this._tracker && this._tracker.toggleTooltips();
+		},
+		
 		/**
 		 * Clean up empty ICE elements
 		 */
@@ -687,18 +797,18 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		},
 		
 		_onModeChange: function(evt){
-			var mode = evt.editor && evt.editor.mode;
-			switch (mode) {
-				case "source":
-					this._tracker && this._tracker.disableChangeTracking();
-					break;
-				case "wysiwyg":
-					if (this._tracker && this._isTracking) {
-						this._tracker.enableChangeTracking();
-					}
-					break;
+			this._updateTrackingState();			
+		},
+		
+		_onReadOnly: function(evt){
+			this._updateTrackingState();			
+		},
+		
+		_updateTrackingState: function() {
+			if (this._tracker) {
+				var track = this._isTracking && this._editor.mode == "wysiwyg" && ! this._editor.readOnly;
+				this._tracker.toggleChangeTracking(track);
 			}
-			
 		},
 
 		/**
@@ -861,19 +971,37 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 					});
 				}
 				
-				for (var i = 0; i < features.length; ++i) {
-//					editor.filter.addFeature({ allowedContent: features[i] });
-				}
-				
-		/*		ed.filter.addFeature({
-					allowedContent:'span(ice-ins,ice-del,cts-1,cts-2,cts-3)'
-				});
-				ed.filter.addFeature({
-					allowedContent:'span[data-cid,data-time,data-userdata,data-userid,data-username,title]'
-				}); */
 			}
 			catch (e){
 				this._logError(e);
+			}
+		},
+		
+		_setHostRange: function(range) {
+			var selection = this._editor && this._editor.getSelection();
+			if (selection) {
+				selection.selectRanges([range]);
+			}
+		},
+
+		_getHostRange: function() {
+			var selection = this._editor && this._editor.getSelection(),
+				ranges = selection && selection.getRanges(),
+				range = ranges && ranges[0];
+			return range || null;
+		},
+		
+		_showTooltip: function(node, change) {
+			var config = this._config.tooltips;
+			if (config.show && this._tooltipsHandler) {
+				var title = this._makeTooltipTitle(change);
+				this._tooltipsHandler.showTooltip(node, title);
+			}
+		},
+		
+		_hideTooltip: function(node) {
+			if (this._tooltipsHandler) {
+				this._tooltipsHandler.hideTooltip(node);
 			}
 		},
 		
@@ -891,9 +1019,9 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			var editor = this._editor;
 
 			editor.getSelection().scrollIntoView();
-			setTimeout( function() {
+/*			setTimeout( function() {
 				editor.fire( 'saveSnapshot' );
-			}, 0 );
+			}, 0 ); */
 		},
 
 		_logError : function() {
@@ -902,7 +1030,28 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 				var args = Array.prototype.slice.apply(arguments);
 				console.error(args.join(' '));
 			}
+		},
+		
+		_makeTooltipTitle: function(change) {
+			var title = this._config.tooltipTemplate || defaultTooltipTemplate;
+			var time = new Date(change.time);
+			title = title.replace(/%t/g, relativeDateFormat(time));
+			title = title.replace(/%u/g, change.username);
+			title = title.replace(/%dd/g, padNumber(time.getDate(), 2));
+			title = title.replace(/%d/g, time.getDate());
+			title = title.replace(/%mm/g, padNumber(time.getMonth() + 1, 2));
+			title = title.replace(/%m/g, time.getMonth() + 1);
+			title = title.replace(/%yy/g, padNumber(time.getYear() - 100, 2));
+			title = title.replace(/%y/g, time.getFullYear());
+			title = title.replace(/%nn/g, padNumber(time.getMinutes(), 2));
+			title = title.replace(/%n/g, time.getMinutes());
+			title = title.replace(/%hh/g, padNumber(time.getHours(), 2));
+			title = title.replace(/%h/g, time.getHours());
+
+			return title;
 		}
+		
+
 		
 	};
 	

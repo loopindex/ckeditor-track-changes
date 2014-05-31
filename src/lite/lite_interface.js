@@ -24,6 +24,7 @@ var LITE = {
 		ACCEPT_ALL : "lite.AcceptAll",
 		REJECT_ALL : "lite.RejectAll",
 		ACCEPT_ONE : "lite.AcceptOne",
-		REJECT_ONE : "lite.RejectOne"
+		REJECT_ONE : "lite.RejectOne",
+		TOGGLE_TOOLTIPS: "lite.ToggleTooltips"
 	}
-}
+};

@@ -1,6 +1,7 @@
 (function () {
 	var exports = this,
-		dom = {};
+		dom = {},
+		_browser = null;
 
 	dom.DOM_VK_DELETE = 8;
 	dom.DOM_VK_LEFT = 37;
@@ -24,8 +25,8 @@
 	dom.WORD_UNIT = 'word';
 	dom.BREAK_ELEMENT = 'br';
 	dom.CONTENT_STUB_ELEMENTS = ['img', 'hr', 'iframe', 'param', 'link', 'meta', 'input', 'frame', 'col', 'base', 'area'];
-	dom.BLOCK_ELEMENTS = ['p', 'div', 'pre', 'ul', 'ol', 'li', 'table', 'tbody', 'td', 'th', 'fieldset', 'form', 'blockquote', 'dl', 'dt', 'dd', 'dir', 'center', 'address', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'];
-	dom.TEXT_CONTAINER_ELEMENTS = ['p', 'div', 'pre', 'li', 'td', 'th', 'blockquote', 'dt', 'dd', 'center', 'address', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'];
+	dom.BLOCK_ELEMENTS = ['body', 'p', 'div', 'pre', 'ul', 'ol', 'li', 'table', 'tbody', 'td', 'th', 'fieldset', 'form', 'blockquote', 'dl', 'dt', 'dd', 'dir', 'center', 'address', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'];
+	dom.TEXT_CONTAINER_ELEMENTS = ['body','p', 'div', 'pre', 'li', 'td', 'th', 'blockquote', 'dt', 'dd', 'center', 'address', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'];
 
 	dom.STUB_ELEMENTS = dom.CONTENT_STUB_ELEMENTS.slice();
 	dom.STUB_ELEMENTS.push(dom.BREAK_ELEMENT);
@@ -755,50 +756,56 @@
 			return resCont;
 		}
 	};
-
+	
 	dom.browser = function () {
-
+		if (_browser) {
+			return jQuery.extend({}, _browser);
+		}
 		
-		function uaMatch( ua ) {
-			ua = ua.toLowerCase();
-
-			var match = /(chrome)[ \/]([\w.]+)/.exec( ua ) ||
-				/(webkit)[ \/]([\w.]+)/.exec( ua ) ||
-				/(opera)(?:.*version|)[ \/]([\w.]+)/.exec( ua ) ||
-				/(msie) ([\w.]+)/.exec( ua ) ||
-				ua.indexOf("compatible") < 0 && /(mozilla)(?:.*? rv:([\w.]+)|)/.exec( ua ) ||
-				[];
-
-			return {
-				browser: match[ 1 ] || "",
-				version: match[ 2 ] || "0"
+		_browser = (function() {
+			function uaMatch( ua ) {
+				ua = ua.toLowerCase();
+	
+				var match = /(chrome)[ \/]([\w.]+)/.exec( ua ) ||
+					/(webkit)[ \/]([\w.]+)/.exec( ua ) ||
+					/(opera)(?:.*version|)[ \/]([\w.]+)/.exec( ua ) ||
+					/(msie) ([\w.]+)/.exec( ua ) ||
+					ua.indexOf("compatible") < 0 && /(mozilla)(?:.*? rv:([\w.]+)|)/.exec( ua ) ||
+					[];
+	
+				return {
+					browser: match[ 1 ] || "",
+					version: match[ 2 ] || "0"
+				};
 			};
-		};
-
-		var matched = uaMatch( navigator.userAgent );
-		var browser = {
-			type: "unknown",
-			version : 0
-		};
-
-		if ( matched.browser ) {
-			browser[ matched.browser ] = true;
-			browser.version = matched.version || 0;
-			browser.type = matched.browser;
-		}
-
-		// Chrome is Webkit, but Webkit is also Safari.
-		if ( browser.chrome ) {
-			browser.webkit = true;
-		} else if ( browser.webkit ) {
-			browser.safari = true;
-		}
-		if (browser.webkit) {
-			browser.type = "webkit";
-		}
-		browser.firefox = (/Firefox/.test(navigator.userAgent) == true);
+	
+			var matched = uaMatch( navigator.userAgent );
+			var browser = {
+				type: "unknown",
+				version : 0
+			};
+	
+			if ( matched.browser ) {
+				browser[ matched.browser ] = true;
+				browser.version = matched.version || 0;
+				browser.type = matched.browser;
+			}
+	
+			// Chrome is Webkit, but Webkit is also Safari.
+			if ( browser.chrome ) {
+				browser.webkit = true;
+			} else if ( browser.webkit ) {
+				browser.safari = true;
+			}
+			if (browser.webkit) {
+				browser.type = "webkit";
+			}
+			browser.firefox = (/Firefox/.test(navigator.userAgent) == true);
+			
+			return browser;
+		})();
 		
-		return browser;
+		return jQuery.extend({}, _browser);
 	};
 
 	dom.getBrowserType = function () {

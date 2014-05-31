@@ -1,28 +1,7 @@
 (function () {
 
-// fomatting for the tooltips
-	function padString(s, length, padWith, bSuffix) {
-		if (null === s || (typeof(s) == "undefined")) {
-			s = "";
-		}
-		else {
-			s = String(s);
-		}
-		padWith = String(padWith);
-		var padLength = padWith.length;
-		for (var i = s.length; i < length; i += padLength) {
-			if (bSuffix) {
-				s += padWidth;
-			}
-			else {
-				s = padWith + s;
-			}
-		}
-		return s;
-	}
-	
-	function padNumber(s, length) {
-		return padString(s, length, '0');
+	function nativeElement(e) {
+		return e;
 	}
 	
 	var exports = this,
@@ -44,7 +23,7 @@
 		blockEl: 'p',
 		
 		// All permitted block element tagnames
-		blockEls: ['p', 'ol', 'ul', 'li', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'blockquote'],
+		blockEls: ['div','p', 'ol', 'ul', 'li', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'blockquote'],
 		
 		// Unique style prefix, prepended to a digit, incremented for each encountered user, and stored
 		// in ice node class attributes - cts1, cts2, cts3, ...
@@ -82,22 +61,24 @@
 		contentEditable: undefined,//dfl, start with a neutral value
 	
 		// Switch for toggling track changes on/off - when `false` events will be ignored.
-		isTracking: true,
+		_isTracking: true,
 	
 		// NOT IMPLEMENTED - Selector for elements that will not get track changes
 		noTrack: '.ice-no-track',
+		
+		tooltips: false, //dfl
+		
+		tooltipsDelay: 200, //dfl
 	
 		// Switch for whether paragraph breaks should be removed when the user is deleting over a
 		// paragraph break while changes are tracked.
 		mergeBlocks: true,
 		
-		titleTemplate : null, // dfl, no title by default
-		
-		isVisible : true, // dfl, state of change tracking visibility
+		_isVisible : true, // dfl, state of change tracking visibility
 		
 		_changeData : null, //dfl, a string you can associate with the current change set, e.g. version
 		
-		_handleSelectAll: false // dfl, if true, handle ctrl/cmd-A in the change tracker
+		_handleSelectAll: false, // dfl, if true, handle ctrl/cmd-A in the change tracker
 	};
 
 	InlineChangeEditor = function (options) {
@@ -105,6 +86,10 @@
 		// Data structure for modelling changes in the element according to the following model:
 		//	[changeid] => {`type`, `time`, `userid`, `username`}
 		options || (options = {});
+		if (!options.element) {
+			throw new Error("`options.element` must be defined for ice construction.");
+		}
+	
 		this._changes = {};
 		// Tracks all of the styles for users according to the following model:
 		//	[userId] => styleId; where style is "this.stylePrefix" + "this.uniqueStyleIndex"
@@ -113,12 +98,13 @@
 		this._refreshInterval = null; // dfl
 		this.$this = jQuery(this);
 		this._browser = ice.dom.browser();
+		this._tooltipMouseOver = this._tooltipMouseOver.bind(this);
+		this._tooltipMouseOut = this._tooltipMouseOut.bind(this);
 		
-		if (!options.element) {
-			throw Error("`options.element` must be defined for ice construction.");
-		}
-	
 		ice.dom.extend(true, this, defaults, options);
+		if (options.tooltips && (! jQuery.isFunction(options.hostMethods.showTooltip) || ! jQuery.isFunction(options.hostMethods.hideTooltip))) {
+			throw new Error("hostMethods.showTooltip and hostMethods.hideTooltip must be defined if tooltips is true");
+		}
 		var us = options.userStyles || {}; // dfl, moved from prototype, allow preconfig
 		for (var id in us) {
 			if (us.hasOwnProperty(id)) {
@@ -172,7 +158,7 @@
 			this.initializeEnvironment();
 			this.initializeEditor();
 			this.initializeRange();
-			this._setInterval(); //dfl
+			this._updateTooltipsState(); //dfl
 			
 			return this;
 		},
@@ -197,7 +183,7 @@
 			}
 			catch (e){}
 
-			this._setInterval();
+			this._updateTooltipsState();
 			return this;
 		},
 	
@@ -253,23 +239,39 @@
 			}
 //			this.element.innerHTML = body.innerHTML; */
 			this._loadFromDom(); // refactored by dfl
-			this._setInterval(); // dfl
+			this._updateTooltipsState(); // dfl
+		},
+		
+		/**
+		 * Check whether or not this tracker is tracking changes.
+		 * @return {Boolean} Is this tracker tracking?
+		 */
+		isTracking: function() {
+			return this._isTracking;
 		},
 	
 		/**
 		 * Turn on change tracking and event handling.
 		 */
 		enableChangeTracking: function () {
-			this.isTracking = true;
+			this._isTracking = true;
 		},
 	
 		/**
 		 * Turn off change tracking and event handling.
 		 */
 		disableChangeTracking: function () {
-			this.isTracking = false;
+			this._isTracking = false;
 		},
 	
+		/**
+		 * Sets or toggles the tracking and event handling state.
+		 * @param {Boolean} bTrack if undefined, the tracking state is toggled, otherwise set to the parameter
+		 */
+		toggleChangeTracking: function (bTrack) {
+			bTrack = (undefined === bTrack) ? ! this._isTracking : !!bTrack;
+			this._isTracking = bTrack;
+		},
 		/**
 		 * Set the user to be tracked. A user object has the following properties:
 		 * {`id`, `name`}
@@ -277,6 +279,16 @@
 		setCurrentUser: function (user) {
 			this.currentUser = user;
 			this._updateUserData(user); // dfl, update data dependant on the user details
+		},
+		
+		/**
+		 * Sets or toggles the tooltips state.
+		 * @param {Boolean} bTooltips if undefined, the tracking state is toggled, otherwise set to the parameter
+		 */
+		toggleTooltips: function(bTooltips) {
+			bTooltips = (undefined === bTooltips) ? ! this.tooltips : !!bTooltips;
+			this.tooltips = bTooltips;
+			this._updateTooltipsState();
 		},
 	
 		/**
@@ -286,7 +298,7 @@
 		 * was fully handled.
 		 */
 		handleEvent: function (e) {
-			if (!this.isTracking) {
+			if (!this._isTracking) {
 				return true;
 			}
 			if (e.type == 'keypress') {
@@ -333,11 +345,14 @@
 		 * is used. If the range is in a parent delete node, then the range is positioned after the delete.
 		 */
 		insert: function (nodes) {
-			var range = this.getCurrentRange();
+			var range = this.getCurrentRange(),
+				hostRange = range ? null : this.hostMethods.getHostRange(),
 				changeid = this._batchChangeid ? null : this.startBatchChange();
+			
+			
 		// If we have any nodes selected, then we want to delete them before inserting the new text.
 			if (range && !range.collapsed) {
-				this.deleteContents(false, null, true); //don't trigger text changed
+				this.deleteContents(false, range, hostRange); 
 			// Update the range
 				range = this.getCurrentRange();
 				if (range.startContainer === range.endContainer && this.element === range.startContainer) {
@@ -349,15 +364,19 @@
 					range.collapse(true);
 				}
 			}
+			else if (! range && ! nodes) {
+				// prepare for insertion when there's no selection - just ignore
+				return true;
+			}
 			
 			if (nodes && ! jQuery.isArray(nodes)) {
 				nodes = [nodes];
 			}
 	
 			// If we are in a non-tracking/void element, move the range to the end/outside.
-			this._moveRangeToValidTrackingPos(range);
+			this._moveRangeToValidTrackingPos(range, hostRange);
 	
-			this._insertNodes(range, nodes);
+			this._insertNodes(range, hostRange, nodes);
 			this.endBatchChange(changeid);
 			return true;//isPropagating;
 		},
@@ -716,26 +735,33 @@
 		 */
 		getIceNode: function (node, changeType) {
 			var selector = '.' + this._getIceNodeClass(changeType);
-			return ice.dom.getNode(node, selector);
+			return ice.dom.getNode((node && node.$) || node, selector);
 		},
 	
 		/**
 		 * Sets the given `range` to the first position, to the right, where it is outside of
 		 * void elements.
 		 */
-		_moveRangeToValidTrackingPos: function (range) {
-			var onEdge = false;
-			var voidEl = this._getVoidElement(range && range.endContainer);
-			while (voidEl) {
-				try {
-					range.setStartAfter(voidEl);
-					range.collapse(true);
-					var newVoidEl = this._getVoidElement(range && range.endContainer);
-					if (! newVoidEl || newVoidEl == voidEl) {
-						break;
-					}
+		_moveRangeToValidTrackingPos: function (range, hostRange) {
+			// set range to hostRange if available
+			if (! (range = hostRange || range)) {
+				return;
+			}
+			var voidEl,
+				prevVoidEl = null;
+			while (voidEl = this._getVoidElement(range && range.endContainer)) {
+				if (hostRange) {
+					voidEl = this.hostMethods.makeHostElement(voidEl);
 				}
-				catch (e) {
+				// if we're stuck on the same node, exit
+				if (voidEl == prevVoidEl || (hostRange && voidEl.equals(prevVoidEl))) {
+					break;
+				}
+				try { 
+					range.setEndAfter(voidEl);
+					range.collapse();
+				}
+				catch (e) { // if we can't set the selection for whatever reason, end of document etc., break
 					break;
 				}
 			}
@@ -762,9 +788,18 @@
 		 * dfl: added try/catch
 		 */
 		_getVoidElement: function (node) {
+			
+			if (node.$) {
+				node = node.$;
+			}
 			try {
-				var voidSelector = this._getVoidElSelector();
-				return ice.dom.is(node, voidSelector) ? node : (ice.dom.parents(node, voidSelector)[0] || null);
+				var voidSelector = this._getVoidElSelector(),
+					voidParent = ice.dom.is(node, voidSelector) ? node : (ice.dom.parents(node, voidSelector)[0] || null);
+				if (! voidParent) {
+					if (3 == node.nodeType && node.nodeValue == '\u200B') {
+						return node;
+					}
+				}
 			}
 			catch(e) {
 				return null;
@@ -894,15 +929,11 @@
 			var style = this.getUserStyle(change.userid);
 			if (!ice.dom.hasClass(ctNode, style)) ice.dom.addClass(ctNode, style);
 			/* Added by dfl */
-			this._setNodeTitle(ctNode, change);
+			this._updateNodeTooltip(ctNode);
 		},
 	
 		getChange: function (changeid) {
-			var change = null;
-			if (this._changes[changeid]) {
-			change = this._changes[changeid];
-			}
-			return change;
+			return this._changes[changeid] || null;
 		},
 	
 		getNewChangeId: function () {
@@ -935,11 +966,17 @@
 		},
 	
 		// passed compare, 2 changes below
-		_insertNodes: function (range, nodes) {
-			if (!ice.dom.isBlockElement(range.startContainer) && 
-					!ice.dom.canContainTextElement(ice.dom.getBlockParent(range.startContainer, this.element)) && 
-					range.startContainer.previousSibling) {
-				range.setStart(range.startContainer.previousSibling, 0);
+		_insertNodes: function (_range, hostRange, nodes) {
+			var range = hostRange || _range,
+				_start = range.startContainer,
+				start = (_start && _start.$) || _start,
+				f = hostRange ? this.hostMethods.makeHostElement : nativeElement;
+			
+			if (!ice.dom.isBlockElement(start) && 
+				!ice.dom.canContainTextElement(ice.dom.getBlockParent(start, this.element)) && 
+				start.previousSibling) {
+				range.setStart(f(start.previousSibling), 0);
+				start = hostRange? hostRange.startContainer && hostRange.startContainer.$ : range.startContainer;
 			}
 //			var startContainer = range.startContainer;
 //				parentBlock = ice.dom.isBlockElement(startContainer) && startContainer || ice.dom.getBlockParent(startContainer, this.element) || null;
@@ -957,15 +994,16 @@
 				range.setStart(parentBlock, 0);
 			} */
 	
-			var ctNode = this.getIceNode(range.startContainer, 'insertType'),
+			var ctNode = this.getIceNode(start, 'insertType'),
 				inCurrentUserInsert = this._currentUserIceNode(ctNode);
 	
 			// Do nothing, let this bubble-up to insertion handler.
 			if (inCurrentUserInsert) {
-				if (nodes && nodes[0]) {
-					range.insertNode(nodes[0]);
-					var parent = nodes[0].parentNode,
-						sibling = nodes[0].nextSibling;
+				var head = nodes && nodes[0];
+				if (head) {
+					range.insertNode(f(head));
+					var parent = head.parentNode,
+						sibling = head.nextSibling;
 					for (var i = 1; i < nodes.length; ++i) {
 						if (sibling) {
 							parent.insertBefore(nodes[i], sibling);
@@ -983,33 +1021,47 @@
 					var nChildren = ctNode.childNodes.length;
 					ctNode.normalize();
 					if (nChildren != ctNode.childNodes.length) {
-						range = this.getCurrentRange();
+						if (hostRange) {
+							hostRange = range = this.hostMethods.getHostRange();
+						}
+						else {
+							range = this.getCurrentRange();
+						}
 					}
-					if (ctNode && (range.endOffset < range.endContainer.length)) {
-						ctNode = this._splitNode(ctNode, range.endContainer, range.endOffset);
+					if (ctNode) {
+						var end = (hostRange && hostRange.endContainer.$) || range.endContainer;
+						if ((end.nodeType == 3 && range.endOffset < range.endContainer.length) || (end != ctNode.lastChild)) {
+							ctNode = this._splitNode(ctNode, range.endContainer, range.endOffset);
+						}
 		//				range.setEndAfter(ctNode);
 		//				range.collapse();
 					}
 				}
 				if (ctNode) {
-					range.setStartAfter(ctNode);
+					range.setStartAfter(f(ctNode));
 					range.collapse(true);
 				}
 	
-				range.insertNode(node);
-				var len = nodes && nodes.length;
+				range.insertNode(f(node));
+				var len = (nodes && nodes.length) || 0;
 				if (len) {
 					for (var i = 0; i < len; ++i) {
 						node.appendChild(nodes[i]);
 					}
-					range.setStartAfter(node.lastChild);
+					range.setStartAfter(f(node.lastChild));
 				}
 				else {
 					var tn = this.element.ownerDocument.createTextNode('\uFEFF');
 					node.appendChild(tn);
+					tn = f(tn);
 					range.setStartAndEnd(tn, 0, tn, 1);
 				}
-				this.selection.addRange(range);
+				if (hostRange) {
+					this.hostMethods.setHostRange(hostRange);
+				}
+				else {
+					this.selection.addRange(range);
+				}
 			}			
 
 // Added by dfl
@@ -1824,7 +1876,7 @@
 			var $body = jQuery(this.element);
 			$body.toggleClass("ICE-Tracking", bShow);
 			this._showTitles(bShow);
-			this._setInterval();
+			this._updateTooltipsState();
 		},
 	
 		reload : function() {
@@ -1881,32 +1933,13 @@
 		_triggerChangeText : function() {
 			this.$this.trigger("textChange");
 		},
-	
-		_setNodeTitle : function(node, change) {
-			if (! change || ! this.titleTemplate) {
-				return null;
-			}
-			var title = this.titleTemplate;
-			var time = change ? change.time : parseInt(node.getAttribute(this.attributes.time) || 0);
-			time = new Date(time);
-			var userName = (change ? change.username : (node.getAttribute(this.attributes.userName) || "")) || "(Unknown)";
-			title = title.replace(/%t/g, this._relativeDateFormat(time));
-			title = title.replace(/%u/g, userName);
-			title = title.replace(/%dd/g, padNumber(time.getDate(), 2));
-			title = title.replace(/%d/g, time.getDate());
-			title = title.replace(/%mm/g, padNumber(time.getMonth() + 1, 2));
-			title = title.replace(/%m/g, time.getMonth() + 1);
-			title = title.replace(/%yy/g, padNumber(time.getYear() - 100, 2));
-			title = title.replace(/%y/g, time.getFullYear());
-			title = title.replace(/%nn/g, padNumber(time.getMinutes(), 2));
-			title = title.replace(/%n/g, time.getMinutes());
-			title = title.replace(/%hh/g, padNumber(time.getHours(), 2));
-			title = title.replace(/%h/g, time.getHours());
-			node.setAttribute("title", title);
-	
-			return title;
-		},
 		
+		_updateNodeTooltip: function(node) {
+			if (this.tooltips && this._isTracking && this._isVisible) {
+				this._addTooltip(node);
+			}
+		},
+	
 		_acceptRejectSome : function(options, isAccept) {
 			var f = (function(index, node) {
 				this.acceptRejectChange(node, isAccept);
@@ -2004,7 +2037,7 @@
 					data : changeData
 				};
 				this._changes[changeid] = change;
-				this._setNodeTitle(el, change);
+				this._updateNodeTooltip(el);
 			}
 			nodes.each(f.bind(this));
 			this._triggerChange();
@@ -2025,12 +2058,6 @@
 				if (user && match) {
 					node.setAttribute(this.userNameAttribute, user.name);
 				}
-				if (match && this._isVisible) {
-					var change = this._changes[node.getAttribute(this.attributes.changeId)];
-					if (change) {
-						this._setNodeTitle(node, change);
-					}
-				}
 			}).bind(this));
 		},
 		
@@ -2038,11 +2065,7 @@
 			var nodes = this.getIceNodes();
 			if (bShow) {
 				jQuery(nodes).each((function(i, node) {
-					var changeId = node.getAttribute(this.attributes.changeId);
-					var change = changeId && this._changes[changeId];
-					if (change) {
-						this._setNodeTitle(node, change)
-					}
+					this._updateNodeTooltip(node);
 				}).bind(this));
 			}
 			else {
@@ -2050,59 +2073,57 @@
 			}
 		},
 		
-		_setInterval : function() {
-			if (this.isTracking && this.isVisible) {
-				if (! this._refreshInterval) {
-					this._refreshInterval = setInterval((function() {
-						this._updateUserData(null);
-					}).bind(this), 60000);
+		_updateTooltipsState: function() {
+			if (this.tooltips && this._isTracking && this._isVisible) {
+				if (! this._showingTips) {
+					this._showingTips = true;
+					var $nodes = this.getIceNodes(),
+						self = this;
+					$nodes.each(function(i, node) {
+						self._addTooltip(node);
+					});					
 				}
 			}
-			else {
-				if (this._refreshInterval) {
-					clearInterval(this._refreshInterval);
-					this._refreshInterval = null;
-				}
+			else if (this._showingTips) {
+				this._showingTips = false;
+				var $nodes = this.getIceNodes();
+				$nodes.each(function(i, node) {
+					jQuery(node).unbind("mouseover").unbind("mouseout");
+				});					
 			}
 		},
 		
-		_relativeDateFormat : function(date, now) {
-			if (!date) {
-				return "";
+		_addTooltip: function(node) {
+			jQuery(node).unbind("mouseover").unbind("mouseout").mouseover(this._tooltipMouseOver).mouseout(this._tooltipMouseOut);
+		},
+		
+		_tooltipMouseOver: function(event) {
+			var node = event.currentTarget,
+				$node = jQuery(node),
+				self = this;
+			if (! $node.data("_tooltip_t")) {
+				var to = setTimeout(function() {
+					var cid = $node.attr(self.attributes.changeId),
+						change = self.getChange(cid);
+					if (change) {
+						$node.removeData("_tooltip_t");
+						self.hostMethods.showTooltip(node, jQuery.extend({}, change));
+					}
+				}, this.tooltipsDelay);
+				$node.data("_tooltip_t", to);
 			}
-			now = now || new Date();
-			var today = now.getDate();
-			var month = now.getMonth();
-			var year = now.getFullYear();
-			
-			var t = typeof(date);
-			if (t == "string" || t == "number") {
-				date = new Date(date);
+		},
+		
+		_tooltipMouseOut: function(event) {
+			var node = event.currentTarget,
+				$node = jQuery(node),
+				to = $node.data("_tooltip_t");
+			$node.removeData("_tooltip_t");
+			if (to) {
+				clearTimeout(to);
 			}
-			
-			var format = "";
-			var months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-			
-			if (today == date.getDate() && month == date.getMonth() && year == date.getFullYear()) {
-				var minutes = Math.floor((now.getTime() - date.getTime()) / 60000);
-				if (minutes < 1) {
-					return "now";
-				}
-				else if (minutes < 2) {
-					return "1 minute ago";
-				}
-				else if (minutes < 60) {
-					return (minutes + " minutes ago");
-				}
-				else {
-					var hours = date.getHours();
-					var minutes = date.getMinutes();
-					return "on " + padNumber(hours, 2) + ":" + padNumber(minutes, 2, "0");
-				}
-			} else if (year == date.getFullYear()) {
-				return "on " + months[date.getMonth()] + " " + date.getDate();
-			} else {
-				return "on " + months[date.getMonth()] + " " + date.getDate() + ", " + date.getFullYear();
+			else {
+				this.hostMethods.hideTooltip(node);
 			}
 		},
 		

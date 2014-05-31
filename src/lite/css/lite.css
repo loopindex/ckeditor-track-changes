@@ -26,15 +26,15 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 	background-color: #e5ffcd !important;
 }
 
-.ICE-Tracking .ice-ins.ice-cts-1, .ICE-Tracking .ice-ins.ice-cts-1 p  {
+.ICE-Tracking .ice-ins.ice-cts-1, .ICE-Tracking .ice-ins.ice-cts-1 *  {
 	background-color: #e5ffcd !important;
 }
 
-.ICE-Tracking .ice-ins.ice-cts-2, .ICE-Tracking .ice-ins.ice-cts-2 p  {
+.ICE-Tracking .ice-ins.ice-cts-2, .ICE-Tracking .ice-ins.ice-cts-2 *  {
 	background-color: #e3ffff !important;
 }
 
-.ICE-Tracking .ice-ins.ice-cts-3, .ICE-Tracking .ice-ins.ice-cts-3 p  {
+.ICE-Tracking .ice-ins.ice-cts-3, .ICE-Tracking .ice-ins.ice-cts-3 *  {
 	background-color: #d1eeee !important;
 }
 
