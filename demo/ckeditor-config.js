@@ -17,7 +17,7 @@ CKEDITOR.editorConfig = function( config ) {
 	]; */
 	
 	var lite = config.lite = config.lite || {};
-	config.extraPlugins = 'divarea,lite';
+	config.extraPlugins = 'lite';
 	lite.includes_debug = ["js/rangy/rangy-core.js", "js/ice.js", "js/dom.js", "js/selection.js", "js/bookmark.js","lite_interface.js"];
 	lite.includes = ["lite-includes.min.js"];
 	lite.includes_full = ["lite-includes.js"];
