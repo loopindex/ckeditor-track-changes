@@ -26,43 +26,8 @@ function f() {
 	var $select = $sidebar.find("#users");
 
 	(function() {
-		var editor = CKEDITOR.replace( 'editor1' , { 
-			height: "400" ,
-//			extraPlugins: 'lite',
-			customConfig: "../ckeditor-config.js"
-		});
-		
-		function onConfigLoaded(e) {
-			var conf = e.editor.config;
-			var lt = conf.lite = conf.lite || {};
-			if (location.href.indexOf("debug") > 0) {
-				lt.includeType = "debug";
-			} 
-			lt.userStyles = {
-				"21": 3,
-				"15": 1,
-				"18": 2
-			};
-		}
-	
-		editor.on('configLoaded', onConfigLoaded);
-		
-		editor.on(LITE.Events.INIT, function(event) {
-			onEditorSelected("editor1");
-			selectUser(users[0].id);
-		});
-
-		
-		editorStates["editor1"] = new EditorState(editor);
-		
-		editor = CKEDITOR.replace( 'editor2' , { 
-			height: "400" ,
-			extraPlugins: 'lite',
-			customConfig: "../ckeditor-config.js"
-			});
-		editor.on('configLoaded', onConfigLoaded);
-		
-		editorStates["editor2"] = new EditorState(editor);
+		loadEditor('editor1', true);
+		loadEditor('editor2', false);
 		
 		var select = $select[0];
 		$.each(users, function(i, user) {
@@ -145,6 +110,41 @@ function f() {
 		onEditorSelected(id, oldId);
 	}
 	
+	function loadEditor(id, focus) {
+		
+		var state = editorStates[id];
+		if (state) {
+			$('#'+id).val("This editor was <strong>reloaded</strong>");
+		}
+		
+		var editor = CKEDITOR.replace( id , { 
+			height: "400" ,
+			customConfig: "../ckeditor-config.js"
+		});
+		
+		function onConfigLoaded(e) {
+			var conf = e.editor.config;
+			var lt = conf.lite = conf.lite || {};
+			if (location.href.indexOf("debug") > 0) {
+				lt.includeType = "debug";
+			} 
+		}
+
+		editor.on('configLoaded', onConfigLoaded);
+		
+		editor.on(LITE.Events.INIT, function(event) {
+			onEditorSelected(id);
+		});
+
+		if (focus) {
+			editor.on("loaded", function(e) {
+				onEditorSelected(id);
+			});
+		}
+
+		editorStates[id] = new EditorState(editor);
+	}
+	
 	function onEditorSelected(id, oldId) {
 		var state = editorStates[oldId];
 		if (state) {
@@ -162,16 +162,11 @@ function f() {
 		}
 		
 		editorId = id;
-		if (state.userId !== null && state.userId !== undefined) {
-			$select.val(state.userId);
-		}
-		else {
-			state.userId = users[0].id;
-		}
-		selectUser(state.userId);
+		selectUser(state.userId||users[0].id, true);
 		setCheckedUsers(state.checkedUsers);
+		state.editor.focus();
 	}
-	
+		
 	function onUserChanged(event) {
 		var target = event.currentTarget;
 		var id = $(target).val();
@@ -180,7 +175,10 @@ function f() {
 		state && state.editor.focus();
 	}
 	
-	function selectUser(id) {
+	function selectUser(id, inUI) {
+		if (inUI) {
+			return $select.val(id).change();
+		}
 		var i;
 		for (i = 0; i < users.length; ++i) {
 			if (users[i].id == id) {

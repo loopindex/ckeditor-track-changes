@@ -22,8 +22,13 @@ CKEDITOR.editorConfig = function( config ) {
 	lite.includes = ["lite-includes.min.js"];
 	lite.includes_full = ["lite-includes.js"];
 	// set to false if you want change tracking to be off initially
-	lite.includeType = "debug";
 	lite.isTracking = true;
+	lite.userStyles = {
+			"21": 3,
+			"15": 1,
+			"18": 2
+		};
+
 	// these are the default tooltip values. If you want to use this default configuration, just set lite.tooltips = true;
 	lite.tooltips = {
 		show: true,

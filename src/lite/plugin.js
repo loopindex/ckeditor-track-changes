@@ -275,6 +275,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			this._isVisible =  true; // changes are visible
 			this._liteCommandNames =  [];
 			this._canAcceptReject =  true; // enable state for accept reject overriding editor readonly
+			this._removeBindings = [];
 
 			ed.ui.addToolbarGroup('lite');
 			this._setPluginFeatures(ed, this.props);
@@ -418,8 +419,8 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			var tracking = (undefined === track) ? ! this._isTracking : track,
 				e = this._editor;
 			this._isTracking = tracking;
-		
-			for (var i = this._liteCommandNames.length - 1; i >= 0; --i) {
+			this._setCommandsState(this._liteCommandNames, tracking ? CKEDITOR.TRISTATE_OFF : CKEDITOR.TRISTATE_DISABLED);
+/*			for (var i = this._liteCommandNames.length - 1; i >= 0; --i) {
 				var cmd = e.getCommand(this._liteCommandNames[i]);
 				if (cmd) {
 					if (tracking) {
@@ -429,14 +430,14 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 						cmd.disable();
 					}
 				}
-			}
+			} */
 			
 			this._updateTrackingState();
 			this.toggleShow(tracking, false);
 
+			this._setCommandsState(LITE.Commands.TOGGLE_TRACKING, tracking ? CKEDITOR.TRISTATE_ON : CKEDITOR.TRISTATE_OFF);
 			var ui = e.ui.get(this._commandNameToUIName(LITE.Commands.TOGGLE_TRACKING));
 			if (ui) {
-				ui.setState(tracking ? CKEDITOR.TRISTATE_ON : CKEDITOR.TRISTATE_OFF);
 				this._setButtonTitle(ui, tracking ? 'Stop tracking changes' : 'Start tracking changes');
 			}
 			if (bNotify !== false) {
@@ -456,6 +457,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 				this._setCommandsState(LITE.Commands.TOGGLE_SHOW, vis ? CKEDITOR.TRISTATE_ON : CKEDITOR.TRISTATE_OFF);
 			}
 			this._tracker.setShowChanges(vis && this._isTracking);
+			
 			var ui = this._editor.ui.get(this._commandNameToUIName(LITE.Commands.TOGGLE_SHOW));
 			if (ui) {
 				this._setButtonTitle(ui, vis ? 'Hide tracked changes' : 'Show tracked changes');
@@ -723,9 +725,10 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 				try {
 					this._tracker.startTracking();
 					this.toggleTracking(this._isTracking, false);
+					this._updateTrackingState();
 					jQuery(this._tracker).on("change", this._onIceChange.bind(this)).on("textChange", this._onIceTextChanged.bind(this));
-					e.on("selectionChange", this._onSelectionChanged.bind(this));
 					e.fire(LITE.Events.INIT, {lite: this});
+					this._onSelectionChanged(null);
 					this._onIceChange(null);
 				}
 				catch(e) {
@@ -797,7 +800,8 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		},
 		
 		_onModeChange: function(evt){
-			this._updateTrackingState();			
+			this._updateTrackingState();
+			setTimeout(this._onIceChange.bind(this), 0);
 		},
 		
 		_onReadOnly: function(evt){
@@ -808,6 +812,13 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			if (this._tracker) {
 				var track = this._isTracking && this._editor.mode == "wysiwyg" && ! this._editor.readOnly;
 				this._tracker.toggleChangeTracking(track);
+				for (var i = this._removeBindings.length - 1; i >= 0; --i) {
+					this._removeBindings[i].removeListener();
+				}
+				this._removeBindings = [];
+				if (track) {
+					this._removeBindings.push(this._editor.on("selectionChange", this._onSelectionChanged.bind(this)));
+				}
 			}
 		},
 
@@ -902,7 +913,9 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			var state = hasChanges && this._canAcceptReject ? CKEDITOR.TRISTATE_OFF : CKEDITOR.TRISTATE_DISABLED;
 			this._setCommandsState([LITE.Commands.ACCEPT_ALL, LITE.Commands.REJECT_ALL], state);
 			this._onSelectionChanged();
-			this._triggerChange();
+			if (e) { //otherwise it's just a ui update
+				this._triggerChange();
+			}
 		},
 		
 		_onIceTextChanged : function(e) {
