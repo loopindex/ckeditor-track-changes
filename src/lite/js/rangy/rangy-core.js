@@ -3389,7 +3389,7 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 			if (implementsControlRange && implementsDocSelection && sel.docSelection.type == CONTROL) {
 				updateControlSelection(sel);
 			} else {
-				sel._ranges.length = sel.rangeCount = sel.nativeSelection.rangeCount;
+				sel._ranges.length = sel.rangeCount = (sel.nativeSelection && sel.nativeSelection.rangeCount) || 0;
 				if (sel.rangeCount) {
 					for (var i = 0, len = sel.rangeCount; i < len; ++i) {
 						sel._ranges[i] = new api.WrappedRange(sel.nativeSelection.getRangeAt(i));
