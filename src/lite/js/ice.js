@@ -335,12 +335,12 @@
 		 */
 		_createIceNode: function (changeType, childNode) {
 			var node = this.env.document.createElement(this.changeTypes[changeType].tag);
-			ice.dom.addClass(node, this.__getIceNodeClass(changeType));
+			ice.dom.addClass(node, this._getIceNodeClass(changeType));
 	
 			if (childNode) {
 				node.appendChild(childNode);
 			}
-			this.__addChange(this.changeTypes[changeType].alias, [node]);
+			this._addChange(this.changeTypes[changeType].alias, [node]);
 	
 			return node;
 		},
@@ -358,16 +358,16 @@
 			
 		// If we have any nodes selected, then we want to delete them before inserting the new text.
 			if (range && !range.collapsed) {
-				this._deleteContents(false, range, hostRange); 
+				this._deleteContents(false, range); 
 			// Update the range
 				range = this.getCurrentRange();
 				if (range.startContainer === range.endContainer && this.element === range.startContainer) {
-					// The whole editable element is selected. Need to remove everything and init its contents.
+/*					// The whole editable element is selected. Need to remove everything and init its contents.
 					ice.dom.empty(this.element);
 					range = this.selection.getRangeAt(0);
 //					var firstSelectable = range.getLastSelectableChild(this.element);
 //					range.setStartAfter(firstSelectable);
-					range.collapse(true);
+					range.collapse(true); */
 				}
 			}
 			else if (! range && ! nodes) {
@@ -405,26 +405,21 @@
 			}
 			var changeid = this._batchChangeid ? null : this.startBatchChange();
 			if (range.collapsed === false) {
-				if(this._currentUserIceNode(range.startContainer.parentNode)){
-					this._deleteSelection(range);
-				}
-				else {
-					this._deleteSelection(range);
-					if(this._browser.mozilla){
-						if(range.startContainer.parentNode.previousSibling){
-							range.setEnd(range.startContainer.parentNode.previousSibling, 0);
-							range.moveEnd(ice.dom.CHARACTER_UNIT, ice.dom.getNodeCharacterLength(range.endContainer));
-						}
-						else {
-							range.setEndAfter(range.startContainer.parentNode);
-						}
-						range.collapse(false);
+				range = this._deleteSelection(range);
+				if(this._browser.mozilla){
+					if(range.startContainer.parentNode.previousSibling){
+						range.setEnd(range.startContainer.parentNode.previousSibling, 0);
+						range.moveEnd(ice.dom.CHARACTER_UNIT, ice.dom.getNodeCharacterLength(range.endContainer));
 					}
 					else {
-						if(!this.visible(range.endContainer)){
-							range.setEnd(range.endContainer, Math.max(0, range.endOffset - 1));
-						range.collapse(false);
-						}
+						range.setEndAfter(range.startContainer.parentNode);
+					}
+					range.collapse(false);
+				}
+				else {
+					if(!this.visible(range.endContainer)){
+						range.setEnd(range.endContainer, Math.max(0, range.endOffset - 1));
+					range.collapse(false);
 					}
 				}
 			}
@@ -448,9 +443,9 @@
 						// Calibrate Cursor before deleting
 						if(range.endOffset === ice.dom.getNodeCharacterLength(range.endContainer)){
 							var next = range.startContainer.nextSibling;
-							if (ice.dom.is(next,  '.' + this.__getIceNodeClass('deleteType'))) {
+							if (ice.dom.is(next,  '.' + this._getIceNodeClass('deleteType'))) {
 								while(next){
-									if (ice.dom.is(next,  '.' + this.__getIceNodeClass('deleteType'))) {
+									if (ice.dom.is(next,  '.' + this._getIceNodeClass('deleteType'))) {
 										next = next.nextSibling;
 										continue;
 									}
@@ -466,7 +461,7 @@
 		
 						// Calibrate Cursor after deleting
 						if(!this.visible(range.endContainer)){
-							if (ice.dom.is(range.endContainer.parentNode,  '.' + this.__getIceNodeClass('insertType') + ', .' + this.__getIceNodeClass('deleteType'))) {
+							if (ice.dom.is(range.endContainer.parentNode,  '.' + this._getIceNodeClass('insertType') + ', .' + this._getIceNodeClass('deleteType'))) {
 		//						range.setStart(range.endContainer.parentNode.nextSibling, 0);
 								range.setStartAfter(range.endContainer.parentNode);
 								range.collapse(true);
@@ -493,9 +488,9 @@
 						if(!this.visible(range.startContainer)){
 							if(range.endOffset === ice.dom.getNodeCharacterLength(range.endContainer)){
 								var prev = range.startContainer.previousSibling;
-								if (ice.dom.is(prev,  '.' + this.__getIceNodeClass('deleteType'))) {
+								if (ice.dom.is(prev,  '.' + this._getIceNodeClass('deleteType'))) {
 									while(prev){
-										if (ice.dom.is(prev,  '.' + this.__getIceNodeClass('deleteType'))) {
+										if (ice.dom.is(prev,  '.' + this._getIceNodeClass('deleteType'))) {
 											prev = prev.prevSibling;
 											continue;
 										}
@@ -579,7 +574,7 @@
 			ice.dom.each(this.changeTypes, function (type, i) {
 			if (type != 'deleteType') {
 				if (i > 0) classList += ',';
-				classList += '.' + self.__getIceNodeClass(type);
+				classList += '.' + self._getIceNodeClass(type);
 			}
 			});
 			if (body) {
@@ -598,7 +593,7 @@
 			ice.dom.each(changes, function (el, i) {
 				ice.dom.replaceWith(this, ice.dom.contents(this));
 			});
-			var deletes = ice.dom.find(body, '.' + this.__getIceNodeClass('deleteType'));
+			var deletes = ice.dom.find(body, '.' + this._getIceNodeClass('deleteType'));
 			ice.dom.remove(deletes);
 	
 			body = callback ? callback.call(this, body) : body;
@@ -632,8 +627,8 @@
 				return this._acceptRejectSome(options, false);
 			}
 			else {
-				var insSel = '.' + this.__getIceNodeClass('insertType');
-				var delSel = '.' + this.__getIceNodeClass('deleteType');
+				var insSel = '.' + this._getIceNodeClass('insertType');
+				var delSel = '.' + this._getIceNodeClass('deleteType');
 		
 				ice.dom.remove(ice.dom.find(this.element, insSel));
 				ice.dom.each(ice.dom.find(this.element, delSel), function (i, el) {
@@ -676,8 +671,8 @@
 				else node = range.startContainer;
 			}
 		
-			delSel = removeSel = '.' + this.__getIceNodeClass('deleteType');
-			insSel = replaceSel = '.' + this.__getIceNodeClass('insertType');
+			delSel = removeSel = '.' + this._getIceNodeClass('deleteType');
+			insSel = replaceSel = '.' + this._getIceNodeClass('insertType');
 			selector = delSel + ',' + insSel;
 			trackNode = dom.getNode(node, selector);
 			var changeId = dom.attr(trackNode, this.attributes.changeId); //dfl
@@ -726,7 +721,7 @@
 		 * @private
 		 */
 		_getIceNode: function (node, changeType) {
-			var selector = '.' + this.__getIceNodeClass(changeType);
+			var selector = '.' + this._getIceNodeClass(changeType);
 			return ice.dom.getNode((node && node.$) || node, selector);
 		},
 	
@@ -796,6 +791,7 @@
 						return node;
 					}
 				}
+				return voidParent;
 			}
 			catch(e) {
 				return null;
@@ -807,7 +803,7 @@
 		 * @private
 		 */
 		_getVoidElSelector: function () {
-			return '.' + this.__getIceNodeClass('deleteType');
+			return '.' + this._getIceNodeClass('deleteType');
 		},
 	
 		/**
@@ -839,7 +835,7 @@
 /**
  * @private
  */				
-		__getIceNodeClass: function (changeType) {
+		_getIceNodeClass: function (changeType) {
 			return this.attrValuePrefix + this.changeTypes[changeType].alias;
 		},
 	
@@ -883,7 +879,7 @@
 			}
 		},
 	
-		__addChange: function (ctnType, ctNodes) {
+		_addChange: function (ctnType, ctNodes) {
 			var changeid = this._batchChangeid || this.getNewChangeId(),
 				self = this;
 
@@ -899,7 +895,7 @@
 				this._triggerChange(); //dfl
 			}
 			ice.dom.foreach(ctNodes, function (i) {
-				self.addNodeToChange(changeid, ctNodes[i]);
+				self._addNodeToChange(changeid, ctNodes[i]);
 			});
 	
 			return changeid;
@@ -909,8 +905,9 @@
 		 * Adds tracking attributes from the change with changeid to the ctNode.
 		 * @param changeid Id of an existing change.
 		 * @param ctNode The element to add for the change.
+		 * @private
 		 */
-		addNodeToChange: function (changeid, ctNode) {
+		_addNodeToChange: function (changeid, ctNode) {
 			changeid = this._batchChangeid || changeid;
 			var change = this.getChange(changeid);
 			
@@ -930,12 +927,16 @@
 				ctNode.setAttribute(this.attributes.changeData, this._changeData || "");
 			}
 			
-			if (!ctNode.getAttribute(this.attributes.time)) ctNode.setAttribute(this.attributes.time, change.time);
+			if (!ctNode.getAttribute(this.attributes.time)) {
+				ctNode.setAttribute(this.attributes.time, change.time);
+			}
 			
-			if (!ice.dom.hasClass(ctNode, this.__getIceNodeClass(change.type))) ice.dom.addClass(ctNode, this.__getIceNodeClass(change.type));
+//			if (!ice.dom.hasClass(ctNode, this._getIceNodeClass(change.type))) ice.dom.addClass(ctNode, this._getIceNodeClass(change.type));
 	
 			var style = this._getUserStyle(change.userid);
-			if (!ice.dom.hasClass(ctNode, style)) ice.dom.addClass(ctNode, style);
+			if (!ice.dom.hasClass(ctNode, style)) {
+				ice.dom.addClass(ctNode, style);
+			}
 			/* Added by dfl */
 			this._updateNodeTooltip(ctNode);
 		},
@@ -1127,29 +1128,29 @@
 				if (!this._getVoidElement(elem)) {
 					// If the element is not a text or stub node, go deeper and check the children.
 					if (elem.nodeType !== ice.dom.TEXT_NODE) {
-					// Browsers like to insert breaks into empty paragraphs - remove them
-					if (ice.dom.BREAK_ELEMENT == ice.dom.getTagName(elem)) {
+						// Browsers like to insert breaks into empty paragraphs - remove them
+						if (ice.dom.BREAK_ELEMENT == ice.dom.getTagName(elem)) {
+							continue;
+						}
+			
+						if (ice.dom.isStubElement(elem)) {
+							this._addNodeTracking(elem, false, true);
+							continue;
+						}
+						if (ice.dom.hasNoTextOrStubContent(elem)) {
+							ice.dom.remove(elem);
+						}
+			
+						for (var j = 0; j < elem.childNodes.length; j++) {
+							var child = elem.childNodes[j];
+							elements.push(child);
+						}
 						continue;
-					}
-		
-					if (ice.dom.isStubElement(elem)) {
-						this._addNodeTracking(elem, false, true);
-						continue;
-					}
-					if (ice.dom.hasNoTextOrStubContent(elem)) {
-						ice.dom.remove(elem);
-					}
-		
-					for (j = 0; j < elem.childNodes.length; j++) {
-						var child = elem.childNodes[j];
-						elements.push(child);
-					}
-					continue;
 					}
 					var parentBlock = ice.dom.getBlockParent(elem);
 					this._addNodeTracking(elem, false, true, true);
 					if (ice.dom.hasNoTextOrStubContent(parentBlock)) {
-					ice.dom.remove(parentBlock);
+						ice.dom.remove(parentBlock);
 					}
 				}
 			}
@@ -1164,7 +1165,9 @@
 			}
 	
 			bookmark.selectBookmark();
+			range = this.getCurrentRange();
 			range.collapse(true);
+			return range;
 		},
 	
 		// Delete
@@ -1366,7 +1369,7 @@
 				}
 		
 				// Firefox finds an ice node wrapped around an image instead of the image itself sometimes, so we make sure to look at the image instead.
-				if (ice.dom.is(prevContainer,	'.' + this.__getIceNodeClass('insertType') + ', .' + this.__getIceNodeClass('deleteType')) && prevContainer.childNodes.length > 0 && prevContainer.lastChild) {
+				if (ice.dom.is(prevContainer,	'.' + this._getIceNodeClass('insertType') + ', .' + this._getIceNodeClass('deleteType')) && prevContainer.childNodes.length > 0 && prevContainer.lastChild) {
 					prevContainer = prevContainer.lastChild;
 				}
 		
@@ -1863,7 +1866,7 @@
 			var self = this;
 			ice.dom.each(this.changeTypes, 
 				function (type, i) {
-					classList.push('.' + self.__getIceNodeClass(type));
+					classList.push('.' + self._getIceNodeClass(type));
 				});
 			classList = classList.join(',');
 			return jQuery(this.element).find(classList);
@@ -1874,7 +1877,7 @@
 		 * null if not in a track changes hierarchy
 		 */
 		currentChangeNode: function (node) {
-			var selector = '.' + this.__getIceNodeClass('insertType') + ', .' + this.__getIceNodeClass('deleteType');
+			var selector = '.' + this._getIceNodeClass('insertType') + ', .' + this._getIceNodeClass('deleteType');
 			if (!node) {
 				var range = this.getCurrentRange();
 				if (!range || !range.collapsed) {
@@ -1923,7 +1926,7 @@
 		},
 		
 		getDeleteClass : function() {
-			return this.__getIceNodeClass('deleteType');
+			return this._getIceNodeClass('deleteType');
 		},
 		
 		toString : function() {
@@ -2012,7 +2015,7 @@
 			// Grab class for each changeType
 			var changeTypeClasses = [];
 			for (var changeType in this.changeTypes) {
-				changeTypeClasses.push(this.__getIceNodeClass(changeType));
+				changeTypeClasses.push(this._getIceNodeClass(changeType));
 			}
 	
 			var nodes = this._getIceNodes();
