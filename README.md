@@ -1,17 +1,14 @@
 # Track Changes Plugin for CKEditor
 
 * Track changes plugin for CKEditor, based on <a href="https://github.com/NYTimes/ice" target="_blank">ICE</a> (NYTimes track changes for <code>contentEditable</code> documents). 
-* The LITE plugin contains an edited version of ICE, we hope to merge with the ICE repository in the near future.
 
 ## Main Features
 
 - Enable / disable track changes mode
 - Show / hide tracked changes
-- Accept all changes
-- Reject all changes
-- Accept a single change
-- Reject a single change 
-- Display timestamp and user info for each change
+- Accept/Reject all/some changes
+- Accept/Reject a single change
+- Display customizable tooltips for each change
 
 ##Demo
 
@@ -21,15 +18,15 @@
 [LoopIndex](http://www.loopindex.com/lite)
 
 ##Getting Started
-- Include the lite plugin's interface in your html, e.g.
-```javascript
-	<script type="text/javascript" src="ckeditor/plugins/lite/lite_interface.js"></script>
-```
-
 - Add the lite plugin to ckeditor. The simplest way to do this is by adding the following line to ckeditor's <code>config.js</code>:
 ```javascript
 	config.extraPlugins = 'lite';
 ```
+- Optionally include <code>lite_interfaces.js</code> in your source, so you can use the various constants defined in it rather than string literals.
+```javascript
+	<script type="text/javascript" src="ckeditor/plugins/lite/lite_interface.js"></script>
+```
+
 - See the <a href="http://www.loopindex.com/lite/docs/" target="_blank">documentation</a> for all the configuration options.
 
 ##Configuration

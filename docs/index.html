@@ -39,6 +39,7 @@ h4 {
 </head>
 <body>
 <h1>LITE (LoopIndex Tracking Enhancement) for CKEditor</h1>
+<div>See the <a href="api/index.html">API reference</a> for a more detailed documentation</div>
 <div id="content">
 <h2>Installation</h2>
 <div class="doc">If your ckeditor build does not already contain LITE, drop the <code>lite</code> folder into ckeditor's <code>plugins</code> folder</div>
@@ -50,6 +51,7 @@ h4 {
 <pre>
 	&lt;script type="text/javascript" src="ckeditor/plugins/lite/lite_interface.js"&gt;&lt;/script&gt;
 </pre>
+You don't have to include this file, but doing so will allow you to use the constants defined in it, e.g. <code>LITE.Commands.TOGGLE_TRACKING, LITE.Events.ACCEPT</code>
 <li>If <code>LITE</code> is not included in ckedito's plugins list, add it to the editor's configuration. The simplest way to do this is by adding the following line to ckeditor's <code>config.js</code>:<pre>
 	config.extraPlugins = 'lite';
 </pre>
@@ -66,13 +68,13 @@ If your configuration already contains some plugin tweaking, just make sure that
 </ol>
 <h2>Configuration</h2>
 <ul>
-<li>By default, LITE loads an uncompressed version of <code>ice</code>, located in its <code>js</code> folder. To load <code>ice</code> from a different location, or load modified scripts, edit <code>config.js</code> and set a value to
+<li>By default, LITE loads a minifed version of <code>ice</code>, located in its <code>js</code> folder. To load <code>ice</code> from a different location, or load other versions (e.g. full sources for debugging), edit your <code>config.js</code> and set a value to
 <code>config.lite.includes</code>, e.g.
 <pre>
-	config.lite.includes = ["js/ice-all-sources.min.js", "js/plugins/ice-plugins.min.js"];
+	config.lite.includes = ["js/my-includes.min.js", "js/some-plugins.min.js"];
 </pre>
-
-<li>Select the <code>LITE</code> commands you want to include in ckeditor's toolbar. By default all the commands in <code>lite_interace.js</code> are available in the toolbar. To configure this, edit <code>config.js</code> and set a value to the <code>config.lite.commands</code>, e.g.
+Paths are relative to the LITE plugin folder
+<li>Select the <code>LITE</code> commands you want to include in ckeditor's toolbar. By default all the commands in <code>lite_interace.js</code> are available in the toolbar except for toggle tooltips. To configure this, edit <code>config.js</code> and set a value to the <code>config.lite.commands</code>, e.g.
 <pre>
 // display only the show/hide, accept all and reject all commands.
 	config.lite.commands = [LITE.Commands.TOGGLE_SHOW, LITE.Commands.ACCEPT_ALL, LITE.Commands.REJECT_ALL];
@@ -82,6 +84,8 @@ If your configuration already contains some plugin tweaking, just make sure that
 <li><code>userName</code> - the initial username used by the <code>ICE</code> change tracker
 <li><code>userId</code> - the initial user ID used by the <code>ICE</code> change tracker
 <li><code>titleTemplate</code> - the template of the text shown as a title (tooltip) when the cursor hovers over a tracked change region. The default value is <code>Changed by %u %t</code>, <code>%u</code> representing the user name and <code>%t</code> representing a time stamp relative to the current time (e.g. <i>now</i>, <i>2 minutes ago</i>, <i>May 31</i>). The titles are refreshed periodically. If you provide an empty template, no title will be displayed.
+<li><code>userStyles</code> - a map of id=>style number which allows you to consistenly display styles per user id. By default LITE creates a new style per user as it is introduced.
+<li><code>tooltips</code> - set to <code>true</code> (or omit altogether) to get the default implementation of LITE tooltips, based on <a href="http://opentip.org" target="_blank">Opentip</a>. You can also set <code>tooltips</code> to an object with various configuration options. 
 </ul>
 <li>You may also tweak the configuration in your code by listening to the CKEditor <code>configLoaded</code> event and then modifying the editor's <code>config.lite</code> object.
 </ul>
@@ -174,7 +178,7 @@ The LITE plugin events are listen in <code>lite_interface.js</code> under <code>
 </ul>
 </div>
 <div id="footer">
-<pre>Copyright 2013 LoopIndex, This file is part of the Track Changes plugin for CKEditor.
+<pre>Copyright 2014 LoopIndex, This file is part of the Track Changes plugin for CKEditor.
 
 The track changes plugin is free software; you can redistribute it and/or modify it under the terms of the GNU Lesser General Public License, version 2, as published by the Free Software Foundation.
 This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.

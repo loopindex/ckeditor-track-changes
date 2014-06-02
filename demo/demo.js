@@ -132,11 +132,11 @@ function f() {
 
 		editor.on('configLoaded', onConfigLoaded);
 		
-		editor.on(LITE.Events.INIT, function(event) {
-			onEditorSelected(id);
-		});
-
 		if (focus) {
+			editor.on(LITE.Events.INIT, function(event) {
+				onEditorSelected(id);
+			});
+
 			editor.on("loaded", function(e) {
 				onEditorSelected(id);
 			});
