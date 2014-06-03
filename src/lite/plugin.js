@@ -69,7 +69,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 	
 	tooltipDefaults = {
 		show: true,
-		path: "js/opentip-adapter.js",
+		path: "js/opentip-adapter.min.js",
 		classPath: "OpentipAdapter",
 		cssPath: "css/opentip.css",
 		delay: 500
