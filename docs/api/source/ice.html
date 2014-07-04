@@ -571,7 +571,7 @@
 		 * prepare gets run before the body is cleaned by ice.
 		 */
 		getCleanContent: function (body, callback, prepare) {
-			var newBody = this.getCleanDOM(body, callback, prepare);
+			var newBody = this.getCleanDOM(body, {callback:callback, prepare: prepace, clone: true});
 			return (newBody &amp;&amp; newBody.innerHTML) || &quot;&quot;;
 		},
 		
@@ -585,9 +585,10 @@
 		 *
 		 * prepare gets run before the body is cleaned by ice.
 		 */
-		getCleanDOM : function(body, callback, prepare) {
-			var classList = '';
-			var self = this;
+		getCleanDOM : function(body, options) {
+			var classList = '',
+				self = this;
+			options = options || {};
 			ice.dom.each(this.changeTypes, function (type, i) {
 			if (type != 'deleteType') {
 				if (i &gt; 0) classList += ',';
@@ -598,22 +599,31 @@
 				if (typeof body === 'string') {
 					body = ice.dom.create('&lt;div&gt;' + body + '&lt;/div&gt;');
 				}
-				else {
+				else if (options.clone){
 					body = ice.dom.cloneNode(body, false)[0];
 				}
 			} 
 			else {
-				body = ice.dom.cloneNode(this.element, false)[0];
+				body = options.clone? ice.dom.cloneNode(this.element, false)[0] : this.element;
 			}
-			body = prepare ? prepare.call(this, body) : body;
+			return this._cleanBody(body, classList, options);
+		},
+		
+		_cleanBody: function(body, classList, options) {
+			body = options.prepare ? options.prepare.call(this, body) : body;
 			var changes = ice.dom.find(body, classList);
-			ice.dom.each(changes, function (el, i) {
-				ice.dom.replaceWith(this, ice.dom.contents(this));
+			ice.dom.each(changes, function (i,el) {
+				debugger
+				while (el.firstChild) {
+					el.parentNode.insertBefore(el.firstChild, el);
+				}
+				el.parentNode.removeChild(el);
+//				ice.dom.replaceWith(this, ice.dom.contents(this));
 			});
 			var deletes = ice.dom.find(body, '.' + this._getIceNodeClass('deleteType'));
 			ice.dom.remove(deletes);
 	
-			body = callback ? callback.call(this, body) : body;
+			body = options.callback ? options.callback.call(this, body) : body;
 	
 			return body;
 		},
@@ -628,7 +638,10 @@
 				return this._acceptRejectSome(options, true);
 			}
 			else {
-				this.element.innerHTML = this.getCleanContent();
+				this.getCleanDOM(this.element, {
+					clone: false
+				});
+//				this.element.innerHTML = this.getCleanContent();
 				this._changes = {}; // dfl, reset the changes table
 				this._triggerChange(); // notify the world that our change count has changed
 			}

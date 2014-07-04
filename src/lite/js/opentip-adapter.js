@@ -33,16 +33,16 @@
 	  __hasProp = {}.hasOwnProperty;
 	
 	Opentip = (function() {
+
+		Opentip.prototype.STICKS_OUT_TOP = 1;
 	
-	  Opentip.prototype.STICKS_OUT_TOP = 1;
+		Opentip.prototype.STICKS_OUT_BOTTOM = 2;
 	
-	  Opentip.prototype.STICKS_OUT_BOTTOM = 2;
+		Opentip.prototype.STICKS_OUT_LEFT = 1;
 	
-	  Opentip.prototype.STICKS_OUT_LEFT = 1;
-	
-	  Opentip.prototype.STICKS_OUT_RIGHT = 2;
-	
-	  Opentip.prototype["class"] = {
+		Opentip.prototype.STICKS_OUT_RIGHT = 2;
+	  
+	Opentip.prototype["class"] = {
 		container: "opentip-container",
 		opentip: "opentip",
 		header: "ot-header",
@@ -64,20 +64,29 @@
 	  };
 	
 	  function Opentip(element, content, title, options) {
-		var elementsOpentips, hideTrigger, methodToBind, optionSources, prop, styleName, _i, _j, _len, _len1, _ref, _ref1, _ref2, _tmpStyle,
+		var elTips, hideTrigger, methodToBind, optionSources, prop, styleName, _i, _j, _len, _len1, _ref, _ref1, _ref2, _tmpStyle,
 		  _this = this;
 		this.id = ++Opentip.lastId;
-		this.debug("Creating Opentip.");
+
 		/* begin dfl */
+		this.adapter = Opentip.adapter;
+		options = this.adapter.clone(options);
+		if (typeof content === "object") {
+		  options = content;
+		  content = title = void 0;
+		} else if (typeof title === "object") {
+		  options = title;
+		  title = void 0;
+		}
 		this._element = element;
+		this._boundingElement = options.boundingElement;
 		this._document = element.ownerDocument;
 		this._window = this._document.defaultView;
 		this._body = this._document.body;
-		Opentip.tips.push(this);
-		this.adapter = Opentip.adapter;
-		elementsOpentips = this.adapter.data(element, "opentips") || [];
-		elementsOpentips.push(this);
-		this.adapter.data(element, "opentips", elementsOpentips);
+		Opentip.addTip(this);
+		elTips = Opentip.getTips(element);
+		elTips.push(this);
+		Opentip.setTips(element, elTips);
 		this.triggerElement = this.adapter.wrap(element);
 		if (this.triggerElement.length > 1) {
 		  throw new Error("You can't call Opentip on multiple elements.");
@@ -106,14 +115,6 @@
 		  hiding: false,
 		  hidden: false
 		};
-		options = this.adapter.clone(options);
-		if (typeof content === "object") {
-		  options = content;
-		  content = title = void 0;
-		} else if (typeof title === "object") {
-		  options = title;
-		  title = void 0;
-		}
 		if (title != null) {
 		  options.title = title;
 		}
@@ -390,6 +391,7 @@
 	  Opentip.prototype.deactivate = function() {
 		this.debug("Deactivating tooltip.");
 		this.hide();
+		Opentip.removeTip(this);
 		return this._setupObservers("-showing", "-visible", "-hidden", "-hiding");
 	  };
 	
@@ -567,11 +569,19 @@
 		  return;
 		}
 		this._clearTimeouts();
-		this.debug("Hiding!");
 		this.visible = false;
 		this.preparingToHide = false;
 		this._stopEnsureTriggerElement();
 		this._setupObservers("-showing", "-visible", "-hiding", "-hidden", "hiding", "hidden");
+		if (this._element) {
+			var tips = this.adapter.data(this._element, "__opentips") || [];
+			for (var i = tips.length; i--;) {
+				if (tips[i] == this) {
+					tips.slice(i, 1);
+				}
+			}
+			Opentip.setTips(this._element, tips);
+		}
 		if (!this.options.fixed) {
 		  this._stopFollowingMousePosition();
 		}
@@ -602,7 +612,6 @@
 			  transitionDuration: "0s"
 			});
 			if (_this.options.removeElementsOnHide) {
-			  _this.debug("Removing HTML elements.");
 			  _this.adapter.remove(_this.container);
 			  delete _this.container;
 			  return delete _this.tooltipElement;
@@ -778,7 +787,7 @@
 		  targetJoint = new Opentip.Joint(this.options.targetJoint);
 		}
 		scrollOffset = this.adapter.scrollOffset(this._window, this._document);
-		viewportDimensions = this.adapter.viewportDimensions(doc);
+		viewportDimensions = this._boundingElement ? this.adapter.dimensions(this._boundingElement) : this.adapter.viewportDimensions(doc);
 		viewportPosition = [position.left - scrollOffset[0], position.top - scrollOffset[1]];
 		needsRepositioning = false;
 		if (viewportDimensions.width >= this.dimensions.width) {
@@ -786,13 +795,15 @@
 			needsRepositioning = true;
 			switch (sticksOut[0]) {
 			  case this.STICKS_OUT_LEFT:
-				tipJoint.setHorizontal("left");
+				  //dfl - was left
+				tipJoint.setHorizontal("right");
 				if (this.options.targetJoint) {
 				  targetJoint.setHorizontal("right");
 				}
 				break;
 			  case this.STICKS_OUT_RIGHT:
-				tipJoint.setHorizontal("right");
+				  //dfl - was right
+				tipJoint.setHorizontal("left");
 				if (this.options.targetJoint) {
 				  targetJoint.setHorizontal("left");
 				}
@@ -859,7 +870,8 @@
 	  Opentip.prototype._sticksOut = function(position) {
 		var positionOffset, scrollOffset, sticksOut, viewportDimensions;
 		scrollOffset = this.adapter.scrollOffset(this._window, this._document);
-		viewportDimensions = this.adapter.viewportDimensions(this._document);
+		viewportDimensions = this._boundingElement ? this.adapter.dimensions(this._boundingElement) : this.adapter.viewportDimensions(doc);
+
 		positionOffset = [position.left - scrollOffset[0], position.top - scrollOffset[1]];
 		sticksOut = [false, false];
 		if (positionOffset[0] < 0) {
@@ -1591,7 +1603,23 @@
 	};
 	
 	Opentip.defaultStyle = "standard";
-	
+	Opentip.getTips = function(element) {
+		return Opentip.adapter.data(element, "__opentips") || [];
+	}
+	Opentip.setTips = function(element, tips) {
+		return Opentip.adapter.data(element, "__opentips", tips || []);
+	}
+	Opentip.removeTip = function(tip) {
+		for (var i = Opentip.tips.length; i--;) {
+			var tip = Opentip.tips[i];
+			if (tip) {
+				return Opentip.tips.splice(i, 1);
+			}
+		}
+	}
+	Opentip.addTip = function(tip) {
+		Opentip.tips.push(tip);
+	}
 	if (typeof module !== "undefined" && module !== null) {
 	  module.exports = Opentip;
 	} else {
@@ -1604,7 +1632,7 @@
 	
 	(function($) {
 	  var Adapter;
-	  $.fn.opentip = function(content, title, options) {
+	  jQuery.fn.opentip = function(content, title, options) {
 		return new Opentip(this, content, title, options);
 	  };
 	  Adapter = (function() {
@@ -1745,7 +1773,7 @@
 		  if (options.url == null) {
 			throw new Error("No url provided");
 		  }
-		  return $.ajax({
+		  return jQuery.ajax({
 			url: options.url,
 			type: (_ref = (_ref1 = options.method) != null ? _ref1.toUpperCase() : void 0) != null ? _ref : "GET"
 		  }).done(function(content) {
@@ -1758,13 +1786,13 @@
 		};
 	
 		Adapter.prototype.clone = function(object) {
-		  return $.extend({}, object);
+		  return jQuery.extend({}, object);
 		};
 	
 		Adapter.prototype.extend = function() {
 		  var sources, target;
 		  target = arguments[0], sources = 2 <= arguments.length ? __slice.call(arguments, 1) : [];
-		  return $.extend.apply($, [target].concat(__slice.call(sources)));
+		  return jQuery.extend.apply($, [target].concat(__slice.call(sources)));
 		};
 	
 		return Adapter;
@@ -1792,20 +1820,29 @@
 	scope.OpentipAdapter.prototype = {
 		init: function(options) {
 			this._options = jQuery.extend(defaults, options || {});
+			this._tips = [];
 		},
-
-		showTooltip: function(node, title) {
-			var options = jQuery.extend({target: node}, ttOptions),
+		
+		showTooltip: function(node, title, boundingElement) {
+			var options = jQuery.extend({target: node, boundingElement: boundingElement}, ttOptions),
 				tip = new Opentip(node, title, options);
 			tip.show();
 			jQuery(node).data("_lite_tip_", tip);
+			
 		},
+		
+		hideAll: function() {
+			for (var i = Opentip.tips.length; i--;) {
+				Opentip.tips[i].deactivate();
+			}
+		},
+		
 		hideTooltip: function(node) {
-			var $node = jQuery(node),
-				tip = $node.data("_lite_tip_");
-			if (tip) {
-				tip.hide();
-				$node.removeData("_lite_tip_");
+			var tips = Opentip.getTips(node);
+			if (tips) {
+				for (var i = tips.length; i--;) {
+					tips[i].deactivate();
+				}
 			}
 		}
 

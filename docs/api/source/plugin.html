@@ -236,7 +236,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		}
 		var path = this.path,
 			plugin = new LITEPlugin(this.props, path),
-			liteConfig = jQuery.extend({}, ed.config.lite || {}),
+			liteConfig = CKEDITOR.tools.extend({}, ed.config.lite || {}),
 			ttConfig = liteConfig.tooltips;
 		
 		if (undefined == ttConfig) {

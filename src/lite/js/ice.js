@@ -353,11 +353,12 @@
 		insert: function (nodes) {
 			var range = this.getCurrentRange(),
 				hostRange = range ? null : this.hostMethods.getHostRange(),
-				changeid = this._batchChangeid ? null : this.startBatchChange();
+				changeid = this._batchChangeid ? null : this.startBatchChange(),
+				hadSelection = !!(range && !range.collapsed);
 			
 			
 		// If we have any nodes selected, then we want to delete them before inserting the new text.
-			if (range && !range.collapsed) {
+			if (hadSelection) {
 				this._deleteContents(false, range); 
 			// Update the range
 				range = this.getCurrentRange();
@@ -380,7 +381,7 @@
 			}
 	
 			// If we are in a non-tracking/void element, move the range to the end/outside.
-			this._moveRangeToValidTrackingPos(range, hostRange);
+			this._moveRangeToValidTrackingPos(range, hostRange, hadSelection);
 	
 			this._insertNodes(range, hostRange, nodes);
 			this.endBatchChange(changeid);
@@ -554,7 +555,7 @@
 		 * prepare gets run before the body is cleaned by ice.
 		 */
 		getCleanContent: function (body, callback, prepare) {
-			var newBody = this.getCleanDOM(body, callback, prepare);
+			var newBody = this.getCleanDOM(body, {callback:callback, prepare: prepace, clone: true});
 			return (newBody && newBody.innerHTML) || "";
 		},
 		
@@ -568,9 +569,10 @@
 		 *
 		 * prepare gets run before the body is cleaned by ice.
 		 */
-		getCleanDOM : function(body, callback, prepare) {
-			var classList = '';
-			var self = this;
+		getCleanDOM : function(body, options) {
+			var classList = '',
+				self = this;
+			options = options || {};
 			ice.dom.each(this.changeTypes, function (type, i) {
 			if (type != 'deleteType') {
 				if (i > 0) classList += ',';
@@ -581,22 +583,30 @@
 				if (typeof body === 'string') {
 					body = ice.dom.create('<div>' + body + '</div>');
 				}
-				else {
+				else if (options.clone){
 					body = ice.dom.cloneNode(body, false)[0];
 				}
 			} 
 			else {
-				body = ice.dom.cloneNode(this.element, false)[0];
+				body = options.clone? ice.dom.cloneNode(this.element, false)[0] : this.element;
 			}
-			body = prepare ? prepare.call(this, body) : body;
+			return this._cleanBody(body, classList, options);
+		},
+		
+		_cleanBody: function(body, classList, options) {
+			body = options.prepare ? options.prepare.call(this, body) : body;
 			var changes = ice.dom.find(body, classList);
-			ice.dom.each(changes, function (el, i) {
-				ice.dom.replaceWith(this, ice.dom.contents(this));
+			ice.dom.each(changes, function (i,el) {
+				while (el.firstChild) {
+					el.parentNode.insertBefore(el.firstChild, el);
+				}
+				el.parentNode.removeChild(el);
+//				ice.dom.replaceWith(this, ice.dom.contents(this));
 			});
 			var deletes = ice.dom.find(body, '.' + this._getIceNodeClass('deleteType'));
 			ice.dom.remove(deletes);
 	
-			body = callback ? callback.call(this, body) : body;
+			body = options.callback ? options.callback.call(this, body) : body;
 	
 			return body;
 		},
@@ -611,7 +621,10 @@
 				return this._acceptRejectSome(options, true);
 			}
 			else {
-				this.element.innerHTML = this.getCleanContent();
+				this.getCleanDOM(this.element, {
+					clone: false
+				});
+//				this.element.innerHTML = this.getCleanContent();
 				this._changes = {}; // dfl, reset the changes table
 				this._triggerChange(); // notify the world that our change count has changed
 			}
@@ -730,7 +743,7 @@
 		 * void elements.
 		 * @private
 		 */
-		_moveRangeToValidTrackingPos: function (range, hostRange) {
+		_moveRangeToValidTrackingPos: function (range, hostRange, moveToStart) {
 			// set range to hostRange if available
 			if (! (range = hostRange || range)) {
 				return;
@@ -745,9 +758,15 @@
 				if (voidEl == prevVoidEl || (hostRange && voidEl.equals(prevVoidEl))) {
 					break;
 				}
+				prevVoidEl = voidEl;
 				try { 
-					range.setEndAfter(voidEl);
-					range.collapse();
+					if (moveToStart) {
+						range.setStartBefore(voidEl);
+					}
+					else {
+						range.setEndAfter(voidEl);
+					}
+					range.collapse(moveToStart);
 				}
 				catch (e) { // if we can't set the selection for whatever reason, end of document etc., break
 					break;
@@ -1115,11 +1134,11 @@
 				if (ice.dom.isBlockElement(elem)) {
 					betweenBlocks.push(elem);
 					if (!ice.dom.canContainTextElement(elem)) {
-					// Ignore containers that are not supposed to contain text. Check children instead.
-					for (var k = 0; k < elem.childNodes.length; k++) {
-						elements.push(elem.childNodes[k]);
-					}
-					continue;
+						// Ignore containers that are not supposed to contain text. Check children instead.
+						for (var k = 0; k < elem.childNodes.length; k++) {
+							elements.push(elem.childNodes[k]);
+						}
+						continue;
 					}
 				}
 				// Ignore empty space nodes
@@ -1522,8 +1541,8 @@
 					var newstart = this.env.document.createTextNode('');
 					ice.dom.insertBefore(contentAddNode, newstart);
 					if (range) {
-					range.setStart(newstart, 0);
-					range.collapse(true);
+						range.setStart(newstart, 0);
+						range.collapse(true);
 					}
 					ice.dom.replaceWith(contentAddNode, ice.dom.contents(contentAddNode));
 				}
@@ -1779,7 +1798,7 @@
 						return this._handleEnter();
 					default:
 						// If we are in a deletion, move the range to the end/outside.
-						this._moveRangeToValidTrackingPos(range);
+//						this._moveRangeToValidTrackingPos(range);
 						return this.insert();
 				}
 			}

@@ -46,18 +46,22 @@
 
 
 
-	<script type="application/javascript" language="javascript">
+	<script type="application/javascript">
 		function makeEditable() {
 			var e = document.getElementById("nonedit");
 			e.setAttribute("contentEditable", "true");
 			CKEDITOR.inline(e);
 		}
-		// We need to turn off the automatic editor creation first.
-		//CKEDITOR.disableAutoInline = true;
-		//$(document).ready(function() {
-			//var editable1 = CKEDITOR.inline(document.getElementById( 'editable1' ));
-			//var editable2 = CKEDITOR.inline(document.getElementById( 'editable2' ));
-		//});
+//		 We need to turn off the automatic editor creation first.
+		CKEDITOR.disableAutoInline = true;
+		$(document).ready(function() {
+			var editable1 = CKEDITOR.inline(document.getElementById( 'editable1' ), {
+				customConfig: "../ckeditor-config.js"
+			});
+			var editable2 = CKEDITOR.inline(document.getElementById( 'editable2' ), {
+				customConfig: "../ckeditor-config.js"
+			});
+		});
 	</script>
 
 </body>

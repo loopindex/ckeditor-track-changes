@@ -1,8 +1,9 @@
 function f() {
 
-	var users = [{name: "Roger", id : 18}, {name: "David", id : 15}, {name : "Syd", id : 21}];
-
-	var html = '';
+	var users = [{name: "Roger", id : 18}, {name: "David", id : 15}, {name : "Syd", id : 21}],
+		html = '',
+		version = (location.search.match(/(\d\.\d)/) || ["4.4"])[0],
+		ckeditorConfigUrl = version == "4.2" ? "../ckeditor4.2-config-debug.js" : "../ckeditor-config-debug.js"; 
 	
 	for (var i = 0, len = users.length; i < len; ++i) {
 		var user = users[i];
@@ -55,51 +56,64 @@ function f() {
 	});
 	
 	$("#test-data").click(function(event) {
-		event.stopImmediatePropagation();
+		event.preventDefault();
 		var state = editorStates[editorId];
 		if (state) {
 			state.editor.setData('<p>Aug 11 2013</p><p><span class="ice-ins ice-cts-1" data-cid="2" data-time="1376218678796" data-userid="15" data-username="David" >Added by David</span>, then <span class="ice-ins ice-cts-2" data-cid="11" data-time="1376218687062" data-userid="18" data-username="Roger" >added by Roger</span>, subsequently <span class="ice-del ice-cts-3" data-cid="3" data-time="1376243289388" data-userid="21" data-username="Syd" >deleted by Syd</span>, then <span class="ice-ins ice-cts-3" data-cid="19" data-time="1376218693458" data-userid="21" data-username="Syd" >added by Syd</span> using the <b>Track Changes CKEditor Plugin</b>.</p><p>Aug 11 2000</p><p><span class="ice-ins ice-cts-1" data-cid="21" data-time="966006011847" data-userid="15" data-username="David" >Added by David</span>, then <span class="ice-ins ice-cts-2" data-cid="111" data-time="966006011847" data-userid="18" data-username="Roger" >added by Roger</span>, subsequently <span class="ice-del ice-cts-3" data-cid="113" data-time="966006011847" data-userid="21" data-username="Syd" >deleted by Syd</span>, then <span class="ice-ins ice-cts-3" data-cid="119" data-time="966006011847" data-userid="21" data-username="Syd" >added by Syd</span> using the <b>Track Changes CKEditor Plugin</b>.</p>');
-//			state.editor.setData('<p>Aug 11 2013</p><p><track class="ice-ins ice-cts-1" data-cid="2" data-time="1376218678796" data-userid="15" data-username="David">Added by David</track>, then <track class="ice-ins ice-cts-2" data-cid="11" data-time="1376218687062" data-userid="18" data-username="Roger" >added by Roger</track>, subsequently <track class="ice-del ice-cts-3" data-cid="3" data-time="1376243289388" data-userid="21" data-username="Syd">deleted by Syd</track>, then <track class="ice-ins ice-cts-3" data-cid="19" data-time="1376218693458" data-userid="21" data-username="Syd">added by Syd</track> using the <b>track Changes CKEditor Plugin</b>.</p><p>Aug 11 2000</p><p><track class="ice-ins ice-cts-1" data-cid="21" data-time="966006011847" data-userid="15" data-username="David">Added by David</track>, then <track class="ice-ins ice-cts-2" data-cid="111" data-time="966006011847" data-userid="18" data-username="Roger" >added by Roger</track>, subsequently <track class="ice-del ice-cts-3" data-cid="113" data-time="966006011847" data-userid="21" data-username="Syd">deleted by Syd</track>, then <track class="ice-ins ice-cts-3" data-cid="119" data-time="966006011847" dataserid="21" data-username="Syd">added by Syd</track> using the <b>track Changes CKEditor Plugin</b>.</p>');
+		}
+		return false;
+	});
+	
+	$("#reload-editor").click(function(event) {
+		event.preventDefault();
+		var state = editorStates[editorId];
+		if (state) {
+			state.editor.destroy();
+			loadEditor(editorId);
 		}
 		return false;
 	});
 	
 	$("#reject-match").click(function(event) {
-		event.stopImmediatePropagation();
+		event.preventDefault();
 		var state = editorStates[editorId];
 		if (state) {
-			var checked = getCheckedUsers();
-			state.editor.plugins.lite.rejectAll({include:checked});
+			var checked = getCheckedUsers(),
+				lite = state.editor.plugins.lite;
+			lite.findPlugin(state.editor).rejectAll({include:checked});
 		}
 		return false;
 	})
 
 	$("#reject-non-match").click(function(event) {
-		event.stopImmediatePropagation();
+		event.preventDefault();
 		var state = editorStates[editorId];
 		if (state) {
-			var checked = getCheckedUsers();
-			state.editor.plugins.lite.rejectAll({exclude:checked});
+			var checked = getCheckedUsers(),
+				lite = state.editor.plugins.lite;
+			lite.findPlugin(state.editor).rejectAll({exclude:checked});
 		}
 		return false;
 	});
 
 	$("#accept-match").click(function(event) {
-		event.stopImmediatePropagation();
+		event.preventDefault();
 		var state = editorStates[editorId];
 		if (state) {
-			var checked = getCheckedUsers();
-			state.editor.plugins.lite.acceptAll({include:checked});
+			var checked = getCheckedUsers(),
+				lite = state.editor.plugins.lite;
+			lite.findPlugin(state.editor).acceptAll({include:checked});
 		}
 		return false;
 	});
 	
 	$("#accept-non-match").click(function(event) {
-		event.stopImmediatePropagation();
+		event.preventDefault();
 		var state = editorStates[editorId];
 		if (state) {
-			var checked = getCheckedUsers();
-			state.editor.plugins.lite.acceptAll({exclude:checked});
+			var checked = getCheckedUsers(),
+				lite = state.editor.plugins.lite;
+			lite.findPlugin(state.editor).acceptAll({exclude:checked});
 		}
 		return false;
 	});
@@ -119,7 +133,7 @@ function f() {
 		
 		var editor = CKEDITOR.replace( id , { 
 			height: "400" ,
-			customConfig: "../ckeditor-config.js"
+			customConfig: ckeditorConfigUrl
 		});
 		
 		function onConfigLoaded(e) {

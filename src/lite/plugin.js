@@ -219,7 +219,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		}
 		var path = this.path,
 			plugin = new LITEPlugin(this.props, path),
-			liteConfig = jQuery.extend({}, ed.config.lite || {}),
+			liteConfig = CKEDITOR.tools.extend({}, ed.config.lite || {}),
 			ttConfig = liteConfig.tooltips;
 		
 		if (undefined == ttConfig) {
@@ -391,6 +391,9 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		
 			ed.on("contentDom", (function(dom) {
 				this._onDomLoaded(dom);
+			}).bind(this));
+			ed.on("dataReady", (function(evt) {
+				this._onAfterSetData(evt);
 			}).bind(this));
 			var path = this.path;
 		
@@ -720,6 +723,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 				if (this._config.handlePaste) {
 					e.on("paste", paste, null, null, 1);
 				}
+				e.on("beforeGetData", this._onBeforeGetData.bind(this));
 				e.on("insertHtml", paste, null, null, 1);
 				e.on("insertText", paste, null, null, 1);
 				e.on("insertElement", paste, null, null, 1);
@@ -738,7 +742,6 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			if (null == this._tracker) {
 				var iceprops = {
 					element: body,
-					isTracking: true,
 					handleEvents : true,
 					mergeBlocks : true,
 					currentUser: {
@@ -871,6 +874,26 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		_onModeChange: function(evt){
 			this._updateTrackingState();
 			setTimeout(this._onIceChange.bind(this), 0);
+		},
+		
+		/**
+		 * Callback for the editor's beforeGetData event
+		 * Remove tooltips from dom
+		 */
+		_onBeforeGetData: function(evt) {
+			if (this._tooltipsHandler) {
+				this._tooltipsHandler.hideAll();
+			}
+		},
+		
+		/**
+		 * Callback for the editor's afterSetData event
+		 * Remove tooltips from dom
+		 */
+		_onAfterSetData: function(evt) {
+			if (this._tracker && this._tracker.isTracking()) {
+				this._tracker.reload();
+			}
 		},
 		
 		/**
@@ -1128,7 +1151,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			var config = this._config.tooltips;
 			if (config.show && this._tooltipsHandler) {
 				var title = this._makeTooltipTitle(change);
-				this._tooltipsHandler.showTooltip(node, title);
+				this._tooltipsHandler.showTooltip(node, title, this._editor.container.$);
 			}
 		},
 		
