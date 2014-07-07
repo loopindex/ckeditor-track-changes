@@ -135,6 +135,28 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		return padString(s, length, '0');
 	}
 	
+	/**
+	 * Copied from CKEditor
+	 */
+	function execIECommand(editor, command ) {
+		var doc = editor.document,
+			body = doc.getBody(),
+			enabled = false,
+			onExec = function() {
+				enabled = true;
+			};
+
+		body.on( command, onExec );
+
+		// IE7: document.execCommand has problem to paste into positioned element.
+		( CKEDITOR.env.version > 7 ? doc.$ : doc.$.selection.createRange() )[ 'execCommand' ]( command );
+
+		body.removeListener( command, onExec );
+
+		return enabled;
+	}
+
+
 	function relativeDateFormat(date) {
 		var now = new Date();
 		var today = now.getDate();
@@ -717,9 +739,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 				this._eventsBounds = true;
 				var paste = this._onPaste.bind(this);
 				e.on("afterCommandExec", this._onAfterCommand.bind(this));
-/*				e.on("beforeCommandExec", (function(event) {
-					var name = this._tracker && event.data && event.data.name;
-				}).bind(this)); */
+				e.on("beforeCommandExec", this._onBeforeCommand.bind(this));
 				if (this._config.handlePaste) {
 					e.on("paste", paste, null, null, 1);
 				}
@@ -758,7 +778,8 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 						makeHostElement: function(node) {
 							return new CKEDITOR.dom.element(node);
 						},
-						setHostRange: this._setHostRange.bind(this)
+						setHostRange: this._setHostRange.bind(this),
+						hostCopy: this._hostCopy.bind(this)
 					},
 					tooltips: config.tooltips.show,
 					tooltipsDelay: config.tooltips.delay
@@ -863,6 +884,13 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			var name = this._tracker && this._isTracking && event.data && event.data.name;
 			if ("undo" == name || "redo" == name) {
 				this._tracker.reload();
+			}
+		},
+		
+		_onBeforeCommand: function(event) {
+			var name = this._tracker && this._isTracking && event.data && event.data.name;
+			if ("cut" == name) {
+				debugger
 			}
 		},
 		
@@ -1128,6 +1156,21 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			var selection = this._editor && this._editor.getSelection();
 			if (selection) {
 				selection.selectRanges([range]);
+			}
+		},
+		
+		_hostCopy: function() {
+			try {
+				if ( CKEDITOR.env.ie ) {
+					execIECommand(this._editor, "copy" ); 
+				}
+				else {
+					// Other browsers throw an error if the command is disabled.
+					this._editor.document.$.execCommand( "copy", false, null );
+				} 
+			}
+			catch ( e ) {
+				_logError(e);
 			}
 		},
 

@@ -407,22 +407,22 @@
 			var changeid = this._batchChangeid ? null : this.startBatchChange();
 			if (range.collapsed === false) {
 				range = this._deleteSelection(range);
-				if(this._browser.mozilla){
+/*				if(this._browser.mozilla){
 					if(range.startContainer.parentNode.previousSibling){
 						range.setEnd(range.startContainer.parentNode.previousSibling, 0);
 						range.moveEnd(ice.dom.CHARACTER_UNIT, ice.dom.getNodeCharacterLength(range.endContainer));
 					}
-					else {
+					else { 
 						range.setEndAfter(range.startContainer.parentNode);
 					}
 					range.collapse(false);
 				}
-				else {
-					if(!this.visible(range.endContainer)){
+				else { */
+					if(! this.visible(range.endContainer)) {
 						range.setEnd(range.endContainer, Math.max(0, range.endOffset - 1));
-					range.collapse(false);
+						range.collapse(false);
 					}
-				}
+//				}
 			}
 			else {
 		        if (right) {
@@ -676,43 +676,44 @@
 		 * Handles accepting or rejecting tracking changes
 		 */
 		acceptRejectChange: function (node, isAccept) {
-			var delSel, insSel, selector, removeSel, replaceSel, trackNode, changes, dom = ice.dom;
+			var delSel, insSel, selector, removeSel, replaceSel, trackNode, changes, dom = ice.dom, nChanges;
 		
 			if (!node) {
 				var range = this.getCurrentRange();
-				if (!range.collapsed) return;
-				else node = range.startContainer;
+				if (!range.collapsed) {
+					return;
+				}
+				node = range.startContainer;
 			}
 		
 			delSel = removeSel = '.' + this._getIceNodeClass('deleteType');
 			insSel = replaceSel = '.' + this._getIceNodeClass('insertType');
-			selector = delSel + ',' + insSel;
-			trackNode = dom.getNode(node, selector);
-			var changeId = dom.attr(trackNode, this.attributes.changeId); //dfl
-				// Some changes are done in batches so there may be other tracking
-				// nodes with the same `changeIdAttribute` batch number.
-			changes = dom.find(this.element, '[' + this.attributes.changeId + '=' + changeId + ']');
-		
 			if (!isAccept) {
 				removeSel = insSel;
 				replaceSel = delSel;
 			}
 	
-			if (ice.dom.is(trackNode, replaceSel)) {
-					dom.each(changes, function (i, node) {
-					dom.replaceWith(node, ice.dom.contents(node));
-				});
-			} else if (dom.is(trackNode, removeSel)) {
-				dom.remove(changes);
+			selector = delSel + ',' + insSel;
+			trackNode = dom.getNode(node, selector);
+			var changeId = dom.attr(trackNode, this.attributes.changeId); //dfl
+				// Some changes are done in batches so there may be other tracking
+				// nodes with the same `changeIdAttribute` batch number.
+			changes = dom.find(this.element, removeSel + '[' + this.attributes.changeId + '=' + changeId + ']');
+			nChanges = changes.length;
+			dom.remove(changes);
+			// we handle the replaced nodes after the deleted nodes because, well, the engine may b buggy, resulting in some nesting
+			changes = dom.find(this.element, replaceSel + '[' + this.attributes.changeId + '=' + changeId + ']');
+			nChanges += changes.length;
+		
+			dom.each(changes, function (i, node) {
+				dom.replaceWith(node, ice.dom.contents(node));
+			});
+
+			/* begin dfl: if changes were accepted/rejected, remove change trigger change event */
+			delete this._changes[changeId];
+			if (nChanges > 0) {
+				this._triggerChange();
 			}
-			else { // dfl: this is not an ICE node
-				return;
-			}
-			/* begin dfl: remove change if no more nodes with this changeid, trigger change event */
-			if (changes.length <= 1) {
-				delete this._changes[changeId];
-			}
-			this._triggerChange();
 			/* end dfl */
 		},
 	
@@ -749,27 +750,47 @@
 				return;
 			}
 			var voidEl,
-				prevVoidEl = null;
-			while (voidEl = this._getVoidElement(range && range.endContainer)) {
-				if (hostRange) {
-					voidEl = this.hostMethods.makeHostElement(voidEl);
+				el,
+				visited = [],
+				found = false,
+				length;
+			while (! found) {
+				el = moveToStart ? range.startContainer : range.endContainer;
+				if (visited.indexOf(el) >= 0 || ! el) {
+					return; // loop
 				}
-				// if we're stuck on the same node, exit
-				if (voidEl == prevVoidEl || (hostRange && voidEl.equals(prevVoidEl))) {
-					break;
-				}
-				prevVoidEl = voidEl;
-				try { 
-					if (moveToStart) {
-						range.setStartBefore(voidEl);
+				visited.push(el);
+				voidEl = this._getVoidElement(el);
+				if (voidEl) {
+					if (visited.indexOf(voidEl) >= 0) {
+						return; // loop
 					}
-					else {
-						range.setEndAfter(voidEl);
-					}
-					range.collapse(moveToStart);
+					visited.push(voidEl)
 				}
-				catch (e) { // if we can't set the selection for whatever reason, end of document etc., break
-					break;
+				else {
+					found = ice.dom.isTextContainer(el);
+				}
+				if (! found) { // in void element or non text container
+					var newEdge = voidEl && moveToStart ? ice.dom.findPrevTextContainer(voidEl, this.element) :
+							ice.dom.findNextTextContainer(voidEl || el, this.element),
+						edgeNode = newEdge.node;
+					// we have a new edge node
+
+					if (hostRange) {
+						edgeNode = this.hostMethods.makeHostElement(edgeNode);
+					}
+					try { 
+						if (moveToStart) {
+							range.setStart(edgeNode, newEdge.offset);
+						}
+						else {
+							range.setEnd(edgeNode, newEdge.offset);
+						}
+						range.collapse(moveToStart);
+					}
+					catch (e) { // if we can't set the selection for whatever reason, end of document etc., break
+						break;
+					}
 				}
 			}
 		},
@@ -1000,12 +1021,12 @@
 				start = (_start && _start.$) || _start,
 				f = hostRange ? this.hostMethods.makeHostElement : nativeElement;
 			
-			if (!ice.dom.isBlockElement(start) && 
+/*			if (!ice.dom.isBlockElement(start) && 
 				!ice.dom.canContainTextElement(ice.dom.getBlockParent(start, this.element)) && 
 				start.previousSibling) {
 				range.setStart(f(start.previousSibling), 0);
 				start = hostRange? hostRange.startContainer && hostRange.startContainer.$ : range.startContainer;
-			}
+			} */
 //			var startContainer = range.startContainer;
 //				parentBlock = ice.dom.isBlockElement(startContainer) && startContainer || ice.dom.getBlockParent(startContainer, this.element) || null;
 /*			if (parentBlock === this.element) {
@@ -1178,8 +1199,8 @@
 				while (betweenBlocks.length) {
 					ice.dom.mergeContainers(betweenBlocks.shift(), b1);
 				}
-				ice.dom.removeBRFromChild(b2);
-				ice.dom.removeBRFromChild(b1);
+//				ice.dom.removeBRFromChild(b2);
+//				ice.dom.removeBRFromChild(b1);
 				ice.dom.mergeContainers(b2, b1);
 			}
 	
@@ -1559,20 +1580,20 @@
 					// Move to the left until there is valid sibling.
 					var previousSibling = ice.dom.getPrevContentNode(contentNode, this.element);
 					while (!found) {
-					ctNode = this._getIceNode(previousSibling, 'deleteType');
-					if (!ctNode) {
-						found = true;
-					} else {
-						previousSibling = ice.dom.getPrevContentNode(previousSibling, this.element);
-					}
+						ctNode = this._getIceNode(previousSibling, 'deleteType');
+						if (!ctNode) {
+							found = true;
+						} else {
+							previousSibling = ice.dom.getPrevContentNode(previousSibling, this.element);
+						}
 					}
 					if (previousSibling) {
-					var lastSelectable = range.getLastSelectableChild(previousSibling);
-					if (lastSelectable) {
-						previousSibling = lastSelectable;
-					}
-					range.setStart(previousSibling, ice.dom.getNodeCharacterLength(previousSibling));
-					range.collapse(true);
+						var lastSelectable = range.getLastSelectableChild(previousSibling);
+						if (lastSelectable) {
+							previousSibling = lastSelectable;
+						}
+						range.setStart(previousSibling, ice.dom.getNodeCharacterLength(previousSibling));
+						range.collapse(true);
 					}
 					return true;
 				} else {
@@ -1798,7 +1819,6 @@
 						return this._handleEnter();
 					default:
 						// If we are in a deletion, move the range to the end/outside.
-//						this._moveRangeToValidTrackingPos(range);
 						return this.insert();
 				}
 			}
@@ -1857,6 +1877,14 @@
 					this.selection.addRange(range);
 				} //end if
 				break;
+			case 120:
+			case 88:
+/*				if (e.ctrlKey === true || e.metaKey === true) {
+					ice.dom.preventDefault(e);
+					this.hostMethods.hostCopy();
+					this._deleteContents();
+					return false;
+				} */
 	
 			default:
 				// Not a special key.

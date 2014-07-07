@@ -26,7 +26,7 @@
 	dom.BREAK_ELEMENT = 'br';
 	dom.CONTENT_STUB_ELEMENTS = ['img', 'hr', 'iframe', 'param', 'link', 'meta', 'input', 'frame', 'col', 'base', 'area'];
 	dom.BLOCK_ELEMENTS = ['body', 'p', 'div', 'pre', 'ul', 'ol', 'li', 'table', 'tbody', 'td', 'th', 'fieldset', 'form', 'blockquote', 'dl', 'dt', 'dd', 'dir', 'center', 'address', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'];
-	dom.TEXT_CONTAINER_ELEMENTS = ['body','p', 'div', 'pre', 'li', 'td', 'th', 'blockquote', 'dt', 'dd', 'center', 'address', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'];
+	dom.TEXT_CONTAINER_ELEMENTS = ['body','p', 'div', 'pre', 'span', 'b', 'strong', 'i', 'li', 'td', 'th', 'blockquote', 'dt', 'dd', 'center', 'address', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'];
 
 	dom.STUB_ELEMENTS = dom.CONTENT_STUB_ELEMENTS.slice();
 	dom.STUB_ELEMENTS.push(dom.BREAK_ELEMENT);
@@ -491,6 +491,129 @@
 		}
 		return null;
 	};
+	
+	/* Begin dfl */
+	
+	function _findPrevIndex(node, origin) {
+		if (dom.TEXT_NODE == node.nodeType) {
+			return node.length;
+		}
+		
+	}
+	
+	function _findNextTextContainer(node){
+		while (node) {
+			if (dom.TEXT_NODE == node.nodeType) {
+				return node;
+			}
+			for (var child = node.firstChild; child; child = child.nextSibling) {
+				var ret = _findNextTextContainer(child, container);
+				if (ret) {
+					return ret;
+				}
+			}
+			if (dom.isTextContainer(node)) {
+				return node;
+			}
+			node = node.nextSibling;
+		}
+		return null;
+	}
+	
+	function _findPrevTextContainer(node){
+		while (node) {
+			if (dom.TEXT_NODE == node.nodeType) {
+				return node;
+			}
+			for (var child = node.lastChild; child; child = child.previousSibling) {
+				var ret = _findPrevTextContainer(child, container);
+				if (ret) {
+					return ret;
+				}
+			}
+			if (dom.isTextContainer(node)) {
+				return node;
+			}
+			node = node.previousSibling;
+		}
+		return null;
+	}
+	
+	dom.findPrevTextContainer = function(node, container) {
+		if (! node || node == container) {
+			return {
+				node: container,
+				offset: 0
+			};
+		}
+
+		if (node.parentNode && dom.isTextContainer(node.parentNode)) {
+			return {
+				node: node.parentNode,
+				offset: dom.getNodeIndex(node)
+			};
+		};
+		while (node.previousSibling) {
+			var ret = _findPrevTextContainer(node.previousSibling);
+			if (ret) {
+				return {
+					node: ret,
+					offset: dom.getNodeLength(ret)
+				};
+			};
+			node = node.previousSibling;
+		};
+		
+		return dom.findPrevTextContainer(node.parentNode && node.parentNode.previousSibling, container);
+	};
+	
+	dom.findNextTextContainer = function(node, container) {
+		if (! node || node == container) {
+			return {
+				node: container,
+				offset: dom.getNodeLength(container)
+			};
+		}
+		if (node.parentNode && dom.isTextContainer(node.parentNode)) {
+			return {
+				node: node.parentNode,
+				offset: dom.getNodeIndex(node) + 1
+			};
+		};
+		while (node.nextSibling) {
+			var ret = _findNextTextContainer(node.nextSibling);
+			if (ret) {
+				return {
+					node: ret,
+					offset: 0
+				};
+			};
+			node = node.previousSibling;
+		};
+		
+		return dom.findNextTextContainer(node.parentNode && node.parentNode.nextSibling, container);
+	};
+	
+	dom.getNodeLength = function(node) {
+		return node ? 
+				(dom.TEXT_NODE == node.nodeType ? 
+						node.length : ((node.childNodes && node.childNodes.length) || 0)) :
+				0;
+	};
+	
+	dom.isTextContainer = function(node) {
+		return (node && (dom.TEXT_NODE == node.nodeType) || dom.TEXT_CONTAINER_ELEMENTS.indexOf((node.nodeName || "").toLowerCase()) >= 0);
+	};
+	
+	dom.getNodeIndex = function(node) {
+		var i = 0;
+		while( (node = node.previousSibling) ) {
+			++i;
+		}
+		return i;
+	};
+	
+	/* end dfl */
 
 	dom.canContainTextElement = function (element) {
 		if (element && element.nodeName) {
