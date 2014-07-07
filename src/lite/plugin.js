@@ -966,6 +966,12 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			if (! data) {
 				return;
 			}
+			if ("string" == typeof data) {
+				data = {
+					dataValue: data,
+					type: "text"
+				}
+			}
 			if (node) {
 				ignore = node.getAttribute("data-track-changes-ignore");
 			}
