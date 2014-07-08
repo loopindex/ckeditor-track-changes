@@ -3389,7 +3389,7 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 			if (implementsControlRange && implementsDocSelection && sel.docSelection.type == CONTROL) {
 				updateControlSelection(sel);
 			} else {
-				sel._ranges.length = sel.rangeCount = sel.nativeSelection.rangeCount;
+				sel._ranges.length = sel.rangeCount = (sel.nativeSelection && sel.nativeSelection.rangeCount) || 0;
 				if (sel.rangeCount) {
 					for (var i = 0, len = sel.rangeCount; i < len; ++i) {
 						sel._ranges[i] = new api.WrappedRange(sel.nativeSelection.getRangeAt(i));
@@ -3820,6 +3820,11 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 		_handleSelectAll: false, // dfl, if true, handle ctrl/cmd-A in the change tracker
 	};
 
+	/**
+	 * @class ice.InlineChangeEditor
+	 * The change tracking engine
+	 * interacts with a <code>contenteditable</code> DOM element
+	 */
 	InlineChangeEditor = function (options) {
 
 		// Data structure for modelling changes in the element according to the following model:
@@ -4065,15 +4070,16 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 	 	
 		/**
 		 * Returns a tracking tag for the given `changeType`, with the optional `childNode` appended.
+		 * @private
 		 */
-		createIceNode: function (changeType, childNode) {
+		_createIceNode: function (changeType, childNode) {
 			var node = this.env.document.createElement(this.changeTypes[changeType].tag);
 			ice.dom.addClass(node, this._getIceNodeClass(changeType));
 	
 			if (childNode) {
 				node.appendChild(childNode);
 			}
-			this.addChange(this.changeTypes[changeType].alias, [node]);
+			this._addChange(this.changeTypes[changeType].alias, [node]);
 	
 			return node;
 		},
@@ -4086,21 +4092,22 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 		insert: function (nodes) {
 			var range = this.getCurrentRange(),
 				hostRange = range ? null : this.hostMethods.getHostRange(),
-				changeid = this._batchChangeid ? null : this.startBatchChange();
+				changeid = this._batchChangeid ? null : this.startBatchChange(),
+				hadSelection = !!(range && !range.collapsed);
 			
 			
 		// If we have any nodes selected, then we want to delete them before inserting the new text.
-			if (range && !range.collapsed) {
-				this.deleteContents(false, range, hostRange); 
+			if (hadSelection) {
+				this._deleteContents(false, range); 
 			// Update the range
 				range = this.getCurrentRange();
 				if (range.startContainer === range.endContainer && this.element === range.startContainer) {
-					// The whole editable element is selected. Need to remove everything and init its contents.
+/*					// The whole editable element is selected. Need to remove everything and init its contents.
 					ice.dom.empty(this.element);
 					range = this.selection.getRangeAt(0);
 //					var firstSelectable = range.getLastSelectableChild(this.element);
 //					range.setStartAfter(firstSelectable);
-					range.collapse(true);
+					range.collapse(true); */
 				}
 			}
 			else if (! range && ! nodes) {
@@ -4113,7 +4120,7 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 			}
 	
 			// If we are in a non-tracking/void element, move the range to the end/outside.
-			this._moveRangeToValidTrackingPos(range, hostRange);
+			this._moveRangeToValidTrackingPos(range, hostRange, hadSelection);
 	
 			this._insertNodes(range, hostRange, nodes);
 			this.endBatchChange(changeid);
@@ -4126,8 +4133,9 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 		 * to the left or right if the right parameter is false or true, respectively.
 		 * compared OK
 		 * @return true if deletion was handled.
+		 * @private
 		 */
-		deleteContents: function (right, range) {
+		_deleteContents: function (right, range) {
 			var prevent = true,
 				browser = this._browser;
 			if (range) {
@@ -4137,28 +4145,23 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 			}
 			var changeid = this._batchChangeid ? null : this.startBatchChange();
 			if (range.collapsed === false) {
-				if(this._currentUserIceNode(range.startContainer.parentNode)){
-					this._deleteSelection(range);
+				range = this._deleteSelection(range);
+/*				if(this._browser.mozilla){
+					if(range.startContainer.parentNode.previousSibling){
+						range.setEnd(range.startContainer.parentNode.previousSibling, 0);
+						range.moveEnd(ice.dom.CHARACTER_UNIT, ice.dom.getNodeCharacterLength(range.endContainer));
+					}
+					else { 
+						range.setEndAfter(range.startContainer.parentNode);
+					}
+					range.collapse(false);
 				}
-				else {
-					this._deleteSelection(range);
-					if(this._browser.mozilla){
-						if(range.startContainer.parentNode.previousSibling){
-							range.setEnd(range.startContainer.parentNode.previousSibling, 0);
-							range.moveEnd(ice.dom.CHARACTER_UNIT, ice.dom.getNodeCharacterLength(range.endContainer));
-						}
-						else {
-							range.setEndAfter(range.startContainer.parentNode);
-						}
+				else { */
+					if(! this.visible(range.endContainer)) {
+						range.setEnd(range.endContainer, Math.max(0, range.endOffset - 1));
 						range.collapse(false);
 					}
-					else {
-						if(!this.visible(range.endContainer)){
-							range.setEnd(range.endContainer, Math.max(0, range.endOffset - 1));
-						range.collapse(false);
-						}
-					}
-				}
+//				}
 			}
 			else {
 		        if (right) {
@@ -4291,7 +4294,7 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 		 * prepare gets run before the body is cleaned by ice.
 		 */
 		getCleanContent: function (body, callback, prepare) {
-			var newBody = this.getCleanDOM(body, callback, prepare);
+			var newBody = this.getCleanDOM(body, {callback:callback, prepare: prepace, clone: true});
 			return (newBody && newBody.innerHTML) || "";
 		},
 		
@@ -4305,9 +4308,10 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 		 *
 		 * prepare gets run before the body is cleaned by ice.
 		 */
-		getCleanDOM : function(body, callback, prepare) {
-			var classList = '';
-			var self = this;
+		getCleanDOM : function(body, options) {
+			var classList = '',
+				self = this;
+			options = options || {};
 			ice.dom.each(this.changeTypes, function (type, i) {
 			if (type != 'deleteType') {
 				if (i > 0) classList += ',';
@@ -4318,22 +4322,30 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 				if (typeof body === 'string') {
 					body = ice.dom.create('<div>' + body + '</div>');
 				}
-				else {
+				else if (options.clone){
 					body = ice.dom.cloneNode(body, false)[0];
 				}
 			} 
 			else {
-				body = ice.dom.cloneNode(this.element, false)[0];
+				body = options.clone? ice.dom.cloneNode(this.element, false)[0] : this.element;
 			}
-			body = prepare ? prepare.call(this, body) : body;
+			return this._cleanBody(body, classList, options);
+		},
+		
+		_cleanBody: function(body, classList, options) {
+			body = options.prepare ? options.prepare.call(this, body) : body;
 			var changes = ice.dom.find(body, classList);
-			ice.dom.each(changes, function (el, i) {
-				ice.dom.replaceWith(this, ice.dom.contents(this));
+			ice.dom.each(changes, function (i,el) {
+				while (el.firstChild) {
+					el.parentNode.insertBefore(el.firstChild, el);
+				}
+				el.parentNode.removeChild(el);
+//				ice.dom.replaceWith(this, ice.dom.contents(this));
 			});
 			var deletes = ice.dom.find(body, '.' + this._getIceNodeClass('deleteType'));
 			ice.dom.remove(deletes);
 	
-			body = callback ? callback.call(this, body) : body;
+			body = options.callback ? options.callback.call(this, body) : body;
 	
 			return body;
 		},
@@ -4348,7 +4360,10 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 				return this._acceptRejectSome(options, true);
 			}
 			else {
-				this.element.innerHTML = this.getCleanContent();
+				this.getCleanDOM(this.element, {
+					clone: false
+				});
+//				this.element.innerHTML = this.getCleanContent();
 				this._changes = {}; // dfl, reset the changes table
 				this._triggerChange(); // notify the world that our change count has changed
 			}
@@ -4400,43 +4415,44 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 		 * Handles accepting or rejecting tracking changes
 		 */
 		acceptRejectChange: function (node, isAccept) {
-			var delSel, insSel, selector, removeSel, replaceSel, trackNode, changes, dom = ice.dom;
+			var delSel, insSel, selector, removeSel, replaceSel, trackNode, changes, dom = ice.dom, nChanges;
 		
 			if (!node) {
 				var range = this.getCurrentRange();
-				if (!range.collapsed) return;
-				else node = range.startContainer;
+				if (!range.collapsed) {
+					return;
+				}
+				node = range.startContainer;
 			}
 		
 			delSel = removeSel = '.' + this._getIceNodeClass('deleteType');
 			insSel = replaceSel = '.' + this._getIceNodeClass('insertType');
-			selector = delSel + ',' + insSel;
-			trackNode = dom.getNode(node, selector);
-			var changeId = dom.attr(trackNode, this.attributes.changeId); //dfl
-				// Some changes are done in batches so there may be other tracking
-				// nodes with the same `changeIdAttribute` batch number.
-			changes = dom.find(this.element, '[' + this.attributes.changeId + '=' + changeId + ']');
-		
 			if (!isAccept) {
 				removeSel = insSel;
 				replaceSel = delSel;
 			}
 	
-			if (ice.dom.is(trackNode, replaceSel)) {
-					dom.each(changes, function (i, node) {
-					dom.replaceWith(node, ice.dom.contents(node));
-				});
-			} else if (dom.is(trackNode, removeSel)) {
-				dom.remove(changes);
+			selector = delSel + ',' + insSel;
+			trackNode = dom.getNode(node, selector);
+			var changeId = dom.attr(trackNode, this.attributes.changeId); //dfl
+				// Some changes are done in batches so there may be other tracking
+				// nodes with the same `changeIdAttribute` batch number.
+			changes = dom.find(this.element, removeSel + '[' + this.attributes.changeId + '=' + changeId + ']');
+			nChanges = changes.length;
+			dom.remove(changes);
+			// we handle the replaced nodes after the deleted nodes because, well, the engine may b buggy, resulting in some nesting
+			changes = dom.find(this.element, replaceSel + '[' + this.attributes.changeId + '=' + changeId + ']');
+			nChanges += changes.length;
+		
+			dom.each(changes, function (i, node) {
+				dom.replaceWith(node, ice.dom.contents(node));
+			});
+
+			/* begin dfl: if changes were accepted/rejected, remove change trigger change event */
+			delete this._changes[changeId];
+			if (nChanges > 0) {
+				this._triggerChange();
 			}
-			else { // dfl: this is not an ICE node
-				return;
-			}
-			/* begin dfl: remove change if no more nodes with this changeid, trigger change event */
-			if (changes.length <= 1) {
-				delete this._changes[changeId];
-			}
-			this._triggerChange();
 			/* end dfl */
 		},
 	
@@ -4454,25 +4470,10 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 		},
 	
 		/**
-		 * Add a new change tracking typeName with the given tag and alias.
-		 */
-		addChangeType: function (typeName, tag, alias, action) {
-			var changeType = {
-				tag: tag,
-				alias: alias
-			};
-	
-			if (action) {
-				changeType.action = action;
-			}
-	
-			this.changeTypes[typeName] = changeType;
-		},
-	
-		/**
 		 * Returns this `node` or the first parent tracking node with the given `changeType`.
+		 * @private
 		 */
-		getIceNode: function (node, changeType) {
+		_getIceNode: function (node, changeType) {
 			var selector = '.' + this._getIceNodeClass(changeType);
 			return ice.dom.getNode((node && node.$) || node, selector);
 		},
@@ -4480,34 +4481,62 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 		/**
 		 * Sets the given `range` to the first position, to the right, where it is outside of
 		 * void elements.
+		 * @private
 		 */
-		_moveRangeToValidTrackingPos: function (range, hostRange) {
+		_moveRangeToValidTrackingPos: function (range, hostRange, moveToStart) {
 			// set range to hostRange if available
 			if (! (range = hostRange || range)) {
 				return;
 			}
 			var voidEl,
-				prevVoidEl = null;
-			while (voidEl = this._getVoidElement(range && range.endContainer)) {
-				if (hostRange) {
-					voidEl = this.hostMethods.makeHostElement(voidEl);
+				el,
+				visited = [],
+				found = false,
+				length;
+			while (! found) {
+				el = moveToStart ? range.startContainer : range.endContainer;
+				if (visited.indexOf(el) >= 0 || ! el) {
+					return; // loop
 				}
-				// if we're stuck on the same node, exit
-				if (voidEl == prevVoidEl || (hostRange && voidEl.equals(prevVoidEl))) {
-					break;
+				visited.push(el);
+				voidEl = this._getVoidElement(el);
+				if (voidEl) {
+					if (visited.indexOf(voidEl) >= 0) {
+						return; // loop
+					}
+					visited.push(voidEl)
 				}
-				try { 
-					range.setEndAfter(voidEl);
-					range.collapse();
+				else {
+					found = ice.dom.isTextContainer(el);
 				}
-				catch (e) { // if we can't set the selection for whatever reason, end of document etc., break
-					break;
+				if (! found) { // in void element or non text container
+					var newEdge = voidEl && moveToStart ? ice.dom.findPrevTextContainer(voidEl, this.element) :
+							ice.dom.findNextTextContainer(voidEl || el, this.element),
+						edgeNode = newEdge.node;
+					// we have a new edge node
+
+					if (hostRange) {
+						edgeNode = this.hostMethods.makeHostElement(edgeNode);
+					}
+					try { 
+						if (moveToStart) {
+							range.setStart(edgeNode, newEdge.offset);
+						}
+						else {
+							range.setEnd(edgeNode, newEdge.offset);
+						}
+						range.collapse(moveToStart);
+					}
+					catch (e) { // if we can't set the selection for whatever reason, end of document etc., break
+						break;
+					}
 				}
 			}
 		},
 	
 		/**
 		 * Returns the given `node` or the first parent node that matches against the list of no track elements.
+		 * @private
 		 */
 		_getNoTrackElement: function (node) {
 			var noTrackSelector = this._getNoTrackSelector();
@@ -4517,6 +4546,7 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 	
 		/**
 		 * Returns a selector for not tracking changes
+		 * @private
 		 */
 		_getNoTrackSelector: function () {
 			return this.noTrack;
@@ -4525,6 +4555,7 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 		/**
 		 * Returns the given `node` or the first parent node that matches against the list of void elements.
 		 * dfl: added try/catch
+		 * @private
 		 */
 		_getVoidElement: function (node) {
 			
@@ -4539,6 +4570,7 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 						return node;
 					}
 				}
+				return voidParent;
 			}
 			catch(e) {
 				return null;
@@ -4547,6 +4579,7 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 	
 		/**
 		 * Returns a css selector for delete .
+		 * @private
 		 */
 		_getVoidElSelector: function () {
 			return '.' + this._getIceNodeClass('deleteType');
@@ -4554,6 +4587,7 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 	
 		/**
 		 * Returns true if node has a user id attribute that matches the current user id.
+		 * @private
 		 */
 		_currentUserIceNode: function (node) {
 			return ice.dom.attr(node, this.attributes.userId) == this.currentUser.id;
@@ -4562,6 +4596,7 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 		/**
 		 * With the given alias, searches the changeTypes objects and returns the
 		 * associated key for the alias.
+		 * @private
 		 */
 		_getChangeTypeFromAlias: function (alias) {
 			var type, ctnType = null;
@@ -4576,11 +4611,17 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 			return ctnType;
 		},
 	
+/**
+ * @private
+ */				
 		_getIceNodeClass: function (changeType) {
 			return this.attrValuePrefix + this.changeTypes[changeType].alias;
 		},
 	
-		getUserStyle: function (userid) {
+		/**
+		 * @private
+		 */				
+		_getUserStyle: function (userid) {
 			if (userid === null || userid === "" || "undefined" == typeof userid) {
 				return this.stylePrefix;
 			};
@@ -4589,12 +4630,15 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 				styleIndex = this._userStyles[userid];
 			}
 			else {
-				styleIndex = this.setUserStyle(userid, this.getNewStyleId());
+				styleIndex = this._setUserStyle(userid, this._getNewStyleId());
 			}
 			return styleIndex;
 		},
 	
-		setUserStyle: function (userid, styleIndex) {
+		/**
+		 * @private
+		 */
+		_setUserStyle: function (userid, styleIndex) {
 			var style = this.stylePrefix + '-' + styleIndex;
 			if (!this._styles[styleIndex]) {
 				this._styles[styleIndex] = true;
@@ -4602,11 +4646,11 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 			return this._userStyles[userid] = style;
 		},
 	
-		getNewStyleId: function () {
+		_getNewStyleId: function () {
 			var id = ++this._uniqueStyleIndex;
 			if (this._styles[id]) {
 			// Dupe.. create another..
-				return this.getNewStyleId();
+				return this._getNewStyleId();
 			} 
 			else {
 				this._styles[id] = true;
@@ -4614,7 +4658,7 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 			}
 		},
 	
-		addChange: function (ctnType, ctNodes) {
+		_addChange: function (ctnType, ctNodes) {
 			var changeid = this._batchChangeid || this.getNewChangeId(),
 				self = this;
 
@@ -4630,7 +4674,7 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 				this._triggerChange(); //dfl
 			}
 			ice.dom.foreach(ctNodes, function (i) {
-				self.addNodeToChange(changeid, ctNodes[i]);
+				self._addNodeToChange(changeid, ctNodes[i]);
 			});
 	
 			return changeid;
@@ -4640,8 +4684,9 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 		 * Adds tracking attributes from the change with changeid to the ctNode.
 		 * @param changeid Id of an existing change.
 		 * @param ctNode The element to add for the change.
+		 * @private
 		 */
-		addNodeToChange: function (changeid, ctNode) {
+		_addNodeToChange: function (changeid, ctNode) {
 			changeid = this._batchChangeid || changeid;
 			var change = this.getChange(changeid);
 			
@@ -4661,12 +4706,16 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 				ctNode.setAttribute(this.attributes.changeData, this._changeData || "");
 			}
 			
-			if (!ctNode.getAttribute(this.attributes.time)) ctNode.setAttribute(this.attributes.time, change.time);
+			if (!ctNode.getAttribute(this.attributes.time)) {
+				ctNode.setAttribute(this.attributes.time, change.time);
+			}
 			
-			if (!ice.dom.hasClass(ctNode, this._getIceNodeClass(change.type))) ice.dom.addClass(ctNode, this._getIceNodeClass(change.type));
+//			if (!ice.dom.hasClass(ctNode, this._getIceNodeClass(change.type))) ice.dom.addClass(ctNode, this._getIceNodeClass(change.type));
 	
-			var style = this.getUserStyle(change.userid);
-			if (!ice.dom.hasClass(ctNode, style)) ice.dom.addClass(ctNode, style);
+			var style = this._getUserStyle(change.userid);
+			if (!ice.dom.hasClass(ctNode, style)) {
+				ice.dom.addClass(ctNode, style);
+			}
 			/* Added by dfl */
 			this._updateNodeTooltip(ctNode);
 		},
@@ -4711,12 +4760,12 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 				start = (_start && _start.$) || _start,
 				f = hostRange ? this.hostMethods.makeHostElement : nativeElement;
 			
-			if (!ice.dom.isBlockElement(start) && 
+/*			if (!ice.dom.isBlockElement(start) && 
 				!ice.dom.canContainTextElement(ice.dom.getBlockParent(start, this.element)) && 
 				start.previousSibling) {
 				range.setStart(f(start.previousSibling), 0);
 				start = hostRange? hostRange.startContainer && hostRange.startContainer.$ : range.startContainer;
-			}
+			} */
 //			var startContainer = range.startContainer;
 //				parentBlock = ice.dom.isBlockElement(startContainer) && startContainer || ice.dom.getBlockParent(startContainer, this.element) || null;
 /*			if (parentBlock === this.element) {
@@ -4733,7 +4782,7 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 				range.setStart(parentBlock, 0);
 			} */
 	
-			var ctNode = this.getIceNode(start, 'insertType'),
+			var ctNode = this._getIceNode(start, 'insertType'),
 				inCurrentUserInsert = this._currentUserIceNode(ctNode);
 	
 			// Do nothing, let this bubble-up to insertion handler.
@@ -4755,7 +4804,7 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 			}
 			else {
 				// If we aren't in an insert node which belongs to the current user, then create a new ins node
-				var node = this.createIceNode('insertType');
+				var node = this._createIceNode('insertType');
 				if (ctNode) {
 					var nChildren = ctNode.childNodes.length;
 					ctNode.normalize();
@@ -4823,7 +4872,7 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 			// If `el` is or is in a void element, but not a delete
 			// then collapse the `range` and return `true`.
 			var voidEl = el && this._getVoidElement(el);
-			if (voidEl && !this.getIceNode(voidEl, 'deleteType')) {
+			if (voidEl && !this._getIceNode(voidEl, 'deleteType')) {
 				range.collapse(true);
 				return true;
 			}
@@ -4845,11 +4894,11 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 				if (ice.dom.isBlockElement(elem)) {
 					betweenBlocks.push(elem);
 					if (!ice.dom.canContainTextElement(elem)) {
-					// Ignore containers that are not supposed to contain text. Check children instead.
-					for (var k = 0; k < elem.childNodes.length; k++) {
-						elements.push(elem.childNodes[k]);
-					}
-					continue;
+						// Ignore containers that are not supposed to contain text. Check children instead.
+						for (var k = 0; k < elem.childNodes.length; k++) {
+							elements.push(elem.childNodes[k]);
+						}
+						continue;
 					}
 				}
 				// Ignore empty space nodes
@@ -4858,29 +4907,29 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 				if (!this._getVoidElement(elem)) {
 					// If the element is not a text or stub node, go deeper and check the children.
 					if (elem.nodeType !== ice.dom.TEXT_NODE) {
-					// Browsers like to insert breaks into empty paragraphs - remove them
-					if (ice.dom.BREAK_ELEMENT == ice.dom.getTagName(elem)) {
+						// Browsers like to insert breaks into empty paragraphs - remove them
+						if (ice.dom.BREAK_ELEMENT == ice.dom.getTagName(elem)) {
+							continue;
+						}
+			
+						if (ice.dom.isStubElement(elem)) {
+							this._addNodeTracking(elem, false, true);
+							continue;
+						}
+						if (ice.dom.hasNoTextOrStubContent(elem)) {
+							ice.dom.remove(elem);
+						}
+			
+						for (var j = 0; j < elem.childNodes.length; j++) {
+							var child = elem.childNodes[j];
+							elements.push(child);
+						}
 						continue;
-					}
-		
-					if (ice.dom.isStubElement(elem)) {
-						this._addNodeTracking(elem, false, true);
-						continue;
-					}
-					if (ice.dom.hasNoTextOrStubContent(elem)) {
-						ice.dom.remove(elem);
-					}
-		
-					for (j = 0; j < elem.childNodes.length; j++) {
-						var child = elem.childNodes[j];
-						elements.push(child);
-					}
-					continue;
 					}
 					var parentBlock = ice.dom.getBlockParent(elem);
 					this._addNodeTracking(elem, false, true, true);
 					if (ice.dom.hasNoTextOrStubContent(parentBlock)) {
-					ice.dom.remove(parentBlock);
+						ice.dom.remove(parentBlock);
 					}
 				}
 			}
@@ -4889,13 +4938,15 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 				while (betweenBlocks.length) {
 					ice.dom.mergeContainers(betweenBlocks.shift(), b1);
 				}
-				ice.dom.removeBRFromChild(b2);
-				ice.dom.removeBRFromChild(b1);
+//				ice.dom.removeBRFromChild(b2);
+//				ice.dom.removeBRFromChild(b1);
 				ice.dom.mergeContainers(b2, b1);
 			}
 	
 			bookmark.selectBookmark();
+			range = this.getCurrentRange();
 			range.collapse(true);
+			return range;
 		},
 	
 		// Delete
@@ -4903,13 +4954,13 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 		_deleteRight: function (range) {
 	
 			var parentBlock = ice.dom.isBlockElement(range.startContainer) && range.startContainer || ice.dom.getBlockParent(range.startContainer, this.element) || null,
-			isEmptyBlock = parentBlock ? (ice.dom.hasNoTextOrStubContent(parentBlock)) : false,
-			nextBlock = parentBlock && ice.dom.getNextContentNode(parentBlock, this.element),
-			nextBlockIsEmpty = nextBlock ? (ice.dom.hasNoTextOrStubContent(nextBlock)) : false,
-			initialContainer = range.endContainer,
-			initialOffset = range.endOffset,
-			commonAncestor = range.commonAncestorContainer,
-			nextContainer, returnValue;
+				isEmptyBlock = parentBlock ? (ice.dom.hasNoTextOrStubContent(parentBlock)) : false,
+				nextBlock = parentBlock && ice.dom.getNextContentNode(parentBlock, this.element),
+				nextBlockIsEmpty = nextBlock ? (ice.dom.hasNoTextOrStubContent(nextBlock)) : false,
+				initialContainer = range.endContainer,
+				initialOffset = range.endOffset,
+				commonAncestor = range.commonAncestorContainer,
+				nextContainer, returnValue;
 	
 	
 			// If the current block is empty then let the browser handle the delete/event.
@@ -4992,56 +5043,57 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 	
 			}
 	
-			if (this._handleVoidEl(nextContainer, range)) return true;
+			if (this._handleVoidEl(nextContainer, range)) {
+				return true;
+			}
 	
 			// If we are deleting into a no tracking containiner, then remove the content
 			if (this._getNoTrackElement(range.endContainer.parentElement)) {
-				range.deleteContents();
+				range._deleteContents();
 				return false;
 			}
 	
 			if (ice.dom.isOnBlockBoundary(range.startContainer, range.endContainer, this.element)) {
-			if (this.mergeBlocks && ice.dom.is(ice.dom.getBlockParent(nextContainer, this.element), this.blockEl)) {
-				// Since the range is moved by character, it may have passed through empty blocks.
-				// <p>text {RANGE.START}</p><p></p><p>{RANGE.END} text</p>
-				if (nextBlock !== ice.dom.getBlockParent(range.endContainer, this.element)) {
-				range.setEnd(nextBlock, 0);
+				if (this.mergeBlocks && ice.dom.is(ice.dom.getBlockParent(nextContainer, this.element), this.blockEl)) {
+					// Since the range is moved by character, it may have passed through empty blocks.
+					// <p>text {RANGE.START}</p><p></p><p>{RANGE.END} text</p>
+					if (nextBlock !== ice.dom.getBlockParent(range.endContainer, this.element)) {
+					range.setEnd(nextBlock, 0);
+					}
+					// The browsers like to auto-insert breaks into empty paragraphs - remove them.
+					var elements = ice.dom.getElementsBetween(range.startContainer, range.endContainer);
+					for (var i = 0; i < elements.length; i++) {
+					ice.dom.remove(elements[i]);
+					}
+					var startContainer = range.startContainer;
+					var endContainer = range.endContainer;
+					ice.dom.remove(ice.dom.find(startContainer, 'br'));
+					ice.dom.remove(ice.dom.find(endContainer, 'br'));
+					return ice.dom.mergeBlockWithSibling(range, ice.dom.getBlockParent(range.endContainer, this.element) || parentBlock);
+				} else {
+					// If the next block is empty, remove the next block.
+					if (nextBlockIsEmpty) {
+					ice.dom.remove(nextBlock);
+					range.collapse(true);
+					return true;
+					}
+		
+					// Place the caret at the start of the next block.
+					range.setStart(nextBlock, 0);
+					range.collapse(true);
+					return true;
 				}
-				// The browsers like to auto-insert breaks into empty paragraphs - remove them.
-				var elements = ice.dom.getElementsBetween(range.startContainer, range.endContainer);
-				for (var i = 0; i < elements.length; i++) {
-				ice.dom.remove(elements[i]);
-				}
-				var startContainer = range.startContainer;
-				var endContainer = range.endContainer;
-				ice.dom.remove(ice.dom.find(startContainer, 'br'));
-				ice.dom.remove(ice.dom.find(endContainer, 'br'));
-				return ice.dom.mergeBlockWithSibling(range, ice.dom.getBlockParent(range.endContainer, this.element) || parentBlock);
-			} else {
-				// If the next block is empty, remove the next block.
-				if (nextBlockIsEmpty) {
-				ice.dom.remove(nextBlock);
-				range.collapse(true);
-				return true;
-				}
-	
-				// Place the caret at the start of the next block.
-				range.setStart(nextBlock, 0);
-				range.collapse(true);
-				return true;
 			}
-			}
 	
-			var entireTextNode = range.endContainer;
-			var deletedCharacter = entireTextNode.splitText(range.endOffset);
-			var remainingTextNode = deletedCharacter.splitText(1);
+			var entireTextNode = range.endContainer,
+				deletedCharacter = entireTextNode.splitText(range.endOffset),
+				remainingTextNode = deletedCharacter.splitText(1);
 	
 			return this._addNodeTracking(deletedCharacter, range, false);
 	
 		},
 	
 		// Backspace
-		// passed compare
 		_deleteLeft: function (range) {
 	
 			var parentBlock = ice.dom.isBlockElement(range.startContainer) && range.startContainer || ice.dom.getBlockParent(range.startContainer, this.element) || null,
@@ -5169,7 +5221,7 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 	
 			// If we are deleting into a no tracking containiner, then remove the content
 			if (this._getNoTrackElement(range.startContainer.parentElement)) {
-				range.deleteContents();
+				range._deleteContents();
 				return false;
 			}
 	
@@ -5223,9 +5275,9 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 			return true;
 			}
 	
-			var entireTextNode = range.startContainer;
-			var deletedCharacter = entireTextNode.splitText(range.startOffset - 1);
-			var remainingTextNode = deletedCharacter.splitText(1);
+			var entireTextNode = range.startContainer,
+				deletedCharacter = entireTextNode.splitText(range.startOffset - 1),
+				remainingTextNode = deletedCharacter.splitText(1);
 	
 			return this._addNodeTracking(deletedCharacter, range, true);
 	
@@ -5235,7 +5287,7 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 		// compared OK
 		_addNodeTracking: function (contentNode, range, moveLeft) {
 	
-			var contentAddNode = this.getIceNode(contentNode, 'insertType');
+			var contentAddNode = this._getIceNode(contentNode, 'insertType');
 	
 			if (contentAddNode && this._currentUserIceNode(contentAddNode)) {
 				if (range && moveLeft) {
@@ -5249,8 +5301,8 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 					var newstart = this.env.document.createTextNode('');
 					ice.dom.insertBefore(contentAddNode, newstart);
 					if (range) {
-					range.setStart(newstart, 0);
-					range.collapse(true);
+						range.setStart(newstart, 0);
+						range.collapse(true);
 					}
 					ice.dom.replaceWith(contentAddNode, ice.dom.contents(contentAddNode));
 				}
@@ -5258,7 +5310,7 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 				return true;
 	
 			} 
-			else if (range && this.getIceNode(contentNode, 'deleteType')) {
+			else if (range && this._getIceNode(contentNode, 'deleteType')) {
 			// It if the contentNode a text node, unite it with text nodes before and after it.
 				this._normalizeNode(contentNode);// dfl - support ie8
 		
@@ -5267,20 +5319,20 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 					// Move to the left until there is valid sibling.
 					var previousSibling = ice.dom.getPrevContentNode(contentNode, this.element);
 					while (!found) {
-					ctNode = this.getIceNode(previousSibling, 'deleteType');
-					if (!ctNode) {
-						found = true;
-					} else {
-						previousSibling = ice.dom.getPrevContentNode(previousSibling, this.element);
-					}
+						ctNode = this._getIceNode(previousSibling, 'deleteType');
+						if (!ctNode) {
+							found = true;
+						} else {
+							previousSibling = ice.dom.getPrevContentNode(previousSibling, this.element);
+						}
 					}
 					if (previousSibling) {
-					var lastSelectable = range.getLastSelectableChild(previousSibling);
-					if (lastSelectable) {
-						previousSibling = lastSelectable;
-					}
-					range.setStart(previousSibling, ice.dom.getNodeCharacterLength(previousSibling));
-					range.collapse(true);
+						var lastSelectable = range.getLastSelectableChild(previousSibling);
+						if (lastSelectable) {
+							previousSibling = lastSelectable;
+						}
+						range.setStart(previousSibling, ice.dom.getNodeCharacterLength(previousSibling));
+						range.collapse(true);
 					}
 					return true;
 				} else {
@@ -5288,7 +5340,7 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 		
 					var nextSibling = ice.dom.getNextContentNode(contentNode, this.element);
 					while (!found) {
-					ctNode = this.getIceNode(nextSibling, 'deleteType');
+					ctNode = this._getIceNode(nextSibling, 'deleteType');
 					if (!ctNode) {
 						found = true;
 					} else {
@@ -5311,8 +5363,8 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 			if (contentNode.nextSibling && contentNode.nextSibling.nodeType === ice.dom.TEXT_NODE && contentNode.nextSibling.length === 0) {
 				contentNode.parentNode.removeChild(contentNode.nextSibling);
 			}
-			var prevDelNode = this.getIceNode(contentNode.previousSibling, 'deleteType');
-			var nextDelNode = this.getIceNode(contentNode.nextSibling, 'deleteType');
+			var prevDelNode = this._getIceNode(contentNode.previousSibling, 'deleteType');
+			var nextDelNode = this._getIceNode(contentNode.nextSibling, 'deleteType');
 			var ctNode;
 	
 			if (prevDelNode && this._currentUserIceNode(prevDelNode)) {
@@ -5329,7 +5381,7 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 				ctNode.insertBefore(contentNode, ctNode.firstChild);
 			} 
 			else {
-				ctNode = this.createIceNode('deleteType');
+				ctNode = this._createIceNode('deleteType');
 				contentNode.parentNode.insertBefore(ctNode, contentNode);
 				ctNode.appendChild(contentNode);
 			}
@@ -5355,9 +5407,9 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 		/**
 		 * Handles arrow, delete key events, and others.
 		 *
-		 * @param {event} e The event object.
+		 * @param {JQuery Event} e The event object.
 		 * return {void|boolean} Returns false if default event needs to be blocked.
-		 * compared OK
+		 * @private
 		 */
 		_handleAncillaryKey: function (e) {
 			var key = e.keyCode ? e.keyCode : e.which,
@@ -5368,17 +5420,17 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 				range = self.getCurrentRange();
 			switch (key) {
 				case ice.dom.DOM_VK_DELETE:
-					preventDefault = this.deleteContents();
+					preventDefault = this._deleteContents();
 					break;
 		
 				case 46:
 					// Key 46 is the DELETE key.
-					preventDefault = this.deleteContents(true);
+					preventDefault = this._deleteContents(true);
 					break;
 		
-		/************************************************************************************/
-		/** BEGIN: Handling of caret movements inside hidden .ins/.del elements on Firefox **/
-		/**  *Fix for carets getting stuck in .del elements when track changes are hidden  **/
+		/* ***********************************************************************************/
+		/* BEGIN: Handling of caret movements inside hidden .ins/.del elements on Firefox **/
+		/*  *Fix for carets getting stuck in .del elements when track changes are hidden  **/
 				case ice.dom.DOM_VK_DOWN:
 				case ice.dom.DOM_VK_UP:
 				case ice.dom.DOM_VK_LEFT:
@@ -5412,8 +5464,8 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 					}
 					preventDefault = false;
 					break;
-		/** END: Handling of caret movements inside hidden .ins/.del elements ***************/
-		/************************************************************************************/
+		/* END: Handling of caret movements inside hidden .ins/.del elements ***************/
+		/* ***********************************************************************************/
 // dfl deleted space handling code
 /*				case 32:
 					preventDefault = true;
@@ -5491,7 +5543,7 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 				br = range && ice.dom.parents(range.startContainer, 'br')[0] || null;
 			if (br) {
 				range.moveToNextEl(br);
-				br.parentNode.removeChild(br);
+//				br.parentNode.removeChild(br);
 			}
 	
 			// Ice will ignore the keyPress event if CMD or CTRL key is also pressed
@@ -5506,7 +5558,6 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 						return this._handleEnter();
 					default:
 						// If we are in a deletion, move the range to the end/outside.
-						this._moveRangeToValidTrackingPos(range);
 						return this.insert();
 				}
 			}
@@ -5518,7 +5569,7 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 		_handleEnter: function () {
 			var range = this.getCurrentRange();
 			if (range && !range.collapsed) {
-				this.deleteContents();
+				this._deleteContents();
 			}
 			return true;
 		},
@@ -5565,6 +5616,14 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 					this.selection.addRange(range);
 				} //end if
 				break;
+			case 120:
+			case 88:
+/*				if (e.ctrlKey === true || e.metaKey === true) {
+					ice.dom.preventDefault(e);
+					this.hostMethods.hostCopy();
+					this._deleteContents();
+					return false;
+				} */
 	
 			default:
 				// Not a special key.
@@ -5581,11 +5640,14 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 	
 		/* Added by dfl */
 		
+		/**
+		 * Returns the top level DOM element handled by this change tracker
+		 */
 		getContentElement: function() {
 			return this.element;
 		},
 		
-		getIceNodes : function() {
+		_getIceNodes : function() {
 			var classList = [];
 			var self = this;
 			ice.dom.each(this.changeTypes, 
@@ -5705,6 +5767,7 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 		 * and
 		 * filter: a filter function of the form function({userid, time, data}):boolean
 		 *	 @return an object with two members: count, changes (map of id:changeObject)
+		 * @private
 		 */
 		_filterChanges : function(options) {
 			var count = 0, changes = {};
@@ -5741,7 +5804,7 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 				changeTypeClasses.push(this._getIceNodeClass(changeType));
 			}
 	
-			var nodes = this.getIceNodes();
+			var nodes = this._getIceNodes();
 			function f(i, el) {
 				var styleIndex = 0;
 				var ctnType = '';
@@ -5762,7 +5825,7 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 				else {
 					userName = el.getAttribute(this.attributes.userName);
 				}
-				this.setUserStyle(userid, Number(styleIndex));
+				this._setUserStyle(userid, Number(styleIndex));
 				var changeid = parseInt(ice.dom.attr(el, this.attributes.changeId) || "");
 				if (isNaN(changeid)) {
 					changeid = this.getNewChangeId();
@@ -5796,7 +5859,7 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 					}
 				}
 			}
-			var nodes = this.getIceNodes();
+			var nodes = this._getIceNodes();
 			nodes.each((function(i,node) {
 				var match = (! user) || (user.id == node.getAttribute(this.attributes.userId));
 				if (user && match) {
@@ -5806,7 +5869,7 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 		},
 		
 		_showTitles : function(bShow) {
-			var nodes = this.getIceNodes();
+			var nodes = this._getIceNodes();
 			if (bShow) {
 				jQuery(nodes).each((function(i, node) {
 					this._updateNodeTooltip(node);
@@ -5821,7 +5884,7 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 			if (this.tooltips && this._isTracking && this._isVisible) {
 				if (! this._showingTips) {
 					this._showingTips = true;
-					var $nodes = this.getIceNodes(),
+					var $nodes = this._getIceNodes(),
 						self = this;
 					$nodes.each(function(i, node) {
 						self._addTooltip(node);
@@ -5830,7 +5893,7 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 			}
 			else if (this._showingTips) {
 				this._showingTips = false;
-				var $nodes = this.getIceNodes();
+				var $nodes = this._getIceNodes();
 				$nodes.each(function(i, node) {
 					jQuery(node).unbind("mouseover").unbind("mouseout");
 				});					
@@ -5940,7 +6003,7 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 	dom.BREAK_ELEMENT = 'br';
 	dom.CONTENT_STUB_ELEMENTS = ['img', 'hr', 'iframe', 'param', 'link', 'meta', 'input', 'frame', 'col', 'base', 'area'];
 	dom.BLOCK_ELEMENTS = ['body', 'p', 'div', 'pre', 'ul', 'ol', 'li', 'table', 'tbody', 'td', 'th', 'fieldset', 'form', 'blockquote', 'dl', 'dt', 'dd', 'dir', 'center', 'address', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'];
-	dom.TEXT_CONTAINER_ELEMENTS = ['body','p', 'div', 'pre', 'li', 'td', 'th', 'blockquote', 'dt', 'dd', 'center', 'address', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'];
+	dom.TEXT_CONTAINER_ELEMENTS = ['body','p', 'div', 'pre', 'span', 'b', 'strong', 'i', 'li', 'td', 'th', 'blockquote', 'dt', 'dd', 'center', 'address', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'];
 
 	dom.STUB_ELEMENTS = dom.CONTENT_STUB_ELEMENTS.slice();
 	dom.STUB_ELEMENTS.push(dom.BREAK_ELEMENT);
@@ -6405,6 +6468,129 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 		}
 		return null;
 	};
+	
+	/* Begin dfl */
+	
+	function _findPrevIndex(node, origin) {
+		if (dom.TEXT_NODE == node.nodeType) {
+			return node.length;
+		}
+		
+	}
+	
+	function _findNextTextContainer(node){
+		while (node) {
+			if (dom.TEXT_NODE == node.nodeType) {
+				return node;
+			}
+			for (var child = node.firstChild; child; child = child.nextSibling) {
+				var ret = _findNextTextContainer(child, container);
+				if (ret) {
+					return ret;
+				}
+			}
+			if (dom.isTextContainer(node)) {
+				return node;
+			}
+			node = node.nextSibling;
+		}
+		return null;
+	}
+	
+	function _findPrevTextContainer(node){
+		while (node) {
+			if (dom.TEXT_NODE == node.nodeType) {
+				return node;
+			}
+			for (var child = node.lastChild; child; child = child.previousSibling) {
+				var ret = _findPrevTextContainer(child, container);
+				if (ret) {
+					return ret;
+				}
+			}
+			if (dom.isTextContainer(node)) {
+				return node;
+			}
+			node = node.previousSibling;
+		}
+		return null;
+	}
+	
+	dom.findPrevTextContainer = function(node, container) {
+		if (! node || node == container) {
+			return {
+				node: container,
+				offset: 0
+			};
+		}
+
+		if (node.parentNode && dom.isTextContainer(node.parentNode)) {
+			return {
+				node: node.parentNode,
+				offset: dom.getNodeIndex(node)
+			};
+		};
+		while (node.previousSibling) {
+			var ret = _findPrevTextContainer(node.previousSibling);
+			if (ret) {
+				return {
+					node: ret,
+					offset: dom.getNodeLength(ret)
+				};
+			};
+			node = node.previousSibling;
+		};
+		
+		return dom.findPrevTextContainer(node.parentNode && node.parentNode.previousSibling, container);
+	};
+	
+	dom.findNextTextContainer = function(node, container) {
+		if (! node || node == container) {
+			return {
+				node: container,
+				offset: dom.getNodeLength(container)
+			};
+		}
+		if (node.parentNode && dom.isTextContainer(node.parentNode)) {
+			return {
+				node: node.parentNode,
+				offset: dom.getNodeIndex(node) + 1
+			};
+		};
+		while (node.nextSibling) {
+			var ret = _findNextTextContainer(node.nextSibling);
+			if (ret) {
+				return {
+					node: ret,
+					offset: 0
+				};
+			};
+			node = node.previousSibling;
+		};
+		
+		return dom.findNextTextContainer(node.parentNode && node.parentNode.nextSibling, container);
+	};
+	
+	dom.getNodeLength = function(node) {
+		return node ? 
+				(dom.TEXT_NODE == node.nodeType ? 
+						node.length : ((node.childNodes && node.childNodes.length) || 0)) :
+				0;
+	};
+	
+	dom.isTextContainer = function(node) {
+		return (node && (dom.TEXT_NODE == node.nodeType) || dom.TEXT_CONTAINER_ELEMENTS.indexOf((node.nodeName || "").toLowerCase()) >= 0);
+	};
+	
+	dom.getNodeIndex = function(node) {
+		var i = 0;
+		while( (node = node.previousSibling) ) {
+			++i;
+		}
+		return i;
+	};
+	
+	/* end dfl */
 
 	dom.canContainTextElement = function (element) {
 		if (element && element.nodeName) {
@@ -6976,7 +7162,7 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 			this._selection.refresh();
 		}
 		else if (this.env.frame) {
-			this._selection = rangy.getIframeSelection(this.env.frame);
+			this._selection = rangy.getSelection(this.env.frame);
 		}
 		else {
 			this._selection = rangy.getSelection();

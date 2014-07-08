@@ -113,3 +113,14 @@ a.btn {
 a.btn:hover {
 	text-decoration:underline;
 }
+
+.title {
+	display:block;
+	font-weight: bold;
+}
+
+.ckeditor-version-name {
+	text-shadow: #fff 1px 1px;
+	background: #efefef;
+	padding: 2px;
+}

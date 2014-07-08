@@ -11,7 +11,9 @@ function f() {
 		var h = '<input type="checkbox" class="user-cb" id="' + name + '" name="' + name + '" data-userid="' + user.id + '" /><label for="'+ name + '">' + user.name + '</label>';
 		html += h;
 	}
+	
 	document.getElementById("filters").innerHTML = html;
+	$(".ckeditor-version-name").html(CKEDITOR.version);
 	$("#editor-tabs").tabs({
 		activate: onTabChanged
 	});
@@ -21,10 +23,21 @@ function f() {
 		this.checkedUsers = {};
 	}
 
-	var editorStates = {};
-	var editorId = null;
-	var $sidebar = $("#sidebar");
-	var $select = $sidebar.find("#users");
+	var editorStates = {},
+		editorId = null,
+		$sidebar = $("#sidebar"),
+		$select = $sidebar.find("#users"),
+		$versions = $sidebar.find("#ckeditor-version-select"),
+		_options = $versions[0].options;
+	
+	jQuery.each(["4.2","4.3","4.4"], function(i, v) {
+		_options[i] = new Option("Version " + v, v);
+	});
+	
+	$versions.val(version).change(function(e) {
+		var v = $(e.currentTarget).val();
+		location.href = location.href.replace(/\?.*/,"") + '?' + v;
+	});
 
 	(function() {
 		loadEditor('editor1', true);
@@ -36,8 +49,6 @@ function f() {
 			select.options[i] = option;
 		});
 		$select.change(onUserChanged);
-
-
 	})();
 	
 	$.each(editorStates, function(i, state) {
@@ -76,6 +87,7 @@ function f() {
 	
 	$("#reject-match").click(function(event) {
 		event.preventDefault();
+
 		var state = editorStates[editorId];
 		if (state) {
 			var checked = getCheckedUsers(),
@@ -225,6 +237,10 @@ function f() {
 			$e.prop("checked", id in checked);
 		});
 	}
+	
+
+	
+
 
 }
 if (typeof(jQuery) == "undefined" || typeof(CKEDITOR) == "undefined") {

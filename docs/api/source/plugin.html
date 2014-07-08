@@ -152,6 +152,28 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		return padString(s, length, '0');
 	}
 	
+<span id='LITE-Events-method-execIECommand'>	/**
+</span>	 * Copied from CKEditor
+	 */
+	function execIECommand(editor, command ) {
+		var doc = editor.document,
+			body = doc.getBody(),
+			enabled = false,
+			onExec = function() {
+				enabled = true;
+			};
+
+		body.on( command, onExec );
+
+		// IE7: document.execCommand has problem to paste into positioned element.
+		( CKEDITOR.env.version &gt; 7 ? doc.$ : doc.$.selection.createRange() )[ 'execCommand' ]( command );
+
+		body.removeListener( command, onExec );
+
+		return enabled;
+	}
+
+
 	function relativeDateFormat(date) {
 		var now = new Date();
 		var today = now.getDate();
@@ -408,6 +430,9 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		
 			ed.on(&quot;contentDom&quot;, (function(dom) {
 				this._onDomLoaded(dom);
+			}).bind(this));
+			ed.on(&quot;dataReady&quot;, (function(evt) {
+				this._onAfterSetData(evt);
 			}).bind(this));
 			var path = this.path;
 		
@@ -731,12 +756,11 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 				this._eventsBounds = true;
 				var paste = this._onPaste.bind(this);
 				e.on(&quot;afterCommandExec&quot;, this._onAfterCommand.bind(this));
-/*				e.on(&quot;beforeCommandExec&quot;, (function(event) {
-					var name = this._tracker &amp;&amp; event.data &amp;&amp; event.data.name;
-				}).bind(this)); */
+				e.on(&quot;beforeCommandExec&quot;, this._onBeforeCommand.bind(this));
 				if (this._config.handlePaste) {
 					e.on(&quot;paste&quot;, paste, null, null, 1);
 				}
+				e.on(&quot;beforeGetData&quot;, this._onBeforeGetData.bind(this));
 				e.on(&quot;insertHtml&quot;, paste, null, null, 1);
 				e.on(&quot;insertText&quot;, paste, null, null, 1);
 				e.on(&quot;insertElement&quot;, paste, null, null, 1);
@@ -755,7 +779,6 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			if (null == this._tracker) {
 				var iceprops = {
 					element: body,
-					isTracking: true,
 					handleEvents : true,
 					mergeBlocks : true,
 					currentUser: {
@@ -772,7 +795,8 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 						makeHostElement: function(node) {
 							return new CKEDITOR.dom.element(node);
 						},
-						setHostRange: this._setHostRange.bind(this)
+						setHostRange: this._setHostRange.bind(this),
+						hostCopy: this._hostCopy.bind(this)
 					},
 					tooltips: config.tooltips.show,
 					tooltipsDelay: config.tooltips.delay
@@ -880,6 +904,13 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			}
 		},
 		
+		_onBeforeCommand: function(event) {
+			var name = this._tracker &amp;&amp; this._isTracking &amp;&amp; event.data &amp;&amp; event.data.name;
+			if (&quot;cut&quot; == name) {
+				debugger
+			}
+		},
+		
 <span id='LITE-LITEPlugin-method-_onModeChange'>		/**
 </span>		 * Called after the mode of the editor (wysiwyg/source) changes
 		 * @private
@@ -888,6 +919,26 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		_onModeChange: function(evt){
 			this._updateTrackingState();
 			setTimeout(this._onIceChange.bind(this), 0);
+		},
+		
+<span id='LITE-LITEPlugin-method-_onBeforeGetData'>		/**
+</span>		 * Callback for the editor's beforeGetData event
+		 * Remove tooltips from dom
+		 */
+		_onBeforeGetData: function(evt) {
+			if (this._tooltipsHandler) {
+				this._tooltipsHandler.hideAll();
+			}
+		},
+		
+<span id='LITE-LITEPlugin-method-_onAfterSetData'>		/**
+</span>		 * Callback for the editor's afterSetData event
+		 * Remove tooltips from dom
+		 */
+		_onAfterSetData: function(evt) {
+			if (this._tracker &amp;&amp; this._tracker.isTracking()) {
+				this._tracker.reload();
+			}
 		},
 		
 <span id='LITE-LITEPlugin-method-_onReadOnly'>		/**
@@ -931,6 +982,12 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 				node = (evt.name == &quot;insertElement&quot;) &amp;&amp; data.$;
 			if (! data) {
 				return;
+			}
+			if (&quot;string&quot; == typeof data) {
+				data = {
+					dataValue: data,
+					type: &quot;text&quot;
+				}
 			}
 			if (node) {
 				ignore = node.getAttribute(&quot;data-track-changes-ignore&quot;);
@@ -1124,6 +1181,21 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 				selection.selectRanges([range]);
 			}
 		},
+		
+		_hostCopy: function() {
+			try {
+				if ( CKEDITOR.env.ie ) {
+					execIECommand(this._editor, &quot;copy&quot; ); 
+				}
+				else {
+					// Other browsers throw an error if the command is disabled.
+					this._editor.document.$.execCommand( &quot;copy&quot;, false, null );
+				} 
+			}
+			catch ( e ) {
+				_logError(e);
+			}
+		},
 
 <span id='global-method-_getHostRange'>		/**
 </span>		 * @ignore
@@ -1145,7 +1217,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			var config = this._config.tooltips;
 			if (config.show &amp;&amp; this._tooltipsHandler) {
 				var title = this._makeTooltipTitle(change);
-				this._tooltipsHandler.showTooltip(node, title);
+				this._tooltipsHandler.showTooltip(node, title, this._editor.container.$);
 			}
 		},
 		

@@ -16,15 +16,26 @@
 
 <link rel="stylesheet" href="jquery-ui-1.9.2.custom/css/cupertino/jquery-ui-1.9.2.custom.min.css" />
 <link rel="stylesheet" href="demo.css" />
-<script type="text/javascript" src="ckeditor/plugins/lite/js/jquery.min.js"></script>
-<script type="text/javascript" src="jquery-ui-1.9.2.custom/js/jquery-ui-1.9.2.custom.min.js"></script>
-<script type="text/javascript" src="ckeditor/ckeditor.js"></script>
-<script type="text/javascript" src="ckeditor/plugins/lite/lite_interface.js"></script>
+	
+	<script type="text/javascript">
+	(function() {
+		var	version = (location.search.match(/(\d\.\d)/) || ["4.4"])[0],
+			head = document.getElementsByTagName("head")[0],
+			paths = ["plugins/lite/js/jquery.min.js", "ckeditor.js", "plugins/lite/lite_interface.js"];
+		
+		for (var i = 0; i < paths.length; ++i) {
+			document.write("<sc" + "r" + "ipt type=\"text/ja" + "vascr" + "ipt\" src=\"ckeditor" + version + "/" + paths[i] + "\"></scr" + "ipt>");
+		}
+		
+	})();
+	</script>
+
+	<script type="text/javascript" src="../demo/jquery-ui-1.9.2.custom/js/jquery-ui-1.9.2.custom.min.js"></script>
 </head>
 <body>
 <table id="main-ui">
 <tr><td colspan="2"><h2>Demo page for LITE - a Track Changes CKEditor plugin by LoopIndex</h2>
-This demo page uses CKEditor 4.2. We have a <a href="index4.3.html">similar page using CKEditor 4.3</a>.
+This demo page uses CKEditor <span class="ckeditor-version-name"></span>. Use the version selector on this page to try it in different CKEditor versions.
 <ul>
 <li><a href="http://ckeditor.com/" target="_blank">CKEditor</a> is an open source browser based text editor.
 <li>The plugin is based on ICE which is an open source text change tracking system developed by the CMS group at the New York Times. The ICE project is <a href="https://github.com/NYTimes/ice" target="_blank">available on Github</a>.
@@ -40,13 +51,11 @@ This demo page uses CKEditor 4.2. We have a <a href="index4.3.html">similar page
 <li><a href="#editor-tab-2">Another(!) editor</a></li>
 </ul>
 <div id="editor-tab-1">
-	<textarea cols="80" id="editor1" name="editor1" rows="10">
-		Add or delete text to unleash the power of the <b>Track Changes CKEditor Plugin</b>.
-	</textarea>
+	<textarea cols="80" id="editor1" name="editor1" rows="10">Add or delete text to unleash the power of the &lt;b&gt;Track Changes CKEditor Plugin&lt;/b&gt;.</textarea>
 </div>
 <div id="editor-tab-2">
 	<textarea cols="80" id="editor2" name="editor2" rows="10">
-		LITE supports multiple editors, but only in the technical sense, we do not endorse them morally.
+		LITE supports multiple editors, but only in the technical sense.&lt;br /&gt;&lt;br /&gt;Your mileage may vary.
 	</textarea>
 </div>
 
@@ -54,7 +63,7 @@ This demo page uses CKEditor 4.2. We have a <a href="index4.3.html">similar page
 </td>
 <td id="sidebar">
 <div>
-<span class="title">current user:</span>
+<label class="title">current user:</label>
 <select id="users"></select>
 </div>
 
@@ -77,7 +86,11 @@ This demo page uses CKEditor 4.2. We have a <a href="index4.3.html">similar page
 	</div>
 </div>
 <div>
-	<a class="btn" href="" id="test-data">insert test data</a>
+	<a class="btn" href="#" id="test-data">insert test data</a>
+</div>
+<div>	<a class="btn" href="#" id="reload-editor">reload editor</a></div>
+<label class="title">CKEditor version</label>
+<div><select id="ckeditor-version-select"></select>
 </div>
 </td>
 </tr>

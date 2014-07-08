@@ -890,7 +890,6 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		_onBeforeCommand: function(event) {
 			var name = this._tracker && this._isTracking && event.data && event.data.name;
 			if ("cut" == name) {
-				debugger
 			}
 		},
 		
