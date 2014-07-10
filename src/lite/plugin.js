@@ -785,14 +785,20 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 					tooltipsDelay: config.tooltips.delay
 				};
 				if (config.tooltips.classPath) {
-					this._tooltipsHandler = new window[config.tooltips.classPath]();
+					try {
+						this._tooltipsHandler = new window[config.tooltips.classPath]();
+					}
+					catch (e){}
 					if (! this._tooltipsHandler) {
 						this._logError("Unable to create tooltip handler", config.tooltips.classPath);
 					}
 					else {
+						var hideTT = this._hideTooltip.bind(this);
 						this._tooltipsHandler.init(config.tooltips);
 						iceprops.hostMethods.showTooltip = this._showTooltip.bind(this);
-						iceprops.hostMethods.hideTooltip = this._hideTooltip.bind(this);
+						iceprops.hostMethods.hideTooltip = hideTT;
+						iceprops.hostMethods.beforeDelete = iceprops.hostMethods.beforeInsert = hideTT;
+						
 					}
 				}
 
@@ -1209,7 +1215,12 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		 */
 		_hideTooltip: function(node) {
 			if (this._tooltipsHandler) {
-				this._tooltipsHandler.hideTooltip(node);
+				if (node) {
+					this._tooltipsHandler.hideTooltip(node);
+				}
+				else {
+					this._tooltipsHandler.hideAll();
+				}
 			}
 		},
 		

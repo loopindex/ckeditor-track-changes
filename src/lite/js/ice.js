@@ -351,6 +351,8 @@
 		 * is used. If the range is in a parent delete node, then the range is positioned after the delete.
 		 */
 		insert: function (nodes) {
+			this.hostMethods.beforeInsert && this.hostMethods.beforeInsert();
+
 			var range = this.getCurrentRange(),
 				hostRange = range ? null : this.hostMethods.getHostRange(),
 				changeid = this._batchChangeid ? null : this.startBatchChange(),
@@ -399,6 +401,8 @@
 		_deleteContents: function (right, range) {
 			var prevent = true,
 				browser = this._browser;
+			
+			this.hostMethods.beforeDelete && this.hostMethods.beforeDelete();
 			if (range) {
 				this.selection.addRange(range);
 			} else {
