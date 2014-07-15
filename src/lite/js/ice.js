@@ -567,11 +567,12 @@
 		 * Returns a clone of the DOM, without tracking tags, for `this.element` or
 		 * the optional `body` param which can be of either type string or node.
 		 * Delete tags, and their html content, are completely removed; all other
-		 * change type tags are removed, leaving the html content in place. After
-		 * cleaning, the optional `callback` is executed, which should further
-		 * modify and return the element body.
-		 *
-		 * prepare gets run before the body is cleaned by ice.
+		 * change type tags are removed, leaving the html content in place. 
+		 * @param body If not null, the node or html to process
+		 * @param options may contain:
+		 * <ul><li>callback - executed after cleaning, should return the processed body
+		 * <li>clone If true, process a clone of the target element
+		 * <li>prepare function to run on body before the cleaning
 		 */
 		getCleanDOM : function(body, options) {
 			var classList = '',
@@ -644,12 +645,18 @@
 				return this._acceptRejectSome(options, false);
 			}
 			else {
-				var insSel = '.' + this._getIceNodeClass('insertType');
-				var delSel = '.' + this._getIceNodeClass('deleteType');
+				var insSel = '.' + this._getIceNodeClass('insertType'),
+					delSel = '.' + this._getIceNodeClass('deleteType'),
+					self = this, content;
 		
 				ice.dom.remove(ice.dom.find(this.element, insSel));
 				ice.dom.each(ice.dom.find(this.element, delSel), function (i, el) {
-					ice.dom.replaceWith(el, ice.dom.contents(el));
+					content = ice.dom.contents(el);
+					ice.dom.replaceWith(el, content);
+					jQuery.each(content, function(i,e) {
+						var parent = e && e.parentNode;
+						self._normalizeNode(parent);
+					});
 				});
 				this._changes = {}; // dfl, reset the changes table
 				this._triggerChange(); // notify the world that our change count has changed
@@ -680,7 +687,9 @@
 		 * Handles accepting or rejecting tracking changes
 		 */
 		acceptRejectChange: function (node, isAccept) {
-			var delSel, insSel, selector, removeSel, replaceSel, trackNode, changes, dom = ice.dom, nChanges;
+			var delSel, insSel, selector, removeSel, replaceSel, 
+				trackNode, changes, dom = ice.dom, nChanges,
+				changeId, self = this;
 		
 			if (!node) {
 				var range = this.getCurrentRange();
@@ -699,7 +708,7 @@
 	
 			selector = delSel + ',' + insSel;
 			trackNode = dom.getNode(node, selector);
-			var changeId = dom.attr(trackNode, this.attributes.changeId); //dfl
+			changeId = dom.attr(trackNode, this.attributes.changeId); //dfl
 				// Some changes are done in batches so there may be other tracking
 				// nodes with the same `changeIdAttribute` batch number.
 			changes = dom.find(this.element, removeSel + '[' + this.attributes.changeId + '=' + changeId + ']');
@@ -710,7 +719,12 @@
 			nChanges += changes.length;
 		
 			dom.each(changes, function (i, node) {
-				dom.replaceWith(node, ice.dom.contents(node));
+				content = ice.dom.contents(node); 
+				dom.replaceWith(node, content);
+				jQuery.each(content, function(i,e) {
+					var parent = e && e.parentNode;
+					self._normalizeNode(parent);
+				});
 			});
 
 			/* begin dfl: if changes were accepted/rejected, remove change trigger change event */
@@ -1072,7 +1086,7 @@
 				var node = this._createIceNode('insertType');
 				if (ctNode) {
 					var nChildren = ctNode.childNodes.length;
-					ctNode.normalize();
+					this._normalizeNode(ctNode);
 					if (nChildren != ctNode.childNodes.length) {
 						if (hostRange) {
 							hostRange = range = this.hostMethods.getHostRange();
