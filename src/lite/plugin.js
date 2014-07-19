@@ -30,30 +30,52 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			 * @member LITE.Events
 			 * @event ACCEPT
 			 * string value: "lite:accept"
-			 * @param {Object} An object with the <code>options</code> passed to the accept method
+			 * @param {Object} An object with the fields
+			 * <ul><li><code>options</code> passed to the accept method
+			 * <li><code>lite</code>The LITE instance with which this event is associated
+			 * </ul>
 			 */
 			ACCEPT : "lite:accept",
 			/**
 			 * @member LITE.Events
 			 * @event REJECT
 			 * string value: "lite:reject"
-			 * @param {Object} An object with the <code>options</code> passed to the reject method
+			 * @param {Object} An object with the fields
+			 * <ul><li><code>options</code> passed to the reject method
+			 * <li><code>lite</code>The LITE instance with which this event is associated
+			 * </ul>
 			 */
 			REJECT : "lite:reject",
 			/**
 			 * @member LITE.Events
 			 * @event SHOW_HIDE
 			 * string value: "lite:showHide"
-			 * @param {Object} An object with the field <code>show</code> indicating the new change tracking show stats
+			 * @param {Object} An object with the fields
+			 * <ul><li><code>show</code> indicating the new change tracking show status
+			 * <li><code>lite</code>The LITE instance with which this event is associated
+			 * </ul>
 			 */
 			SHOW_HIDE : "lite:showHide",
 			/**
 			 * @member LITE.Events
 			 * @event TRACKING
 			 * string value: "lite:tracking"
-			 * @param {Object} An object with the field <code>tracking</code> indicating the new tracking status
+			 * @param {Object} An object with the fields 
+			 * <ul><li><code>tracking</code> indicating the new tracking status
+			 * <li><code>lite</code>The LITE instance with which this event is associated
+			 * </ul>
 			 */
-			TRACKING : "lite:tracking"
+			TRACKING : "lite:tracking",
+			
+			/**
+			 * @member LITE.Events
+			 * @event CHANGE
+			 * string value: "lite:change"
+			 * @param {Object} An object with the fields 
+			 * <ul><li><code>lite</code>The LITE instance with which this event is associated
+			 * </ul>
+			 */
+			CHANGE : "lite:change"
 		},
 		
 		Commands : {
@@ -354,7 +376,8 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			ed.ui.addToolbarGroup('lite');
 			this._setPluginFeatures(ed, this.props);
 			this._changeTimeout = null;
-			this._boundNotifyChange = this._notifyChange.bind(this);
+			this._notifyChange = this._notifyChange.bind(this);
+			this._notifyTextChange = this._notifyTextChange.bind(this);
 
 			this._config = config;
 			
@@ -518,7 +541,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 				this._setButtonTitle(ui, tracking ? 'Stop tracking changes' : 'Start tracking changes');
 			}
 			if (bNotify !== false) {
-				e.fire(LITE.Events.TRACKING, {tracking:tracking});
+				e.fire(LITE.Events.TRACKING, {tracking:tracking, lite:this});
 			}
 		},
 		
@@ -540,7 +563,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 				this._setButtonTitle(ui, vis ? 'Hide tracked changes' : 'Show tracked changes');
 			}
 			if (bNotify !== false) {
-				this._editor.fire(LITE.Events.SHOW_HIDE, {show:vis});
+				this._editor.fire(LITE.Events.SHOW_HIDE, {show:vis, lite:this});
 			}
 		},
 		
@@ -566,7 +589,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		acceptAll: function(options) {
 			this._tracker.acceptAll(options);
 			this._cleanup();
-			this._editor.fire(LITE.Events.ACCEPT, {options : options});
+			this._editor.fire(LITE.Events.ACCEPT, {lite: this, options : options});
 		},
 		
 		/**
@@ -575,7 +598,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		rejectAll: function(options) {
 			this._tracker.rejectAll(options);
 			this._cleanup();
-			this._editor.fire(LITE.Events.REJECT, {options : options});
+			this._editor.fire(LITE.Events.REJECT, {lite: this, options : options});
 		},
 		
 		/**
@@ -840,7 +863,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			if (node) {
 				this._tracker.acceptChange(node);
 				this._cleanup();
-				this._editor.fire(LITE.Events.ACCEPT);
+				this._editor.fire(LITE.Events.ACCEPT, {lite:this});
 				this._onSelectionChanged(null);
 			}
 		},
@@ -850,7 +873,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			if (node) {
 				this._tracker.rejectChange(node);
 				this._cleanup();
-				this._editor.fire(LITE.Events.REJECT);
+				this._editor.fire(LITE.Events.REJECT, {lite:this});
 				this._onSelectionChanged(null);
 			}
 		},
@@ -890,6 +913,9 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			var name = this._tracker && this._isTracking && event.data && event.data.name;
 			if ("undo" == name || "redo" == name) {
 				this._tracker.reload();
+			}
+			else if ("cut" == name) {
+				debugger
 			}
 		},
 		
@@ -1079,7 +1105,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		 */
 		_triggerChange : function() {
 			if (! this._changeTimeout) {
-				this._changeTimeout = setTimeout(this._boundNotifyChange, 1);
+				this._changeTimeout = setTimeout(this._notifyChange, 1);
 			}
 		},
 		
@@ -1088,7 +1114,15 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		 */
 		_notifyChange : function() {
 			this._changeTimeout = null;
-			this._editor.fire('change');
+			this._editor.fire(LITE.Events.CHANGE, {lite:this});
+		},
+
+		/**
+		 * @ignore
+		 */
+		_notifyTextChange : function() {
+			this._changeTimeout = null;
+			this._editor.fire('change',{lite:this});
 		},
 		
 		/**

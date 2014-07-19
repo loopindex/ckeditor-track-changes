@@ -15,7 +15,8 @@ var LITE = {
 		ACCEPT : "lite:accept",
 		REJECT : "lite:reject",
 		SHOW_HIDE : "lite:showHide",
-		TRACKING : "lite:tracking"
+		TRACKING : "lite:tracking",
+		CHANGE: "lite:change"
 	},
 	
 	Commands : {

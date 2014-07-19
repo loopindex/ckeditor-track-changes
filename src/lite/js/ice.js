@@ -1897,6 +1897,10 @@
 				break;
 			case 120:
 			case 88:
+				if (true === e.ctrlKey || true === e.metaKey) {
+					this._tryToCut();
+				}
+				break;
 /*				if (e.ctrlKey === true || e.metaKey === true) {
 					ice.dom.preventDefault(e);
 					this.hostMethods.hostCopy();
@@ -2245,6 +2249,22 @@
 					}
 				}
 				child = child.nextSibling;
+			}
+		},
+		
+		_tryToCut: function() {
+			var range = this.getCurrentRange();
+			if (range && ! range.collapsed) {
+				var frag = range.cloneContents(),
+					origRange = range.cloneRange(),
+					head = frag.firstChild,tail = frag.lastChild;
+				
+				range.collapse(false);
+				range.insertNode(frag);
+				range.setStartBefore(head);
+				range.setEndAfter(tail);
+				this._deleteSelection(range);
+				this.selection.addRange(origRange);				
 			}
 		}
 
