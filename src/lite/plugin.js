@@ -97,7 +97,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		delay: 500
 	},
 	
-	defaultTooltipTemplate = "Changed by %u %t",
+	defaultTooltipTemplate = "%a by %u %t",
 	
 	_emptyRegex = /^[\s\r\n]*$/, // for getting the clean text
 		_cleanRE = [{regex: /[\s]*title=\"[^\"]+\"/g, replace: "" },
@@ -914,9 +914,6 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			if ("undo" == name || "redo" == name) {
 				this._tracker.reload();
 			}
-			else if ("cut" == name) {
-				debugger
-			}
 		},
 		
 		_onBeforeCommand: function(event) {
@@ -1239,6 +1236,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			var config = this._config.tooltips;
 			if (config.show && this._tooltipsHandler) {
 				var title = this._makeTooltipTitle(change);
+				this._tooltipsHandler.hideAll();
 				this._tooltipsHandler.showTooltip(node, title, this._editor.container.$);
 			}
 		},
@@ -1296,8 +1294,9 @@ Written by (David *)Frenkiel - https://github.com/imdfl
  */		_makeTooltipTitle: function(change) {
 			var title = this._config.tooltipTemplate || defaultTooltipTemplate;
 			var time = new Date(change.time);
+			title = title.replace(/%a/g, "insert" == change.type ? "added" : "deleted");
 			title = title.replace(/%t/g, relativeDateFormat(time));
-			title = title.replace(/%u/g, change.username);
+			title = title.replace(/%u/g, change.userName);
 			title = title.replace(/%dd/g, padNumber(time.getDate(), 2));
 			title = title.replace(/%d/g, time.getDate());
 			title = title.replace(/%mm/g, padNumber(time.getMonth() + 1, 2));

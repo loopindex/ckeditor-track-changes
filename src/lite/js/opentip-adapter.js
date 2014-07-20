@@ -384,18 +384,20 @@
 		}
 	  };
 	
-	  Opentip.prototype.activate = function() {
+	Opentip.prototype.activate = function() {
 		return this._setupObservers("hidden", "hiding");
-	  };
+	};
 	
-	  Opentip.prototype.deactivate = function() {
-		this.debug("Deactivating tooltip.");
+	Opentip.prototype.deactivate = function(options) {
+		if (options) {
+			this.adapter.extend(this.options, options);
+		}
 		this.hide();
 		Opentip.removeTip(this);
 		return this._setupObservers("-showing", "-visible", "-hidden", "-hiding");
-	  };
+	};
 	
-	  Opentip.prototype._setupObservers = function() {
+	Opentip.prototype._setupObservers = function() {
 		var observeOrStop, removeObserver, state, states, trigger, _i, _j, _k, _l, _len, _len1, _len2, _len3, _ref, _ref1, _ref2,
 		  _this = this;
 		states = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
@@ -556,14 +558,13 @@
 		if (!this.visible) {
 		  return;
 		}
-		this.debug("Hiding in " + this.options.hideDelay + "s");
 		this.preparingToHide = true;
 		this._setupObservers("-showing", "visible", "-hidden", "hiding");
 		return this._hideTimeoutId = this.setTimeout(this.bound.hide, this.options.hideDelay);
 	  };
 	
 	  Opentip.prototype.hide = function() {
-		var _this = this;
+		var _this = this, cls;
 		this._abortShowing();
 		if (!this.visible) {
 		  return;
@@ -588,9 +589,10 @@
 		if (!this.container) {
 		  return;
 		}
-		this.adapter.removeClass(this.container, this["class"].visible);
-		this.adapter.removeClass(this.container, this["class"].showing);
-		this.adapter.addClass(this.container, this["class"].goingToHide);
+		cls = this["class"];
+		this.adapter.removeClass(this.container, cls.visible);
+		this.adapter.removeClass(this.container, cls.showing);
+		this.adapter.addClass(this.container, cls.goingToHide);
 		this.setCss3Style(this.container, {
 		  transitionDuration: "0s"
 		});
@@ -1832,16 +1834,25 @@
 		},
 		
 		hideAll: function() {
+			var opt = {
+				hideDelay: 0,
+				hideEffectDuration: 0
+			};
 			for (var i = Opentip.tips.length; i--;) {
 				Opentip.tips[i].deactivate();
 			}
 		},
 		
-		hideTooltip: function(node) {
+		hideTooltip: function(node, immediate) {			
 			var tips = Opentip.getTips(node);
 			if (tips) {
+				var options = {};
+				if (immediate) {
+					options.hideDelay = 0;
+					options.hideEffectDuration = 0;
+				}
 				for (var i = tips.length; i--;) {
-					tips[i].deactivate();
+					tips[i].deactivate(options);
 				}
 			}
 		}

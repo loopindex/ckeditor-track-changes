@@ -258,10 +258,10 @@
 		return doc;
 	};
 	dom.isBlockElement = function (element) {
-		return dom.BLOCK_ELEMENTS.lastIndexOf(element.nodeName.toLowerCase()) != -1;
+		return dom.BLOCK_ELEMENTS.indexOf(element.nodeName.toLowerCase()) != -1;
 	};
 	dom.isStubElement = function (element) {
-		return dom.STUB_ELEMENTS.lastIndexOf(element.nodeName.toLowerCase()) != -1;
+		return dom.STUB_ELEMENTS.indexOf(element.nodeName.toLowerCase()) != -1;
 	};
 	dom.removeBRFromChild = function (node) {
 		if (node && node.hasChildNodes()) {
