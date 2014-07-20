@@ -2310,7 +2310,7 @@
 			return offset && el.nodeValue && (offset >= el.nodeValue.length - 1);
 		}
 		if (ice.dom.ELEMENT_NODE == type) {
-			return el.childNodes && el.childNodes.length && (offset >= el.childNodes.length - 1);
+			return el.childNodes && el.childNodes.length && (offset >= el.childNodes.length);
 		}
 		return false;
 	}

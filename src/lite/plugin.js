@@ -762,7 +762,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 				this._eventsBounds = true;
 				var paste = this._onPaste.bind(this);
 				e.on("afterCommandExec", this._onAfterCommand.bind(this));
-				e.on("beforeCommandExec", this._onBeforeCommand.bind(this));
+//				e.on("beforeCommandExec", this._onBeforeCommand.bind(this));
 				if (this._config.handlePaste) {
 					e.on("paste", paste, null, null, 1);
 				}
