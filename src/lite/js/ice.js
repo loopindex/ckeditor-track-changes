@@ -362,7 +362,7 @@
 				// Update the range
 					range = this.getCurrentRange();
 				}
-				if (range) {
+				if (range || hostRange) {
 					if (nodes && ! jQuery.isArray(nodes)) {
 						nodes = [nodes];
 					}
@@ -372,6 +372,9 @@
 			
 					this._insertNodes(range, hostRange, nodes);
 				}
+			}
+			catch(e) {
+				console.log(e);
 			}
 			finally {
 				this.endBatchChange(changeid);
@@ -763,16 +766,18 @@
 			}
 			
 			var voidEl,
-				el, searchBack = -1,
+				el, searchBack = -1, elNode,
 				visited = [], newEdge, edgeNode,
+				fnode = hostRange ? this.hostMethods.getHostNode : nativeElement,
 				found = false;
 			while (! found) {
 				el = range.startContainer;
 				if (! el || visited.indexOf(el) >= 0) {
 					return; // loop
 				}
+				elNode = fnode(el);
 				visited.push(el);
-				voidEl = this._getVoidElement(el);
+				voidEl = this._getVoidElement(elNode);
 				if (voidEl) {
 					if ((voidEl != el) && (visited.indexOf(voidEl) >= 0)) {
 						return; // loop
@@ -780,14 +785,14 @@
 					visited.push(voidEl);
 				}
 				else {
-					found = ice.dom.isTextContainer(el);
+					found = ice.dom.isTextContainer(elNode);
 				}
 				if (! found) { // in void element or non text container
 					if (-1 == searchBack) {
-						searchBack = ! isOnRightEdge(range.startContainer, range.startOffset);
+						searchBack = ! isOnRightEdge(fnode(range.startContainer), range.startOffset);
 					}
-					newEdge = searchBack ? ice.dom.findPrevTextContainer(voidEl || el, this.element) :
-							ice.dom.findNextTextContainer(voidEl || el, this.element);
+					newEdge = searchBack ? ice.dom.findPrevTextContainer(voidEl || elNode, this.element) :
+							ice.dom.findNextTextContainer(voidEl || elNode, this.element);
 					edgeNode = newEdge.node;
 					// we have a new edge node
 
@@ -835,9 +840,6 @@
 		 */
 		_getVoidElement: function (node) {
 			
-			if (node.$) {
-				node = node.$;
-			}
 			try {
 				var voidSelector = this._getVoidElSelector(),
 					voidParent = ice.dom.is(node, voidSelector) ? node : (ice.dom.parents(node, voidSelector)[0] || null);
@@ -1798,9 +1800,9 @@
 				default:
 					// If not Firefox then check if event is special arrow key etc.
 					// Firefox will handle this in keyPress event.
-					if (! this._browser.firefox) {
+//					if (! this._browser.firefox) {
 						preventDefault = !(this._handleAncillaryKey(e));
-					}
+//					}
 					break;
 			}
 	
@@ -2279,6 +2281,13 @@
 					origRange = range.cloneRange(),
 					head = frag.firstChild,tail = frag.lastChild;
 				
+				if (origRange.endOffset == 0 && origRange.endContainer.previousSibling) {
+					try {
+						origRange.setEndBefore(origRange.endContainer);
+					}
+					catch(e){}
+				}
+				
 				range.collapse(false);
 				range.insertNode(frag);
 				range.setStartBefore(head);
@@ -2295,6 +2304,14 @@
 		}
 
 	};
+	
+	var console = (window && window.console) || {
+		log: function(){},
+		error: function(){},
+		info: function(){},
+		assert:function(){},
+		count: function(){}
+	} ;
 	
 	/** Utility functions **/
 	function nativeElement(e) {

@@ -501,7 +501,7 @@
 		
 	}
 	
-	function _findNextTextContainer(node){
+	function _findNextTextContainer(node, container){
 		while (node) {
 			if (dom.TEXT_NODE == node.nodeType) {
 				return node;
@@ -520,7 +520,7 @@
 		return null;
 	}
 	
-	function _findPrevTextContainer(node){
+	function _findPrevTextContainer(node, container){
 		while (node) {
 			if (dom.TEXT_NODE == node.nodeType) {
 				return node;

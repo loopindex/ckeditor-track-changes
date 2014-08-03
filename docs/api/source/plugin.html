@@ -114,7 +114,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		delay: 500
 	},
 	
-	defaultTooltipTemplate = &quot;Changed by %u %t&quot;,
+	defaultTooltipTemplate = &quot;%a by %u %t&quot;,
 	
 	_emptyRegex = /^[\s\r\n]*$/, // for getting the clean text
 		_cleanRE = [{regex: /[\s]*title=\&quot;[^\&quot;]+\&quot;/g, replace: &quot;&quot; },
@@ -779,7 +779,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 				this._eventsBounds = true;
 				var paste = this._onPaste.bind(this);
 				e.on(&quot;afterCommandExec&quot;, this._onAfterCommand.bind(this));
-				e.on(&quot;beforeCommandExec&quot;, this._onBeforeCommand.bind(this));
+//				e.on(&quot;beforeCommandExec&quot;, this._onBeforeCommand.bind(this));
 				if (this._config.handlePaste) {
 					e.on(&quot;paste&quot;, paste, null, null, 1);
 				}
@@ -817,6 +817,9 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 						getHostRange : this._getHostRange.bind(this),
 						makeHostElement: function(node) {
 							return new CKEDITOR.dom.element(node);
+						},
+						getHostNode: function(node) {
+							return node &amp;&amp; node.$;
 						},
 						setHostRange: this._setHostRange.bind(this),
 						hostCopy: this._hostCopy.bind(this)
@@ -1253,6 +1256,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			var config = this._config.tooltips;
 			if (config.show &amp;&amp; this._tooltipsHandler) {
 				var title = this._makeTooltipTitle(change);
+				this._tooltipsHandler.hideAll();
 				this._tooltipsHandler.showTooltip(node, title, this._editor.container.$);
 			}
 		},
@@ -1310,8 +1314,9 @@ Written by (David *)Frenkiel - https://github.com/imdfl
  */		_makeTooltipTitle: function(change) {
 			var title = this._config.tooltipTemplate || defaultTooltipTemplate;
 			var time = new Date(change.time);
+			title = title.replace(/%a/g, &quot;insert&quot; == change.type ? &quot;added&quot; : &quot;deleted&quot;);
 			title = title.replace(/%t/g, relativeDateFormat(time));
-			title = title.replace(/%u/g, change.username);
+			title = title.replace(/%u/g, change.userName);
 			title = title.replace(/%dd/g, padNumber(time.getDate(), 2));
 			title = title.replace(/%d/g, time.getDate());
 			title = title.replace(/%mm/g, padNumber(time.getMonth() + 1, 2));

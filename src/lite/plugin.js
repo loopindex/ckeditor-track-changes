@@ -801,6 +801,9 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 						makeHostElement: function(node) {
 							return new CKEDITOR.dom.element(node);
 						},
+						getHostNode: function(node) {
+							return node && node.$;
+						},
 						setHostRange: this._setHostRange.bind(this),
 						hostCopy: this._hostCopy.bind(this)
 					},
