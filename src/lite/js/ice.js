@@ -2283,7 +2283,7 @@
 				var frag = range.cloneContents(),
 					origRange = range.cloneRange(),
 					head = frag.firstChild,tail = frag.lastChild;
-				console.log("range before cut:", printRange(range));
+				printRange(range);
 				if (origRange.endOffset == 0 && origRange.endContainer.previousSibling) {
 					try {
 						origRange.setEndBefore(origRange.endContainer);
@@ -2296,9 +2296,9 @@
 				range.collapse(false);
 				range.insertNode(frag);
 				range.setStartBefore(head);
-				console.log("range after setStartBefore: ", printRange(range));
+				printRange(range);
 				range.setEndAfter(tail);
-				console.log("range after setStartAfter: ", printRange(range));
+				printRange(range);
 				var cid = this.startBatchChange();
 				try {
 					this._deleteSelection(range);
@@ -2309,7 +2309,7 @@
 				finally {
 					this.endBatchChange(cid);
 					this.selection.addRange(origRange);
-					console.log("range after adjustment:", printRange(this.selection.getRangeAt(0)));
+					printRange(this.selection.getRangeAt(0));
 				}
 			}
 		}
