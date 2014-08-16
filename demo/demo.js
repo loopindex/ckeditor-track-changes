@@ -3,7 +3,7 @@ function f() {
 	var users = [{name: "Roger", id : 18}, {name: "David", id : 15}, {name : "Syd", id : 21}],
 		html = '',
 		version = (location.search.match(/(\d\.\d)/) || ["4.4"])[0],
-		ckeditorConfigUrl = version == "4.2" ? "../ckeditor4.2-config-debug.js" : "../ckeditor-config-debug.js"; 
+		ckeditorConfigUrl = version == "4.2" ? "../ckeditor4.2-conf-debug.js" : "../ckeditor-conf.js"; 
 	
 	for (var i = 0, len = users.length; i < len; ++i) {
 		var user = users[i];

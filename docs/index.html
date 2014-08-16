@@ -86,6 +86,7 @@ Paths are relative to the LITE plugin folder
 <li><code>titleTemplate</code> - the template of the text shown as a title (tooltip) when the cursor hovers over a tracked change region. The default value is <code>Changed by %u %t</code>, <code>%u</code> representing the user name and <code>%t</code> representing a time stamp relative to the current time (e.g. <i>now</i>, <i>2 minutes ago</i>, <i>May 31</i>). The titles are refreshed periodically. If you provide an empty template, no title will be displayed.
 <li><code>userStyles</code> - a map of id=>style number which allows you to consistenly display styles per user id. By default LITE creates a new style per user as it is introduced.
 <li><code>tooltips</code> - set to <code>true</code> (or omit altogether) to get the default implementation of LITE tooltips, based on <a href="http://opentip.org" target="_blank">Opentip</a>. You can also set <code>tooltips</code> to an object with various configuration options. 
+<li><code>isTracking</code> - set to <code>false</code> to start the plugin's life with change tracking turned off. 
 </ul>
 <li>You may also tweak the configuration in your code by listening to the CKEditor <code>configLoaded</code> event and then modifying the editor's <code>config.lite</code> object.
 </ul>

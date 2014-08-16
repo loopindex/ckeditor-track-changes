@@ -17,7 +17,7 @@ CKEDITOR.editorConfig = function( config ) {
 	]; */
 	
 	var lite = config.lite = config.lite || {};
-	config.extraPlugins = 'lite';
+	config.extraPlugins = 'lite,divarea';
 	lite.includes_debug = ["js/rangy/rangy-core.js", "js/ice.js", "js/dom.js", "js/selection.js", "js/bookmark.js","lite_interface.js"];
 	lite.includes = ["lite-includes.min.js"];
 	lite.includes_full = ["lite-includes.js"];
@@ -32,7 +32,7 @@ CKEDITOR.editorConfig = function( config ) {
 	// these are the default tooltip values. If you want to use this default configuration, just set lite.tooltips = true;
 	lite.tooltips = {
 		show: true,
-		path: "js/opentip-adapter.js",
+		path: "js/opentip-adapter.min.js",
 		classPath: "OpentipAdapter",
 		cssPath: "css/opentip.css",
 		delay: 500

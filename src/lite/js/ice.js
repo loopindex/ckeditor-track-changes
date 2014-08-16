@@ -48,9 +48,9 @@
 			}
 		},
 
-		// If `true`, setup event listeners on `this.element` and handle events - good option for a basic
-		// setup without a text editor. Otherwise, when set to `false`, events need to be manually passed
-		// to `handleEvent`, which is good for a text editor with an event callback handler, like tinymce.
+		// If true, setup event listeners on `this.element` and handle events - good option for a basic
+		// setup without a text editor. Otherwise, when set to false, events need to be manually passed
+		// to _handleEvent, which is good for a text editor with an event callback handler, like tinymce.
 		handleEvents: false,
 	
 		// Sets this.element with the contentEditable element
@@ -152,7 +152,7 @@
 			if (this.handleEvents) {
 				var self = this;
 				ice.dom.bind(self.element, 'keyup.ice keydown.ice keypress.ice', function (e) {
-					return self.handleEvent(e);
+					return self._handleEvent(e);
 				});
 			}
 			
@@ -292,32 +292,6 @@
 			this._updateTooltipsState();
 		},
 	
-		/**
-		 * If tracking is on, handles event e when it is one of the following types:
-		 * mouseup, mousedown, keypress, keydown, and keyup. Each event type is
-		 * propagated to all of the plugins. Prevents default handling if the event
-		 * was fully handled.
-		 */
-		handleEvent: function (e) {
-			if (!this._isTracking) {
-				return true;
-			}
-			if (e.type == 'keypress') {
-				var needsToBubble = this.keyPress(e);
-				if (!needsToBubble) {
-					e.preventDefault();
-				}
-				return needsToBubble;
-			} 
-			else if (e.type == 'keydown') {
-				var needsToBubble = this.keyDown(e);
-				if (!needsToBubble) {
-					e.preventDefault();
-				}
-				return needsToBubble;
-			} 
-		},
-
 		visible: function(el) {
 			if(el.nodeType === ice.dom.TEXT_NODE) el = el.parentNode;
 			var rect = el.getBoundingClientRect();
@@ -1698,6 +1672,29 @@
 		},
 	
 	
+		/**
+		 * If tracking is on, handles event e when it is one of the following types:
+		 * mouseup, mousedown, keypress, keydown, and keyup. Prevents default handling if the event
+		 * was fully handled.
+		 * @private
+		 */
+		_handleEvent: function (e) {
+			if (!this._isTracking) {
+				return true;
+			}
+			var needsToBubble = true;
+			if ('keypress' == e.type) {
+				needsToBubble = this.keyPress(e);
+			} 
+			else if ('keydown' == e.type) {
+				needsToBubble = this.keyDown(e);
+			}
+			if (!needsToBubble) {
+				e.preventDefault();
+			}
+			return needsToBubble;
+		},
+
 		/**
 		 * Handles arrow, delete key events, and others.
 		 *
