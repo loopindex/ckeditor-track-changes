@@ -754,7 +754,8 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			var e = this._editor,
 				doc = e.document.$,
 				body = this._getBody(),
-				config = this._config;
+				config = this._config,
+				debug = (config && config.debug) || {};
 			
 			this._loadCSS(doc);
 			
@@ -826,6 +827,9 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 						iceprops.hostMethods.beforeDelete = iceprops.hostMethods.beforeInsert = hideTT;
 						
 					}
+				}
+				if (debug.log) {
+					iceprops.logError = _logError;
 				}
 
 				jQuery.extend(iceprops, this.props);
@@ -1279,16 +1283,6 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 				editor.fire( 'saveSnapshot' );
 			}, 0 ); */
 		},
-/**
- * @ignore
- */
-		_logError : function() {
-			var t = typeof console;
-			if (t != "undefined" && console.error) {
-				var args = Array.prototype.slice.apply(arguments);
-				console.error(args.join(' '));
-			}
-		},
 		
 /**
  * @ignore
@@ -1318,6 +1312,13 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		
 	};
 	
+	/**
+	 * @ignore
+	 */
+	function _logError() {
+		console.error.apply(console, arguments);
+	}
+
 	function _ieFix () {
 		/* Begin fixes for IE */
 			Function.prototype.bind = Function.prototype.bind || function () {

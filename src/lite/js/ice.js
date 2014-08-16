@@ -88,7 +88,7 @@
 		//	[changeid] => {`type`, `time`, `userid`, `username`}
 		options || (options = {});
 		if (!options.element) {
-			throw new Error("`options.element` must be defined for ice construction.");
+			throw new Error("options.element must be defined for ice construction.");
 		}
 	
 		this._changes = {};
@@ -117,7 +117,7 @@
 				}
 			}
 		}
-	
+		logError = options.logError || function(){};
 	};
 
 	InlineChangeEditor.prototype = {
@@ -182,7 +182,9 @@
 					this.element.setAttribute('contentEditable', !this.contentEditable);
 				}
 			}
-			catch (e){}
+			catch (e){
+				logError(e, "While trying to stop tracking");
+			}
 
 			this._updateTooltipsState();
 			return this;
@@ -348,7 +350,7 @@
 				}
 			}
 			catch(e) {
-				console.log(e);
+				logError(e, "while trying to insert nodes");
 			}
 			finally {
 				this.endBatchChange(changeid);
@@ -715,6 +717,7 @@
 				return !! this.currentChangeNode(node); // refactored by dfl
 			}
 			catch (e) {
+				logError(e, "While testing if isInsideChange");
 				return false;
 			}
 		},
@@ -783,6 +786,7 @@
 						range.collapse(searchBack);
 					}
 					catch (e) { // if we can't set the selection for whatever reason, end of document etc., break
+						logError(e, "While trying to move range to valid tracking position");
 						break;
 					}
 				}
@@ -825,6 +829,7 @@
 				return voidParent;
 			}
 			catch(e) {
+				logError(e, "While trying to get void element of", node);
 				return null;
 			}
 		},
@@ -1011,6 +1016,7 @@
 				return this.selection.getRangeAt(0);
 			}
 			catch (e) {
+				logError(e, "While trying to get current range");
 				return null;
 			}
 		},
@@ -2282,7 +2288,9 @@
 					try {
 						origRange.setEndBefore(origRange.endContainer);
 					}
-					catch(e){}
+					catch(e){
+						logError(e, "While trying to set end before", origRange.endContainer);
+					}
 				}
 				
 				range.collapse(false);
@@ -2328,6 +2336,8 @@
 		}
 		return false;
 	}
+	
+	var logError = null;
 
 
 	exports.ice = this.ice || {};
