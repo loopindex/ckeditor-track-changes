@@ -2283,7 +2283,7 @@
 				var frag = range.cloneContents(),
 					origRange = range.cloneRange(),
 					head = frag.firstChild,tail = frag.lastChild;
-				
+				console.log("range before cut:", printRange(range));
 				if (origRange.endOffset == 0 && origRange.endContainer.previousSibling) {
 					try {
 						origRange.setEndBefore(origRange.endContainer);
@@ -2296,14 +2296,20 @@
 				range.collapse(false);
 				range.insertNode(frag);
 				range.setStartBefore(head);
+				console.log("range after setStartBefore: ", printRange(range));
 				range.setEndAfter(tail);
+				console.log("range after setStartAfter: ", printRange(range));
 				var cid = this.startBatchChange();
 				try {
 					this._deleteSelection(range);
 				}
+				catch (e) {
+					logError(e, "While trying to delete selection");
+				}
 				finally {
 					this.endBatchChange(cid);
-					this.selection.addRange(origRange);				
+					this.selection.addRange(origRange);
+					console.log("range after adjustment:", printRange(this.selection.getRangeAt(0)));
 				}
 			}
 		}
@@ -2338,6 +2344,95 @@
 	}
 	
 	var logError = null;
+	
+	function printRange(range) {
+		if (! range || ! range.startContainer || ! range.endContainer) {
+			return;
+		}
+		var parts = [];
+		function printText(txt) {
+			if (! txt) {
+				return "";
+			}
+			if (txt.length <= 15) {
+				return txt;
+			}
+			return txt.substring(0, 5)+ "..." + txt.substring(txt.length - 5);
+		}
+		function addNode(node) {
+			var str;
+			if (node.nodeType == 3) {
+				str = "Text:" + printText(node.nodeValue); 
+			}
+			else {
+				str = node.nodeName + "(" + printText(node.innerText) + ")";
+			}
+			parts.push("<" + str + ">");
+		}
+		function printNode(node, offset1, offset2) {
+			if ("number" != typeof offset1) {
+				offset1 = -1;
+			}
+			if (offset1===offset2 || "number" != typeof offset2) {
+				offset2 = -1;
+			}
+			if (3 == node.nodeType) { // text
+				var txt = node.nodeValue;
+				if (offset1 >= 0) {
+					parts.push(printText(txt.substring(0, offset1)));
+					parts.push("|");
+					if (offset2 > 0) {
+						parts.push(printText(txt.substring(offset1, offset2)));
+						parts.push("|");
+						parts.push(printText(txt.substring(offset2)));
+					}
+					else {
+						parts.push(printText(txt.substring(offset1)));
+					}
+				}
+				else {
+					parts.push(printText(txt));
+				}
+			}
+			else if (1 == node.nodeType) {
+				if (offset1 >= 0) {
+					var i = 0,
+						child = node.firstChild;
+					while (child) {
+						if (i < offset1 - 1) {
+							i++;
+							continue;
+						}
+						if ((offset2 >= 0 && i > offset2 + 1) ||
+							(offset2 < 0 && i > offset1 + 1)) {
+							break;
+						}
+						if (i == offset1) {
+							parts.push("|");
+						}
+						if (i == offset2) {
+							parts.push("|");
+						}
+						addNode(child);
+						child = child.nextSibling;
+						i++;
+					}
+
+				}
+				else {
+					addNode(node);
+				}
+			}
+		}
+		if (range.startContainer == range.endContainer) {
+			printNode(range.startContainer, range.startOffset, range.endOffset);
+		}
+		else {
+			printNode(range.startContainer, range.startOffset);
+			printNode(range.endContainer, range.endOffset);
+		}
+		return parts.join(' ');
+	}
 
 
 	exports.ice = this.ice || {};
