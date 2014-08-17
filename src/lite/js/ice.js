@@ -1913,7 +1913,6 @@
 					this.selection.addRange(range);
 				} //end if
 				break;
-				//temp
 			case 120:
 			case 88:
 				if (true === e.ctrlKey || true === e.metaKey) {

@@ -1086,9 +1086,11 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 				this._tracker.insert(toInsert);
 				this._afterInsert();
 			}
-			evt.cancel();
+			evt.data = { dataValue : null};
+
+//			evt.cancel();
 			this._onIceTextChanged();
-			return false;
+			return true;
 		},
 		
 		/**
