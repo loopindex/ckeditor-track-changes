@@ -104,7 +104,15 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		            {regex: /[\s]*data-selected=\"[^\"]+\"/g, replace:""}
 					],
 	
-	_pluginMap = [];
+	_pluginMap = [],
+	
+	cutKeystrokes = [CKEDITOR.CTRL + 88,  // CTRL+X
+	                 CKEDITOR.CTRL + 120,
+	                 CKEDITOR.SHIFT + 46];
+	
+	function isCutKeystroke(code) {
+		return cutKeystrokes.indexOf(code) >= 0;
+	}
 	
 	function _findPluginIndex(editor) {
 		for (var i = _pluginMap.length; i--;) {
@@ -705,6 +713,8 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		_onDomLoaded : function(dom) {
 			this._domLoaded = true;
 			this._editor = dom.editor;
+			var ed = this._editor.editable();
+			ed.attachListener(ed, "keypress", this._onKeyPress, this, null, 1);
 			this._onReady();
 		},
 		
@@ -773,6 +783,8 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 				e.on("insertElement", paste, null, null, 1);
 				e.on("mode", this._onModeChange.bind(this), null, null, 1);
 				e.on("readOnly", this._onReadOnly.bind(this));
+				
+//				e.on("key", this._onKeyDown.bind(this), null, null, 1);				
 			}
 			
 			if (this._tracker) {
@@ -806,7 +818,8 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 							return node && node.$;
 						},
 						setHostRange: this._setHostRange.bind(this),
-						hostCopy: this._hostCopy.bind(this)
+						hostCopy: this._hostCopy.bind(this),
+						beforeEdit: this._beforeEdit.bind(this)
 					},
 					tooltips: config.tooltips.show,
 					tooltipsDelay: config.tooltips.delay
@@ -937,6 +950,31 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		_onModeChange: function(evt){
 			this._updateTrackingState();
 			setTimeout(this._onIceChange.bind(this), 0);
+		},
+		
+		_onKeyPress: function(evt) {
+			var code = evt && evt.data && evt.data.getKeystroke();
+			if (isCutKeystroke(code)) {
+				evt.stop();
+			}
+			
+		},
+		
+		_onKeyDown: function(evt) {
+			if (! this._tracker || ! this._tracker.isTracking()) {
+				return;
+			}
+			
+			var code = evt.data.keyCode;
+/*
+ * 				case CKEDITOR.CTRL + 86: // CTRL+V
+				case CKEDITOR.SHIFT + 45: // SHIFT+INS
+ */			
+			if (isCutKeystroke(code)) {
+				if (this._tracker.tryToCut()) {
+					evt.stop();
+				}
+			} 
 		},
 		
 		/**
@@ -1206,6 +1244,19 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			if (selection) {
 				selection.selectRanges([range]);
 			}
+		},
+		
+		_beforeEdit: function() {
+			CKEDITOR.iscutting = true;
+			var e = this._editor,
+				f = function() {
+					e.fire('saveSnapshot');
+				};
+			f();// Save before cut
+			setTimeout(function() {
+				CKEDITOR.iscutting = false;
+			}, 100);
+//			setTimeout(f, 30);
 		},
 		
 		_hostCopy: function() {

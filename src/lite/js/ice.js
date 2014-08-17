@@ -1913,10 +1913,11 @@
 					this.selection.addRange(range);
 				} //end if
 				break;
+				//temp
 			case 120:
 			case 88:
 				if (true === e.ctrlKey || true === e.metaKey) {
-					this._tryToCut();
+					this.tryToCut();
 				}
 				break;
 /*				if (e.ctrlKey === true || e.metaKey === true) {
@@ -2016,6 +2017,50 @@
 			return this._getIceNodeClass('deleteType');
 		},
 		
+		/**
+		 * Preprocesses the document selection so that a deleted span is left after the browser cut
+		 * @return true if there's a selection 
+		 */
+		tryToCut: function() {
+			var range = this.getCurrentRange();
+			if (! range || range.collapsed) {
+				return false;
+			}
+			var frag = range.cloneContents(),
+				origRange = range.cloneRange(),
+				head = frag.firstChild,tail = frag.lastChild;
+			printRange(range);
+			this.hostMethods.beforeEdit();
+			if (origRange.endOffset == 0 && origRange.endContainer.previousSibling) {
+				try {
+					origRange.setEndBefore(origRange.endContainer);
+				}
+				catch(e){
+					logError(e, "While trying to set end before", origRange.endContainer);
+				}
+			}
+			
+			range.collapse(false);
+			range.insertNode(frag);
+			range.setStartBefore(head);
+			printRange(range);
+			range.setEndAfter(tail);
+			printRange(range);
+			var cid = this.startBatchChange();
+			try {
+				this._deleteSelection(range);
+			}
+			catch (e) {
+				logError(e, "While trying to delete selection");
+			}
+			finally {
+				this.endBatchChange(cid);
+				this.selection.addRange(origRange);
+				printRange(this.selection.getRangeAt(0));
+			}
+			return true;
+		},
+
 		toString : function() {
 			return "ICE " + ((this.element && this.element.id) || "(no element id)");
 		},
@@ -2277,42 +2322,6 @@
 			}
 		},
 		
-		_tryToCut: function() {
-			var range = this.getCurrentRange();
-			if (range && ! range.collapsed) {
-				var frag = range.cloneContents(),
-					origRange = range.cloneRange(),
-					head = frag.firstChild,tail = frag.lastChild;
-				printRange(range);
-				if (origRange.endOffset == 0 && origRange.endContainer.previousSibling) {
-					try {
-						origRange.setEndBefore(origRange.endContainer);
-					}
-					catch(e){
-						logError(e, "While trying to set end before", origRange.endContainer);
-					}
-				}
-				
-				range.collapse(false);
-				range.insertNode(frag);
-				range.setStartBefore(head);
-				printRange(range);
-				range.setEndAfter(tail);
-				printRange(range);
-				var cid = this.startBatchChange();
-				try {
-					this._deleteSelection(range);
-				}
-				catch (e) {
-					logError(e, "While trying to delete selection");
-				}
-				finally {
-					this.endBatchChange(cid);
-					this.selection.addRange(origRange);
-					printRange(this.selection.getRangeAt(0));
-				}
-			}
-		}
 
 	};
 	
