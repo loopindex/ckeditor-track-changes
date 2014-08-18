@@ -2025,29 +2025,22 @@
 			if (! range || range.collapsed) {
 				return false;
 			}
+			fixSelection(range, this.element);
 			var frag = range.cloneContents(),
 				origRange = range.cloneRange(),
 				head = frag.firstChild,tail = frag.lastChild;
-			printRange(range);
+//			printRange(range, "before cut");
 			this.hostMethods.beforeEdit();
-			if (origRange.endOffset == 0 && origRange.endContainer.previousSibling) {
-				try {
-					origRange.setEndBefore(origRange.endContainer);
-				}
-				catch(e){
-					logError(e, "While trying to set end before", origRange.endContainer);
-				}
-			}
 			
 			range.collapse(false);
 			range.insertNode(frag);
 			range.setStartBefore(head);
-			printRange(range);
+//			printRange(range, "after set start before the head");
 			range.setEndAfter(tail);
-			printRange(range);
+//			printRange(range, "after set end after the tail");
 			var cid = this.startBatchChange();
 			try {
-				this._deleteSelection(range);
+				var newRange = this._deleteSelection(range);
 			}
 			catch (e) {
 				logError(e, "While trying to delete selection");
@@ -2055,7 +2048,7 @@
 			finally {
 				this.endBatchChange(cid);
 				this.selection.addRange(origRange);
-				printRange(this.selection.getRangeAt(0));
+//				printRange(this.selection.getRangeAt(0), "range after deletion");
 			}
 			return true;
 		},
@@ -2353,7 +2346,55 @@
 	
 	var logError = null;
 	
-	function printRange(range) {
+	function fixSelection(range, top) {
+		if (! range || ! top || range.collapsed) {
+			return range;
+		}
+		var current;
+		// fix end
+		try {
+			while ((current = range.endContainer) && (current != top) && (range.endOffset == 0) && ! range.collapsed) {
+				if (current.previousSibling) {
+					range.setEndBefore(current);
+				}
+				else if (current.parentNode && current.parentNode != top) {
+					range.setEndBefore(current.parentNode);
+				}
+				if (range.endContainer == current) {
+					break;
+				}
+			}
+		}
+		catch (e) {
+			logError(e, "fixSelection, while trying to set end");
+		}
+
+		
+		try {
+			while ((current = range.startContainer) && (current != top) && ! range.collapsed) {
+				current = range.startContainer;
+
+				if (current.nodeType == ice.dom.TEXT_NODE) {
+					if (range.startOffset >= current.nodeValue.length) {
+						range.setStartAfter(current);
+					}
+				}
+				else { // element
+					if (range.startOffset >= current.childNodes.length) {
+						range.setStartAfter(current);
+					}
+				}
+				if (range.startContainer == current) {
+					break;
+				}
+			}
+		}
+		catch (e) {
+			logError(e, "fixSelection, while trying to set start");
+		}
+	}
+	
+	function printRange(range, message) {
 		if (! range || ! range.startContainer || ! range.endContainer) {
 			return;
 		}
@@ -2439,7 +2480,11 @@
 			printNode(range.startContainer, range.startOffset);
 			printNode(range.endContainer, range.endOffset);
 		}
-		return parts.join(' ');
+		var ret = parts.join(' ');
+		if (message) {
+			console.log(message + ":" + ret);
+		}
+		return ret;
 	}
 
 
