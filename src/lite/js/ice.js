@@ -1916,7 +1916,13 @@
 			case 120:
 			case 88:
 				if (true === e.ctrlKey || true === e.metaKey) {
-					this.tryToCut();
+					this.prepareToCut();
+				}
+				break;
+			case 67:
+			case 99:
+				if (true === e.ctrlKey || true === e.metaKey) {
+					this.prepareToCopy();
 				}
 				break;
 /*				if (e.ctrlKey === true || e.metaKey === true) {
@@ -2017,10 +2023,22 @@
 		},
 		
 		/**
+		 * called before a copy operation. 
+		 * This function processes the current selection to remove the tracking style.
+		 * The tracking is restored immediately after the copy operation 
+		 */
+		prepareToCopy: function() {
+			var range = this.getCurrentRange();
+			if (range && ! range.collapsed) {
+				this._removeTrackingInRange(range);
+			}
+		},
+		
+		/**
 		 * Preprocesses the document selection so that a deleted span is left after the browser cut
 		 * @return true if there's a selection 
 		 */
-		tryToCut: function() {
+		prepareToCut: function() {
 			var range = this.getCurrentRange();
 			if (! range || range.collapsed) {
 				return false;
@@ -2040,7 +2058,7 @@
 //			printRange(range, "after set end after the tail");
 			var cid = this.startBatchChange();
 			try {
-				var newRange = this._deleteSelection(range);
+				this._deleteSelection(range);
 			}
 			catch (e) {
 				logError(e, "While trying to delete selection");
@@ -2048,6 +2066,7 @@
 			finally {
 				this.endBatchChange(cid);
 				this.selection.addRange(origRange);
+				this._removeTrackingInRange(origRange, false);
 //				printRange(this.selection.getRangeAt(0), "range after deletion");
 			}
 			return true;
@@ -2313,6 +2332,57 @@
 				child = child.nextSibling;
 			}
 		},
+		
+		/**
+		 * Finds all the tracking nodes involved in the range and removes their tracking classes.
+		 * A timeout is set to restore the tracking classes immediately.
+		 * This allows the editor to copy tracked text without its style
+		 */
+		_removeTrackingInRange: function (range) {
+			var insClass = this._getIceNodeClass('insertType'), 
+				delClass = this._getIceNodeClass('deleteType'),
+				clsSelector = '.' + insClass+",."+delClass,
+				clsAttr = "data-ice-class",
+				filter = function(node) {
+					var iceNode = null, 
+						$iceNode = null;
+					if (node.nodeType == ice.dom.TEXT_NODE) {
+						$iceNode = jQuery(node).parents(clsSelector);
+					}
+					else {
+						var $node = jQuery(node);
+						if ($node.is(clsSelector)) {
+							$iceNode = $node; 
+						}
+						else {
+							$iceNode = $node.parents(clsSelector);
+						}
+					}
+					if (iceNode = ($iceNode && $iceNode[0])) {
+						var cls = iceNode.className;
+						iceNode.setAttribute(clsAttr, cls);
+						iceNode.setAttribute("class", "");
+						return true;
+					}
+					return false;
+				};
+			range.getNodes(null, filter);
+			var el = this.element;
+			setTimeout(function() {
+				var /*altIns = insClass + suffix,
+					altDel = delClass + suffix,
+					classList = '.' + altIns + ", ." + altDel, */
+					nodes = jQuery(el).find('['+ clsAttr + ']');
+				nodes.each(function(i, node) {
+					var cls = node.getAttribute(clsAttr);
+					if (cls) {
+						node.setAttribute("class", cls);
+						node.removeAttribute(clsAttr);
+					}
+				});
+				
+			}, 1);
+		}
 		
 
 	};

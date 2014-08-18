@@ -168,7 +168,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 	/**
 	 * Copied from CKEditor
 	 */
-	function execIECommand(editor, command ) {
+	function testIECommand(editor, command ) {
 		var doc = editor.document,
 			body = doc.getBody(),
 			enabled = false,
@@ -773,7 +773,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 				this._eventsBounds = true;
 				var paste = this._onPaste.bind(this);
 				e.on("afterCommandExec", this._onAfterCommand.bind(this));
-//				e.on("beforeCommandExec", this._onBeforeCommand.bind(this));
+				e.on("beforeCommandExec", this._onBeforeCommand.bind(this));
 				if (this._config.handlePaste) {
 					e.on("paste", paste, null, null, 1);
 				}
@@ -937,8 +937,16 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		},
 		
 		_onBeforeCommand: function(event) {
-			var name = this._tracker && this._isTracking && event.data && event.data.name;
+			var name = this._tracker && this._tracker.isTracking() && event.data && event.data.name;
 			if ("cut" == name) {
+				if (testClipboardCommand(this._editor, "copy")) {
+					this._tracker.prepareToCut();
+				}
+			}
+			else if ("copy" == name) {
+				if (testClipboardCommand(this._editor, "copy")) {
+					this._tracker.prepareToCopy();
+				}
 			}
 		},
 		
@@ -1082,13 +1090,17 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 				return true;
 			}
 			if (toInsert) {
+				var focused = this._editor.focusManager.hasFocus;
 				this._beforeInsert();
 				this._tracker.insert(toInsert);
 				this._afterInsert();
+				if (focused) {
+					this._editor.editable().focus();
+				}
 			}
-			evt.data = { dataValue : null};
+//			evt.data = { dataValue : null};
 
-//			evt.cancel();
+			evt.stop();
 			this._onIceTextChanged();
 			return true;
 		},
@@ -1264,7 +1276,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		_hostCopy: function() {
 			try {
 				if ( CKEDITOR.env.ie ) {
-					execIECommand(this._editor, "copy" ); 
+					testIECommand(this._editor, "copy" ); 
 				}
 				else {
 					// Other browsers throw an error if the command is disabled.
@@ -1371,6 +1383,50 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 	function _logError() {
 		console.error.apply(console, arguments);
 	}
+	
+	function testClipboardCommand(editor, command) {
+		if ( CKEDITOR.env.ie ) {
+			return testIECommand(editor, command);
+		}
+
+		// non-IEs part
+		try {
+			// Other browsers throw an error if the command is disabled.
+			return editor.document.$.execCommand( command, false, null );
+		} 
+		catch ( e ) {
+			return false;
+		}
+	}
+	
+	/**
+	 * Tries to execute any of the paste, cut or copy commands in IE. Returns a
+	 * boolean indicating that the operation succeeded.
+	 * Copied from ckeditor
+	 * @param {String} command *LOWER CASED* name of command ('paste', 'cut', 'copy').
+	 * */
+	function testIECommand( editor, command ) {
+		var doc = editor.document,
+			body = doc.getBody(),
+			enabled = false,
+			onExec = function() {
+				enabled = true;
+			};
+
+		// The following seems to be the only reliable way to detect that
+		// clipboard commands are enabled in IE. It will fire the
+		// onpaste/oncut/oncopy events only if the security settings allowed
+		// the command to execute.
+		body.on( command, onExec );
+
+		// IE7: document.execCommand has problem to paste into positioned element.
+		( CKEDITOR.env.version > 7 ? doc.$ : doc.$.selection.createRange() )[ 'execCommand' ]( command );
+
+		body.removeListener( command, onExec );
+
+		return enabled;
+	}
+
 
 	function _ieFix () {
 		/* Begin fixes for IE */

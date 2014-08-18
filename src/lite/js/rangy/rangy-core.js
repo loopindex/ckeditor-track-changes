@@ -2,10 +2,10 @@
  * Rangy, a cross-browser JavaScript range and selection library
  * http://code.google.com/p/rangy/
  *
- * Copyright 2013, Tim Down
+ * Copyright 2014, Tim Down
  * Licensed under the MIT license.
- * Version: 1.3alpha.804
- * Build date: 8 December 2013
+ * Version: 1.3alpha.20140716
+ * Build date: 16 July 2014
  */
 
 (function(global) {
@@ -75,7 +75,7 @@
 	var modules = {};
 
 	var api = {
-		version: "1.3alpha.804",
+        version: "1.3alpha.20140716",
 		initialized: false,
 		supported: true,
 
@@ -136,13 +136,16 @@
 				if (props.hasOwnProperty(i)) {
 					o = obj[i];
 					p = props[i];
-					//if (deep) alert([o !== null, typeof o == "object", p !== null, typeof p == "object"])
 					if (deep && o !== null && typeof o == "object" && p !== null && typeof p == "object") {
 						api.util.extend(o, p, true);
 				}
 					obj[i] = p;
 			}
 			}
+            // Special case for toString, which does not show up in for...in loops in IE <= 8
+            if (props.hasOwnProperty("toString")) {
+                obj.toString = props.toString;
+            }
 			return obj;
 		};
 	} else {
@@ -215,7 +218,6 @@
 			if (areHostMethods(testRange, domRangeMethods) && areHostProperties(testRange, domRangeProperties)) {
 				implementsDomRange = true;
 			}
-			testRange.detach();
 		}
 
 		var body = getBody(document);
@@ -318,7 +320,7 @@
 			}
 			
 			// Now run initializer
-			this.initializer(this)
+            this.initializer(this);
 		},
 		
 		fail: function(reason) {
@@ -332,8 +334,8 @@
 		},
 
 		deprecationNotice: function(deprecated, replacement) {
-			api.warn("DEPRECATED: " + deprecated + " in module " + this.name + "is deprecated. Please use "
-				+ replacement + " instead");
+            api.warn("DEPRECATED: " + deprecated + " in module " + this.name + "is deprecated. Please use " +
+                replacement + " instead");
 		},
 
 		createError: function(msg) {
@@ -428,14 +430,24 @@
 
 	/*----------------------------------------------------------------------------------------------------------------*/
 	
-	// AMD, for those who like this kind of thing
-
+    // AMD support, for those who like that kind of thing.
 	if (amdSupported) {
-		// AMD. Register as an anonymous module.
-		global.define(function() {
+        /**
+         * Register Rangy as an anonymous module.
+         * 
+         * According to the AMD docs (https://github.com/amdjs/amdjs-api/wiki/AMD#usage-notes-):
+         * "It is recommended that define calls be in the literal form of 'define(...)' in
+         * order to work properly with static analysis tools (like build tools).".
+         * See also Rangy issue #204 (https://github.com/timdown/rangy/issues/204).
+         * 
+         * We therefore dutifully jump through this little hoop.
+         */
+        (function(define) {
+            define(function() {
 			api.amd = true;
 			return api;
 		});
+        })(global.define);
 	}
 
 	// Create a "rangy" property of the global object in any case. Other Rangy modules (which use Rangy's own simple
@@ -675,8 +687,8 @@ rangy.createCoreModule("DomUtil", [], function(api, module) {
 
 		// Test if a DOM node has been passed and obtain a document object for it if so
 		else if (util.isHostProperty(obj, "nodeType")) {
-			doc = (obj.nodeType == 1 && obj.tagName.toLowerCase() == "iframe")
-				? getIframeDocument(obj) : getDocument(obj);
+            doc = (obj.nodeType == 1 && obj.tagName.toLowerCase() == "iframe") ?
+                getIframeDocument(obj) : getDocument(obj);
 		}
 
 		// Test if the doc parameter appears to be a Window object
@@ -744,8 +756,9 @@ rangy.createCoreModule("DomUtil", [], function(api, module) {
 	var crashyTextNodes = false;
 
 	function isBrokenNode(node) {
+        var n;
 		try {
-			node.parentNode;
+            n = node.parentNode;
 			return false;
 		} catch (e) {
 			return true;
@@ -776,7 +789,7 @@ rangy.createCoreModule("DomUtil", [], function(api, module) {
 		}
 		if (node.nodeType == 1) {
 			var idAttr = node.id ? ' id="' + node.id + '"' : "";
-			return "<" + node.nodeName + idAttr + ">[" + getNodeIndex(node) + "][" + node.childNodes.length + "][" + (node.innerHTML || "[innerHTML not supported]").slice(0, 25) + "]";
+            return "<" + node.nodeName + idAttr + ">[index:" + getNodeIndex(node) + ",length:" + node.childNodes.length + "][" + (node.innerHTML || "[innerHTML not supported]").slice(0, 25) + "]";
 		}
 			return node.nodeName;
 		}
@@ -873,7 +886,8 @@ rangy.createCoreModule("DomUtil", [], function(api, module) {
 		NO_MODIFICATION_ALLOWED_ERR: 7,
 		NOT_FOUND_ERR: 8,
 		NOT_SUPPORTED_ERR: 9,
-		INVALID_STATE_ERR: 11
+        INVALID_STATE_ERR: 11,
+        INVALID_NODE_TYPE_ERR: 24
 	};
 
 	DOMException.prototype.toString = function() {
@@ -990,7 +1004,7 @@ rangy.createCoreModule("DomRange", ["DomUtil"], function(api, module) {
 			if (partiallySelected) {
 				subIterator = iterator.getSubtreeIterator();
 				node.appendChild(cloneSubtree(subIterator));
-				subIterator.detach(true);
+                subIterator.detach();
 			}
 
 			if (node.nodeType == 10) { // DocumentType
@@ -1014,7 +1028,7 @@ rangy.createCoreModule("DomRange", ["DomUtil"], function(api, module) {
 					// the node selected by the Range.
 					subRangeIterator = rangeIterator.getSubtreeIterator();
 					iterateSubtree(subRangeIterator, func, iteratorState);
-					subRangeIterator.detach(true);
+                    subRangeIterator.detach();
 					if (iteratorState.stop) {
 						return;
 					}
@@ -1039,7 +1053,7 @@ rangy.createCoreModule("DomRange", ["DomUtil"], function(api, module) {
 			if (iterator.isPartiallySelectedSubtree()) {
 				subIterator = iterator.getSubtreeIterator();
 				deleteSubtree(subIterator);
-				subIterator.detach(true);
+                subIterator.detach();
 			} else {
 				iterator.remove();
 			}
@@ -1053,7 +1067,7 @@ rangy.createCoreModule("DomRange", ["DomUtil"], function(api, module) {
 				node = node.cloneNode(false);
 				subIterator = iterator.getSubtreeIterator();
 				node.appendChild(extractSubtree(subIterator));
-				subIterator.detach(true);
+                subIterator.detach();
 			} else {
 				iterator.remove();
 			}
@@ -1214,31 +1228,9 @@ rangy.createCoreModule("DomRange", ["DomUtil"], function(api, module) {
 			return new RangeIterator(subRange, this.clonePartiallySelectedTextNodes);
 		},
 
-		detach: function(detachRange) {
-			if (detachRange) {
-				this.range.detach();
-			}
+        detach: function() {
 			this.range = this._current = this._next = this._first = this._last = this.sc = this.so = this.ec = this.eo = null;
 		}
-	};
-
-	/*----------------------------------------------------------------------------------------------------------------*/
-
-	// Exceptions
-
-	function RangeException(codeName) {
-		this.code = this[codeName];
-		this.codeName = codeName;
-		this.message = "RangeException: " + this.codeName;
-	}
-
-	RangeException.prototype = {
-		BAD_BOUNDARYPOINTS_ERR: 1,
-		INVALID_NODE_TYPE_ERR: 2
-	};
-
-	RangeException.prototype.toString = function() {
-		return this.message;
 	};
 
 	/*----------------------------------------------------------------------------------------------------------------*/
@@ -1269,19 +1261,13 @@ rangy.createCoreModule("DomRange", ["DomUtil"], function(api, module) {
 
 	function assertNoDocTypeNotationEntityAncestor(node, allowSelf) {
 		if (getDocTypeNotationEntityAncestor(node, allowSelf)) {
-			throw new RangeException("INVALID_NODE_TYPE_ERR");
-		}
-	}
-
-	function assertNotDetached(range) {
-		if (!range.startContainer) {
-			throw new DOMException("INVALID_STATE_ERR");
+            throw new DOMException("INVALID_NODE_TYPE_ERR");
 		}
 	}
 
 	function assertValidNodeType(node, invalidTypes) {
 		if (!arrayContains(invalidTypes, node.nodeType)) {
-			throw new RangeException("INVALID_NODE_TYPE_ERR");
+            throw new DOMException("INVALID_NODE_TYPE_ERR");
 		}
 	}
 
@@ -1319,15 +1305,14 @@ rangy.createCoreModule("DomRange", ["DomUtil"], function(api, module) {
 	}
 
 	function isRangeValid(range) {
-		return (!!range.startContainer && !!range.endContainer
-				&& !isOrphan(range.startContainer)
-				&& !isOrphan(range.endContainer)
-				&& isValidOffset(range.startContainer, range.startOffset)
-				&& isValidOffset(range.endContainer, range.endOffset));
+        return (!!range.startContainer && !!range.endContainer &&
+                !isOrphan(range.startContainer) &&
+                !isOrphan(range.endContainer) &&
+                isValidOffset(range.startContainer, range.startOffset) &&
+                isValidOffset(range.endContainer, range.endOffset));
 	}
 
 	function assertRangeValid(range) {
-		assertNotDetached(range);
 		if (!isRangeValid(range)) {
 			throw new Error("Range error: Range is no longer valid after DOM mutation (" + range.inspect() + ")");
 		}
@@ -1381,9 +1366,9 @@ rangy.createCoreModule("DomRange", ["DomUtil"], function(api, module) {
 			// and element's local name is "html" and element's namespace is the HTML
 			// namespace"
 			if (el === null || (
-				el.nodeName == "HTML"
-				&& dom.isHtmlNamespace(getDocument(el).documentElement)
-				&& dom.isHtmlNamespace(el)
+                el.nodeName == "HTML" &&
+                dom.isHtmlNamespace(getDocument(el).documentElement) &&
+                dom.isHtmlNamespace(el)
 			)) {
 
 			// "let element be a new Element with "body" as its local name and the HTML
@@ -1411,7 +1396,6 @@ rangy.createCoreModule("DomRange", ["DomUtil"], function(api, module) {
 		// In this case, innerHTML cannot be trusted, so fall back to a simpler, non-conformant implementation that
 		// previous versions of Rangy used (with the exception of using a body element rather than a div)
 		function(fragmentStr) {
-			assertNotDetached(this);
 			var doc = getRangeDocument(this);
 			var el = doc.createElement("body");
 			el.innerHTML = fragmentStr;
@@ -1522,7 +1506,7 @@ rangy.createCoreModule("DomRange", ["DomUtil"], function(api, module) {
 			assertValidNodeType(node, surroundNodeTypes);
 
 			if (!this.canSurroundContents()) {
-				throw new RangeException("BAD_BOUNDARYPOINTS_ERR");
+                throw new DOMException("INVALID_STATE_ERR");
 			}
 
 			// Extract the contents
@@ -1683,7 +1667,7 @@ rangy.createCoreModule("DomRange", ["DomUtil"], function(api, module) {
 				}
 				return unionRange;
 			} else {
-				throw new RangeException("Ranges do not intersect");
+                throw new DOMException("Ranges do not intersect");
 			}
 		},
 
@@ -1712,9 +1696,7 @@ rangy.createCoreModule("DomRange", ["DomUtil"], function(api, module) {
 				nodeRange.setStart(textNodes[0], 0);
 				var lastTextNode = textNodes.pop();
 				nodeRange.setEnd(lastTextNode, lastTextNode.length);
-				var contains = this.containsRange(nodeRange);
-				nodeRange.detach();
-				return contains;
+                return this.containsRange(nodeRange);
 			} else {
 				return this.containsNodeContents(node);
 			}
@@ -1730,15 +1712,11 @@ rangy.createCoreModule("DomRange", ["DomUtil"], function(api, module) {
 		},
 
 		collapseBefore: function(node) {
-			assertNotDetached(this);
-
 			this.setEndBefore(node);
 			this.collapse(false);
 		},
 
 		collapseAfter: function(node) {
-			assertNotDetached(this);
-
 			this.setStartAfter(node);
 			this.collapse(true);
 		},
@@ -1754,7 +1732,6 @@ rangy.createCoreModule("DomRange", ["DomUtil"], function(api, module) {
 				preSelectionRange.setEnd(range.startContainer, range.startOffset);
 				start = preSelectionRange.toString().length;
 				end = start + range.toString().length;
-				preSelectionRange.detach();
 			}
 
 			return {
@@ -1808,6 +1785,10 @@ rangy.createCoreModule("DomRange", ["DomUtil"], function(api, module) {
 
 		inspect: function() {
 			return inspect(this);
+        },
+        
+        detach: function() {
+            // In DOM4, detach() is now a no-op.
 		}
 	});
 
@@ -1861,10 +1842,9 @@ rangy.createCoreModule("DomRange", ["DomUtil"], function(api, module) {
 		};
 	}
 
-	function createPrototypeRange(constructor, boundaryUpdater, detacher) {
+    function createPrototypeRange(constructor, boundaryUpdater) {
 		function createBeforeAfterNodeSetter(isBefore, isStart) {
 			return function(node) {
-				assertNotDetached(this);
 				assertValidNodeType(node, beforeAfterNodeTypes);
 				assertValidNodeType(getRootContainer(node), rootContainerNodeTypes);
 
@@ -1906,7 +1886,6 @@ rangy.createCoreModule("DomRange", ["DomUtil"], function(api, module) {
 
 		util.extend(constructor.prototype, {
 			setStart: function(node, offset) {
-				assertNotDetached(this);
 				assertNoDocTypeNotationEntityAncestor(node, true);
 				assertValidOffset(node, offset);
 
@@ -1914,7 +1893,6 @@ rangy.createCoreModule("DomRange", ["DomUtil"], function(api, module) {
 			},
 
 			setEnd: function(node, offset) {
-				assertNotDetached(this);
 				assertNoDocTypeNotationEntityAncestor(node, true);
 				assertValidOffset(node, offset);
 
@@ -1930,8 +1908,6 @@ rangy.createCoreModule("DomRange", ["DomUtil"], function(api, module) {
 			 *   startNode and ending at endOffset in endNode
 			 */
 			setStartAndEnd: function() {
-				assertNotDetached(this);
-
 				var args = arguments;
 				var sc = args[0], so = args[1], ec = sc, eo = so;
 
@@ -1967,14 +1943,12 @@ rangy.createCoreModule("DomRange", ["DomUtil"], function(api, module) {
 			},
 
 			selectNodeContents: function(node) {
-				assertNotDetached(this);
 				assertNoDocTypeNotationEntityAncestor(node, true);
 
 				boundaryUpdater(this, node, 0, node, getNodeLength(node));
 			},
 
 			selectNode: function(node) {
-				assertNotDetached(this);
 				assertNoDocTypeNotationEntityAncestor(node, false);
 				assertValidNodeType(node, beforeAfterNodeTypes);
 
@@ -1994,14 +1968,10 @@ rangy.createCoreModule("DomRange", ["DomUtil"], function(api, module) {
 				// Check if the contents can be surrounded. Specifically, this means whether the range partially selects
 				// no non-text nodes.
 				var iterator = new RangeIterator(this, true);
-				var boundariesInvalid = (iterator._first && (isNonTextPartiallySelected(iterator._first, this)) ||
+                var boundariesInvalid = (iterator._first && isNonTextPartiallySelected(iterator._first, this) ||
 						(iterator._last && isNonTextPartiallySelected(iterator._last, this)));
 				iterator.detach();
 				return !boundariesInvalid;
-			},
-
-			detach: function() {
-				detacher(this);
 			},
 
 			splitBoundaries: function() {
@@ -2088,7 +2058,6 @@ rangy.createCoreModule("DomRange", ["DomUtil"], function(api, module) {
 			},
 
 			collapseToPoint: function(node, offset) {
-				assertNotDetached(this);
 				assertNoDocTypeNotationEntityAncestor(node, true);
 				assertValidOffset(node, offset);
 				this.setStartAndEnd(node, offset);
@@ -2117,12 +2086,6 @@ rangy.createCoreModule("DomRange", ["DomUtil"], function(api, module) {
 		updateCollapsedAndCommonAncestor(range);
 	}
 
-	function detach(range) {
-		assertNotDetached(range);
-		range.startContainer = range.startOffset = range.endContainer = range.endOffset = range.document = null;
-		range.collapsed = range.commonAncestorContainer = null;
-	}
-
 	function Range(doc) {
 		this.startContainer = doc;
 		this.startOffset = 0;
@@ -2132,7 +2095,7 @@ rangy.createCoreModule("DomRange", ["DomUtil"], function(api, module) {
 		updateCollapsedAndCommonAncestor(this);
 	}
 
-	createPrototypeRange(Range, updateBoundaries, detach);
+    createPrototypeRange(Range, updateBoundaries);
 
 	util.extend(Range, {
 		rangeProperties: rangeProperties,
@@ -2150,7 +2113,6 @@ rangy.createCoreModule("DomRange", ["DomUtil"], function(api, module) {
 	});
 
 	api.DomRange = Range;
-	api.RangeException = RangeException;
 });
 rangy.createCoreModule("WrappedRange", ["DomRange"], function(api, module) {
 	var WrappedRange, WrappedTextRange;
@@ -2196,15 +2158,6 @@ rangy.createCoreModule("WrappedRange", ["DomRange"], function(api, module) {
 				}
 			}
 
-			function detach(range) {
-				range.nativeRange.detach();
-				range.detached = true;
-				var i = rangeProperties.length;
-				while (i--) {
-					range[ rangeProperties[i] ] = null;
-	}
-	}
-
 			var createBeforeAfterNodeSetter;
 
 			WrappedRange = function(range) {
@@ -2215,7 +2168,7 @@ rangy.createCoreModule("WrappedRange", ["DomRange"], function(api, module) {
 				updateRangeProperties(this);
 			};
 
-			DomRange.createPrototypeRange(WrappedRange, updateNativeRange, detach);
+            DomRange.createPrototypeRange(WrappedRange, updateNativeRange);
 
 			rangeProto = WrappedRange.prototype;
 
@@ -2288,11 +2241,11 @@ rangy.createCoreModule("WrappedRange", ["DomRange"], function(api, module) {
 				};
 
 			} catch(ex) {
+
 				rangeProto.setStart = function(node, offset) {
 					try {
 						this.nativeRange.setStart(node, offset);
-					} 
-					catch (ex) {
+                    } catch (ex) {
 						this.nativeRange.setEnd(node, offset);
 						this.nativeRange.setStart(node, offset);
 					}
@@ -2302,8 +2255,7 @@ rangy.createCoreModule("WrappedRange", ["DomRange"], function(api, module) {
 				rangeProto.setEnd = function(node, offset) {
 					try {
 						this.nativeRange.setEnd(node, offset);
-					} 
-					catch (ex) {
+                    } catch (ex) {
 						this.nativeRange.setStart(node, offset);
 						this.nativeRange.setEnd(node, offset);
 					}
@@ -2414,8 +2366,6 @@ rangy.createCoreModule("WrappedRange", ["DomRange"], function(api, module) {
 
 			// Clean up
 			getBody(document).removeChild(testTextNode);
-			range.detach();
-			range2.detach();
 
 			rangeProto.getName = function() {
 				return "WrappedRange";
@@ -2929,6 +2879,10 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 					r2.setEnd(textNode, 3);
 					r2.setStart(textNode, 2);
 			sel.addRange(r1);
+
+                    // Next line causes Chrome 36 to print a console error of
+                    // "Discontiguous selection is not supported.".
+                    // https://code.google.com/p/chromium/issues/detail?id=353069#c4
 			sel.addRange(r2);
 
 			selectionSupportsMultipleRanges = (sel.rangeCount == 2);
@@ -2938,18 +2892,17 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 			// Clean up
 				body.removeChild(testEl);
 				sel.removeAllRanges();
-			r1.detach();
 
 				for (i = 0; i < originalSelectionRangeCount; ++i) {
 					if (i == 0 && originalSelectionBackward) {
 						if (addRangeBackwardToNative) {
 							addRangeBackwardToNative(sel, originalSelectionRanges[i]);
 						} else {
-							api.warn("Rangy initialization: original selection was backwards but selection has been restored forwards because browser does not support Selection.extend");
-							sel.addRange(originalSelectionRanges[i])
+                            api.warn("Rangy initialization: original selection was backwards but selection has been restored forwards because the browser does not support Selection.extend");
+                            sel.addRange(originalSelectionRanges[i]);
 						}
 					} else {
-						sel.addRange(originalSelectionRanges[i])
+                        sel.addRange(originalSelectionRanges[i]);
 					}
 				}
 			}
@@ -3389,7 +3342,7 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 			if (implementsControlRange && implementsDocSelection && sel.docSelection.type == CONTROL) {
 				updateControlSelection(sel);
 			} else {
-				sel._ranges.length = sel.rangeCount = (sel.nativeSelection && sel.nativeSelection.rangeCount) || 0;
+                sel._ranges.length = sel.rangeCount = sel.nativeSelection.rangeCount;
 				if (sel.rangeCount) {
 					for (var i = 0, len = sel.rangeCount; i < len; ++i) {
 						sel._ranges[i] = new api.WrappedRange(sel.nativeSelection.getRangeAt(i));
