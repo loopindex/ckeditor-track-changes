@@ -325,7 +325,7 @@
 		insert: function (nodes) {
 			this.hostMethods.beforeInsert && this.hostMethods.beforeInsert();
 
-			var range = this.getCurrentRange(),
+			var range = this.getCurrentRange() && this._isRangeInElement(range, this.element),
 				hostRange = range ? null : this.hostMethods.getHostRange(),
 				changeid = this.startBatchChange(),
 				hadSelection = !!(range && !range.collapsed);
@@ -791,6 +791,17 @@
 					}
 				}
 			}
+		},
+		
+		_isRangeInElement: function(range, top) {
+			var start = range && range.startContainer;
+			while (start) {
+				if (start == top) {
+					return range;
+				}
+				start = start.parentNode;
+			}
+			return null;
 		},
 	
 		/**
@@ -2039,7 +2050,20 @@
 		 * @return true if there's a selection 
 		 */
 		prepareToCut: function() {
-			var range = this.getCurrentRange();
+			var range = this.getCurrentRange(),
+				hostRange = this.hostMethods.getHostRange();
+			
+			if (range && hostRange && range.collapsed && ! hostRange.collapsed) {
+				// special case of IE showing collapsed selection when ckeditor thinks otherwise
+				try {
+					var data = this.hostMethods.getHostRangeData(hostRange);
+					range.setStart(data.startContainer, data.startOffset);
+					range.setEnd(data.endContainer, data.endOffset);
+				}
+				catch (e) {
+					return;
+				}
+			}
 			if (! range || range.collapsed) {
 				return false;
 			}

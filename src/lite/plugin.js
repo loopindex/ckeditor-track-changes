@@ -811,6 +811,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 					},
 					hostMethods: {
 						getHostRange : this._getHostRange.bind(this),
+						getHostRangeData: this._getHostRangeData.bind(this),
 						makeHostElement: function(node) {
 							return new CKEDITOR.dom.element(node);
 						},
@@ -1299,6 +1300,19 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			return range || null;
 		},
 		
+		_getHostRangeData: function(hostRange) {
+			hostRange = hostRange || this._getHostRange();
+			if (! hostRange) {
+				return null;
+			}
+			return {
+				startContainer: hostRange.startContainer && hostRange.startContainer.$,
+				endContainer: hostRange.endContainer && hostRange.endContainer.$,
+				startOffset: hostRange.startOffset,
+				endOffset: hostRange.endOffset
+			};
+		},
+		
 		/**
 		 * @ignore
 		 * @param node
@@ -1409,6 +1423,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		var doc = editor.document,
 			body = doc.getBody(),
 			enabled = false,
+			success = false,
 			onExec = function() {
 				enabled = true;
 			};
@@ -1420,11 +1435,11 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		body.on( command, onExec );
 
 		// IE7: document.execCommand has problem to paste into positioned element.
-		( CKEDITOR.env.version > 7 ? doc.$ : doc.$.selection.createRange() )[ 'execCommand' ]( command );
+		success = ( CKEDITOR.env.version > 7 ? doc.$ : doc.$.selection.createRange() )[ 'execCommand' ]( command, false );
 
 		body.removeListener( command, onExec );
 
-		return enabled;
+		return success || enabled;
 	}
 
 
