@@ -65,9 +65,9 @@
 			}
 		},
 
-		// If `true`, setup event listeners on `this.element` and handle events - good option for a basic
-		// setup without a text editor. Otherwise, when set to `false`, events need to be manually passed
-		// to `handleEvent`, which is good for a text editor with an event callback handler, like tinymce.
+		// If true, setup event listeners on `this.element` and handle events - good option for a basic
+		// setup without a text editor. Otherwise, when set to false, events need to be manually passed
+		// to _handleEvent, which is good for a text editor with an event callback handler, like tinymce.
 		handleEvents: false,
 	
 		// Sets this.element with the contentEditable element
@@ -105,7 +105,7 @@
 		//	[changeid] =&gt; {`type`, `time`, `userid`, `username`}
 		options || (options = {});
 		if (!options.element) {
-			throw new Error(&quot;`options.element` must be defined for ice construction.&quot;);
+			throw new Error(&quot;options.element must be defined for ice construction.&quot;);
 		}
 	
 		this._changes = {};
@@ -134,7 +134,7 @@
 				}
 			}
 		}
-	
+		logError = options.logError || function(){};
 	};
 
 	InlineChangeEditor.prototype = {
@@ -169,7 +169,7 @@
 			if (this.handleEvents) {
 				var self = this;
 				ice.dom.bind(self.element, 'keyup.ice keydown.ice keypress.ice', function (e) {
-					return self.handleEvent(e);
+					return self._handleEvent(e);
 				});
 			}
 			
@@ -199,7 +199,9 @@
 					this.element.setAttribute('contentEditable', !this.contentEditable);
 				}
 			}
-			catch (e){}
+			catch (e){
+				logError(e, &quot;While trying to stop tracking&quot;);
+			}
 
 			this._updateTooltipsState();
 			return this;
@@ -309,32 +311,6 @@
 			this._updateTooltipsState();
 		},
 	
-<span id='ice-InlineChangeEditor-method-handleEvent'>		/**
-</span>		 * If tracking is on, handles event e when it is one of the following types:
-		 * mouseup, mousedown, keypress, keydown, and keyup. Each event type is
-		 * propagated to all of the plugins. Prevents default handling if the event
-		 * was fully handled.
-		 */
-		handleEvent: function (e) {
-			if (!this._isTracking) {
-				return true;
-			}
-			if (e.type == 'keypress') {
-				var needsToBubble = this.keyPress(e);
-				if (!needsToBubble) {
-					e.preventDefault();
-				}
-				return needsToBubble;
-			} 
-			else if (e.type == 'keydown') {
-				var needsToBubble = this.keyDown(e);
-				if (!needsToBubble) {
-					e.preventDefault();
-				}
-				return needsToBubble;
-			} 
-		},
-
 		visible: function(el) {
 			if(el.nodeType === ice.dom.TEXT_NODE) el = el.parentNode;
 			var rect = el.getBoundingClientRect();
@@ -366,7 +342,7 @@
 		insert: function (nodes) {
 			this.hostMethods.beforeInsert &amp;&amp; this.hostMethods.beforeInsert();
 
-			var range = this.getCurrentRange(),
+			var range = this.getCurrentRange() &amp;&amp; this._isRangeInElement(range, this.element),
 				hostRange = range ? null : this.hostMethods.getHostRange(),
 				changeid = this.startBatchChange(),
 				hadSelection = !!(range &amp;&amp; !range.collapsed);
@@ -391,7 +367,7 @@
 				}
 			}
 			catch(e) {
-				console.log(e);
+				logError(e, &quot;while trying to insert nodes&quot;);
 			}
 			finally {
 				this.endBatchChange(changeid);
@@ -758,6 +734,7 @@
 				return !! this.currentChangeNode(node); // refactored by dfl
 			}
 			catch (e) {
+				logError(e, &quot;While testing if isInsideChange&quot;);
 				return false;
 			}
 		},
@@ -826,10 +803,22 @@
 						range.collapse(searchBack);
 					}
 					catch (e) { // if we can't set the selection for whatever reason, end of document etc., break
+						logError(e, &quot;While trying to move range to valid tracking position&quot;);
 						break;
 					}
 				}
 			}
+		},
+		
+		_isRangeInElement: function(range, top) {
+			var start = range &amp;&amp; range.startContainer;
+			while (start) {
+				if (start == top) {
+					return range;
+				}
+				start = start.parentNode;
+			}
+			return null;
 		},
 	
 <span id='ice-InlineChangeEditor-method-_getNoTrackElement'>		/**
@@ -868,6 +857,7 @@
 				return voidParent;
 			}
 			catch(e) {
+				logError(e, &quot;While trying to get void element of&quot;, node);
 				return null;
 			}
 		},
@@ -1054,6 +1044,7 @@
 				return this.selection.getRangeAt(0);
 			}
 			catch (e) {
+				logError(e, &quot;While trying to get current range&quot;);
 				return null;
 			}
 		},
@@ -1715,6 +1706,29 @@
 		},
 	
 	
+<span id='ice-InlineChangeEditor-method-_handleEvent'>		/**
+</span>		 * If tracking is on, handles event e when it is one of the following types:
+		 * mouseup, mousedown, keypress, keydown, and keyup. Prevents default handling if the event
+		 * was fully handled.
+		 * @private
+		 */
+		_handleEvent: function (e) {
+			if (!this._isTracking) {
+				return true;
+			}
+			var needsToBubble = true;
+			if ('keypress' == e.type) {
+				needsToBubble = this.keyPress(e);
+			} 
+			else if ('keydown' == e.type) {
+				needsToBubble = this.keyDown(e);
+			}
+			if (!needsToBubble) {
+				e.preventDefault();
+			}
+			return needsToBubble;
+		},
+
 <span id='ice-InlineChangeEditor-method-_handleAncillaryKey'>		/**
 </span>		 * Handles arrow, delete key events, and others.
 		 *
@@ -1817,9 +1831,9 @@
 				default:
 					// If not Firefox then check if event is special arrow key etc.
 					// Firefox will handle this in keyPress event.
-					if (! this._browser.firefox) {
+//					if (! this._browser.firefox) {
 						preventDefault = !(this._handleAncillaryKey(e));
-					}
+//					}
 					break;
 			}
 	
@@ -1930,7 +1944,13 @@
 			case 120:
 			case 88:
 				if (true === e.ctrlKey || true === e.metaKey) {
-					this._tryToCut();
+					this.prepareToCut();
+				}
+				break;
+			case 67:
+			case 99:
+				if (true === e.ctrlKey || true === e.metaKey) {
+					this.prepareToCopy();
 				}
 				break;
 /*				if (e.ctrlKey === true || e.metaKey === true) {
@@ -2030,6 +2050,69 @@
 			return this._getIceNodeClass('deleteType');
 		},
 		
+<span id='ice-InlineChangeEditor-method-prepareToCopy'>		/**
+</span>		 * called before a copy operation. 
+		 * This function processes the current selection to remove the tracking style.
+		 * The tracking is restored immediately after the copy operation 
+		 */
+		prepareToCopy: function() {
+			var range = this.getCurrentRange();
+			if (range &amp;&amp; ! range.collapsed) {
+				this._removeTrackingInRange(range);
+			}
+		},
+		
+<span id='ice-InlineChangeEditor-method-prepareToCut'>		/**
+</span>		 * Preprocesses the document selection so that a deleted span is left after the browser cut
+		 * @return true if there's a selection 
+		 */
+		prepareToCut: function() {
+			var range = this.getCurrentRange(),
+				hostRange = this.hostMethods.getHostRange();
+			
+			if (range &amp;&amp; hostRange &amp;&amp; range.collapsed &amp;&amp; ! hostRange.collapsed) {
+				// special case of IE showing collapsed selection when ckeditor thinks otherwise
+				try {
+					var data = this.hostMethods.getHostRangeData(hostRange);
+					range.setStart(data.startContainer, data.startOffset);
+					range.setEnd(data.endContainer, data.endOffset);
+				}
+				catch (e) {
+					return;
+				}
+			}
+			if (! range || range.collapsed) {
+				return false;
+			}
+			fixSelection(range, this.element);
+			var frag = range.cloneContents(),
+				origRange = range.cloneRange(),
+				head = frag.firstChild,tail = frag.lastChild;
+//			printRange(range, &quot;before cut&quot;);
+			this.hostMethods.beforeEdit();
+			
+			range.collapse(false);
+			range.insertNode(frag);
+			range.setStartBefore(head);
+//			printRange(range, &quot;after set start before the head&quot;);
+			range.setEndAfter(tail);
+//			printRange(range, &quot;after set end after the tail&quot;);
+			var cid = this.startBatchChange();
+			try {
+				this._deleteSelection(range);
+			}
+			catch (e) {
+				logError(e, &quot;While trying to delete selection&quot;);
+			}
+			finally {
+				this.endBatchChange(cid);
+				this.selection.addRange(origRange);
+				this._removeTrackingInRange(origRange, false);
+//				printRange(this.selection.getRangeAt(0), &quot;range after deletion&quot;);
+			}
+			return true;
+		},
+
 		toString : function() {
 			return &quot;ICE &quot; + ((this.element &amp;&amp; this.element.id) || &quot;(no element id)&quot;);
 		},
@@ -2291,27 +2374,57 @@
 			}
 		},
 		
-		_tryToCut: function() {
-			var range = this.getCurrentRange();
-			if (range &amp;&amp; ! range.collapsed) {
-				var frag = range.cloneContents(),
-					origRange = range.cloneRange(),
-					head = frag.firstChild,tail = frag.lastChild;
+<span id='ice-InlineChangeEditor-method-_removeTrackingInRange'>		/**
+</span>		 * Finds all the tracking nodes involved in the range and removes their tracking classes.
+		 * A timeout is set to restore the tracking classes immediately.
+		 * This allows the editor to copy tracked text without its style
+		 */
+		_removeTrackingInRange: function (range) {
+			var insClass = this._getIceNodeClass('insertType'), 
+				delClass = this._getIceNodeClass('deleteType'),
+				clsSelector = '.' + insClass+&quot;,.&quot;+delClass,
+				clsAttr = &quot;data-ice-class&quot;,
+				filter = function(node) {
+					var iceNode = null, 
+						$iceNode = null;
+					if (node.nodeType == ice.dom.TEXT_NODE) {
+						$iceNode = jQuery(node).parents(clsSelector);
+					}
+					else {
+						var $node = jQuery(node);
+						if ($node.is(clsSelector)) {
+							$iceNode = $node; 
+						}
+						else {
+							$iceNode = $node.parents(clsSelector);
+						}
+					}
+					if (iceNode = ($iceNode &amp;&amp; $iceNode[0])) {
+						var cls = iceNode.className;
+						iceNode.setAttribute(clsAttr, cls);
+						iceNode.setAttribute(&quot;class&quot;, &quot;&quot;);
+						return true;
+					}
+					return false;
+				};
+			range.getNodes(null, filter);
+			var el = this.element;
+			setTimeout(function() {
+				var /*altIns = insClass + suffix,
+					altDel = delClass + suffix,
+					classList = '.' + altIns + &quot;, .&quot; + altDel, */
+					nodes = jQuery(el).find('['+ clsAttr + ']');
+				nodes.each(function(i, node) {
+					var cls = node.getAttribute(clsAttr);
+					if (cls) {
+						node.setAttribute(&quot;class&quot;, cls);
+						node.removeAttribute(clsAttr);
+					}
+				});
 				
-				range.collapse(false);
-				range.insertNode(frag);
-				range.setStartBefore(head);
-				range.setEndAfter(tail);
-				var cid = this.startBatchChange();
-				try {
-					this._deleteSelection(range);
-				}
-				finally {
-					this.endBatchChange(cid);
-					this.selection.addRange(origRange);				
-				}
-			}
+			}, 1);
 		}
+		
 
 	};
 	
@@ -2340,6 +2453,149 @@
 			return el.childNodes &amp;&amp; el.childNodes.length &amp;&amp; (offset &gt;= el.childNodes.length);
 		}
 		return false;
+	}
+	
+	var logError = null;
+	
+	function fixSelection(range, top) {
+		if (! range || ! top || range.collapsed) {
+			return range;
+		}
+		var current;
+		// fix end
+		try {
+			while ((current = range.endContainer) &amp;&amp; (current != top) &amp;&amp; (range.endOffset == 0) &amp;&amp; ! range.collapsed) {
+				if (current.previousSibling) {
+					range.setEndBefore(current);
+				}
+				else if (current.parentNode &amp;&amp; current.parentNode != top) {
+					range.setEndBefore(current.parentNode);
+				}
+				if (range.endContainer == current) {
+					break;
+				}
+			}
+		}
+		catch (e) {
+			logError(e, &quot;fixSelection, while trying to set end&quot;);
+		}
+
+		
+		try {
+			while ((current = range.startContainer) &amp;&amp; (current != top) &amp;&amp; ! range.collapsed) {
+				current = range.startContainer;
+
+				if (current.nodeType == ice.dom.TEXT_NODE) {
+					if (range.startOffset &gt;= current.nodeValue.length) {
+						range.setStartAfter(current);
+					}
+				}
+				else { // element
+					if (range.startOffset &gt;= current.childNodes.length) {
+						range.setStartAfter(current);
+					}
+				}
+				if (range.startContainer == current) {
+					break;
+				}
+			}
+		}
+		catch (e) {
+			logError(e, &quot;fixSelection, while trying to set start&quot;);
+		}
+	}
+	
+	function printRange(range, message) {
+		if (! range || ! range.startContainer || ! range.endContainer) {
+			return;
+		}
+		var parts = [];
+		function printText(txt) {
+			if (! txt) {
+				return &quot;&quot;;
+			}
+			if (txt.length &lt;= 15) {
+				return txt;
+			}
+			return txt.substring(0, 5)+ &quot;...&quot; + txt.substring(txt.length - 5);
+		}
+		function addNode(node) {
+			var str;
+			if (node.nodeType == 3) {
+				str = &quot;Text:&quot; + printText(node.nodeValue); 
+			}
+			else {
+				str = node.nodeName + &quot;(&quot; + printText(node.innerText) + &quot;)&quot;;
+			}
+			parts.push(&quot;&lt;&quot; + str + &quot;&gt;&quot;);
+		}
+		function printNode(node, offset1, offset2) {
+			if (&quot;number&quot; != typeof offset1) {
+				offset1 = -1;
+			}
+			if (offset1===offset2 || &quot;number&quot; != typeof offset2) {
+				offset2 = -1;
+			}
+			if (3 == node.nodeType) { // text
+				var txt = node.nodeValue;
+				if (offset1 &gt;= 0) {
+					parts.push(printText(txt.substring(0, offset1)));
+					parts.push(&quot;|&quot;);
+					if (offset2 &gt; 0) {
+						parts.push(printText(txt.substring(offset1, offset2)));
+						parts.push(&quot;|&quot;);
+						parts.push(printText(txt.substring(offset2)));
+					}
+					else {
+						parts.push(printText(txt.substring(offset1)));
+					}
+				}
+				else {
+					parts.push(printText(txt));
+				}
+			}
+			else if (1 == node.nodeType) {
+				if (offset1 &gt;= 0) {
+					var i = 0,
+						child = node.firstChild;
+					while (child) {
+						if (i &lt; offset1 - 1) {
+							i++;
+							continue;
+						}
+						if ((offset2 &gt;= 0 &amp;&amp; i &gt; offset2 + 1) ||
+							(offset2 &lt; 0 &amp;&amp; i &gt; offset1 + 1)) {
+							break;
+						}
+						if (i == offset1) {
+							parts.push(&quot;|&quot;);
+						}
+						if (i == offset2) {
+							parts.push(&quot;|&quot;);
+						}
+						addNode(child);
+						child = child.nextSibling;
+						i++;
+					}
+
+				}
+				else {
+					addNode(node);
+				}
+			}
+		}
+		if (range.startContainer == range.endContainer) {
+			printNode(range.startContainer, range.startOffset, range.endOffset);
+		}
+		else {
+			printNode(range.startContainer, range.startOffset);
+			printNode(range.endContainer, range.endOffset);
+		}
+		var ret = parts.join(' ');
+		if (message) {
+			console.log(message + &quot;:&quot; + ret);
+		}
+		return ret;
 	}
 
 

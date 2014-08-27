@@ -121,7 +121,15 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		            {regex: /[\s]*data-selected=\&quot;[^\&quot;]+\&quot;/g, replace:&quot;&quot;}
 					],
 	
-	_pluginMap = [];
+	_pluginMap = [],
+	
+	cutKeystrokes = [CKEDITOR.CTRL + 88,  // CTRL+X
+	                 CKEDITOR.CTRL + 120,
+	                 CKEDITOR.SHIFT + 46];
+	
+	function isCutKeystroke(code) {
+		return cutKeystrokes.indexOf(code) &gt;= 0;
+	}
 	
 	function _findPluginIndex(editor) {
 		for (var i = _pluginMap.length; i--;) {
@@ -174,10 +182,10 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		return padString(s, length, '0');
 	}
 	
-<span id='LITE-Events-method-execIECommand'>	/**
+<span id='LITE-Events-method-testIECommand'>	/**
 </span>	 * Copied from CKEditor
 	 */
-	function execIECommand(editor, command ) {
+	function testIECommand(editor, command ) {
 		var doc = editor.document,
 			body = doc.getBody(),
 			enabled = false,
@@ -722,6 +730,8 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		_onDomLoaded : function(dom) {
 			this._domLoaded = true;
 			this._editor = dom.editor;
+			var ed = this._editor.editable();
+			ed.attachListener(ed, &quot;keypress&quot;, this._onKeyPress, this, null, 1);
 			this._onReady();
 		},
 		
@@ -771,7 +781,8 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			var e = this._editor,
 				doc = e.document.$,
 				body = this._getBody(),
-				config = this._config;
+				config = this._config,
+				debug = (config &amp;&amp; config.debug) || {};
 			
 			this._loadCSS(doc);
 			
@@ -779,7 +790,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 				this._eventsBounds = true;
 				var paste = this._onPaste.bind(this);
 				e.on(&quot;afterCommandExec&quot;, this._onAfterCommand.bind(this));
-//				e.on(&quot;beforeCommandExec&quot;, this._onBeforeCommand.bind(this));
+				e.on(&quot;beforeCommandExec&quot;, this._onBeforeCommand.bind(this));
 				if (this._config.handlePaste) {
 					e.on(&quot;paste&quot;, paste, null, null, 1);
 				}
@@ -789,6 +800,8 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 				e.on(&quot;insertElement&quot;, paste, null, null, 1);
 				e.on(&quot;mode&quot;, this._onModeChange.bind(this), null, null, 1);
 				e.on(&quot;readOnly&quot;, this._onReadOnly.bind(this));
+				
+//				e.on(&quot;key&quot;, this._onKeyDown.bind(this), null, null, 1);				
 			}
 			
 			if (this._tracker) {
@@ -815,6 +828,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 					},
 					hostMethods: {
 						getHostRange : this._getHostRange.bind(this),
+						getHostRangeData: this._getHostRangeData.bind(this),
 						makeHostElement: function(node) {
 							return new CKEDITOR.dom.element(node);
 						},
@@ -822,7 +836,8 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 							return node &amp;&amp; node.$;
 						},
 						setHostRange: this._setHostRange.bind(this),
-						hostCopy: this._hostCopy.bind(this)
+						hostCopy: this._hostCopy.bind(this),
+						beforeEdit: this._beforeEdit.bind(this)
 					},
 					tooltips: config.tooltips.show,
 					tooltipsDelay: config.tooltips.delay
@@ -843,6 +858,9 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 						iceprops.hostMethods.beforeDelete = iceprops.hostMethods.beforeInsert = hideTT;
 						
 					}
+				}
+				if (debug.log) {
+					iceprops.logError = _logError;
 				}
 
 				jQuery.extend(iceprops, this.props);
@@ -937,8 +955,16 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		},
 		
 		_onBeforeCommand: function(event) {
-			var name = this._tracker &amp;&amp; this._isTracking &amp;&amp; event.data &amp;&amp; event.data.name;
+			var name = this._tracker &amp;&amp; this._tracker.isTracking() &amp;&amp; event.data &amp;&amp; event.data.name;
 			if (&quot;cut&quot; == name) {
+				if (testClipboardCommand(this._editor, &quot;copy&quot;)) {
+					this._tracker.prepareToCut();
+				}
+			}
+			else if (&quot;copy&quot; == name) {
+				if (testClipboardCommand(this._editor, &quot;copy&quot;)) {
+					this._tracker.prepareToCopy();
+				}
 			}
 		},
 		
@@ -950,6 +976,31 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		_onModeChange: function(evt){
 			this._updateTrackingState();
 			setTimeout(this._onIceChange.bind(this), 0);
+		},
+		
+		_onKeyPress: function(evt) {
+			var code = evt &amp;&amp; evt.data &amp;&amp; evt.data.getKeystroke();
+			if (isCutKeystroke(code)) {
+				evt.stop();
+			}
+			
+		},
+		
+		_onKeyDown: function(evt) {
+			if (! this._tracker || ! this._tracker.isTracking()) {
+				return;
+			}
+			
+			var code = evt.data.keyCode;
+/*
+ * 				case CKEDITOR.CTRL + 86: // CTRL+V
+				case CKEDITOR.SHIFT + 45: // SHIFT+INS
+ */			
+			if (isCutKeystroke(code)) {
+				if (this._tracker.tryToCut()) {
+					evt.stop();
+				}
+			} 
 		},
 		
 <span id='LITE-LITEPlugin-method-_onBeforeGetData'>		/**
@@ -1057,13 +1108,19 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 				return true;
 			}
 			if (toInsert) {
+				var focused = this._editor.focusManager.hasFocus;
 				this._beforeInsert();
 				this._tracker.insert(toInsert);
 				this._afterInsert();
+				if (focused) {
+					this._editor.editable().focus();
+				}
 			}
-			evt.cancel();
+//			evt.data = { dataValue : null};
+
+			evt.stop();
 			this._onIceTextChanged();
-			return false;
+			return true;
 		},
 		
 <span id='LITE-LITEPlugin-method-_setCommandsState'>		/**
@@ -1221,10 +1278,23 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			}
 		},
 		
+		_beforeEdit: function() {
+			CKEDITOR.iscutting = true;
+			var e = this._editor,
+				f = function() {
+					e.fire('saveSnapshot');
+				};
+			f();// Save before cut
+			setTimeout(function() {
+				CKEDITOR.iscutting = false;
+			}, 100);
+//			setTimeout(f, 30);
+		},
+		
 		_hostCopy: function() {
 			try {
 				if ( CKEDITOR.env.ie ) {
-					execIECommand(this._editor, &quot;copy&quot; ); 
+					testIECommand(this._editor, &quot;copy&quot; ); 
 				}
 				else {
 					// Other browsers throw an error if the command is disabled.
@@ -1245,6 +1315,19 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 				ranges = selection &amp;&amp; selection.getRanges(),
 				range = ranges &amp;&amp; ranges[0];
 			return range || null;
+		},
+		
+		_getHostRangeData: function(hostRange) {
+			hostRange = hostRange || this._getHostRange();
+			if (! hostRange) {
+				return null;
+			}
+			return {
+				startContainer: hostRange.startContainer &amp;&amp; hostRange.startContainer.$,
+				endContainer: hostRange.endContainer &amp;&amp; hostRange.endContainer.$,
+				startOffset: hostRange.startOffset,
+				endOffset: hostRange.endOffset
+			};
 		},
 		
 <span id='global-method-_showTooltip'>		/**
@@ -1296,16 +1379,6 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 				editor.fire( 'saveSnapshot' );
 			}, 0 ); */
 		},
-<span id='global-method-_logError'>/**
-</span> * @ignore
- */
-		_logError : function() {
-			var t = typeof console;
-			if (t != &quot;undefined&quot; &amp;&amp; console.error) {
-				var args = Array.prototype.slice.apply(arguments);
-				console.error(args.join(' '));
-			}
-		},
 		
 <span id='global-method-_makeTooltipTitle'>/**
 </span> * @ignore
@@ -1335,6 +1408,58 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		
 	};
 	
+<span id='global-method-_logError'>	/**
+</span>	 * @ignore
+	 */
+	function _logError() {
+		console.error.apply(console, arguments);
+	}
+	
+	function testClipboardCommand(editor, command) {
+		if ( CKEDITOR.env.ie ) {
+			return testIECommand(editor, command);
+		}
+
+		// non-IEs part
+		try {
+			// Other browsers throw an error if the command is disabled.
+			return editor.document.$.execCommand( command, false, null );
+		} 
+		catch ( e ) {
+			return false;
+		}
+	}
+	
+<span id='LITE-LITEPlugin-method-testIECommand'>	/**
+</span>	 * Tries to execute any of the paste, cut or copy commands in IE. Returns a
+	 * boolean indicating that the operation succeeded.
+	 * Copied from ckeditor
+	 * @param {String} command *LOWER CASED* name of command ('paste', 'cut', 'copy').
+	 * */
+	function testIECommand( editor, command ) {
+		var doc = editor.document,
+			body = doc.getBody(),
+			enabled = false,
+			success = false,
+			onExec = function() {
+				enabled = true;
+			};
+
+		// The following seems to be the only reliable way to detect that
+		// clipboard commands are enabled in IE. It will fire the
+		// onpaste/oncut/oncopy events only if the security settings allowed
+		// the command to execute.
+		body.on( command, onExec );
+
+		// IE7: document.execCommand has problem to paste into positioned element.
+		success = ( CKEDITOR.env.version &gt; 7 ? doc.$ : doc.$.selection.createRange() )[ 'execCommand' ]( command, false );
+
+		body.removeListener( command, onExec );
+
+		return success || enabled;
+	}
+
+
 	function _ieFix () {
 		/* Begin fixes for IE */
 			Function.prototype.bind = Function.prototype.bind || function () {
