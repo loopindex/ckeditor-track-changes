@@ -325,7 +325,8 @@
 		insert: function (nodes) {
 			this.hostMethods.beforeInsert && this.hostMethods.beforeInsert();
 
-			var range = this.getCurrentRange() && this._isRangeInElement(range, this.element),
+			var _rng = this.getCurrentRange(),
+				range = this._isRangeInElement(_rng, this.element),
 				hostRange = range ? null : this.hostMethods.getHostRange(),
 				changeid = this.startBatchChange(),
 				hadSelection = !!(range && !range.collapsed);
@@ -1121,7 +1122,8 @@
 					var tn = this.element.ownerDocument.createTextNode('\uFEFF');
 					node.appendChild(tn);
 					tn = f(tn);
-					range.setStartAndEnd(tn, 0, tn, 1);
+					range.setStart(tn, 0);
+					range.setEnd(tn, 1);
 				}
 				if (hostRange) {
 					this.hostMethods.setHostRange(hostRange);
