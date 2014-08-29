@@ -1110,7 +1110,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			if (toInsert) {
 				var focused = this._editor.focusManager.hasFocus;
 				this._beforeInsert();
-				this._tracker.insert(toInsert);
+				this._tracker.insert({nodes: toInsert});
 				this._afterInsert();
 				if (focused) {
 					this._editor.editable().focus();

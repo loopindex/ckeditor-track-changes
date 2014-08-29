@@ -321,15 +321,18 @@
 		 * Inserts the given string/node into the given range with tracking tags, collapsing (deleting)
 		 * the range first if needed. If range is undefined, then the range from the Selection object
 		 * is used. If the range is in a parent delete node, then the range is positioned after the delete.
+		 * @param options may contain <strong>nodes</strong> (DOM element or array of dom elements) or <strong>text</strong> (string). 
+		 * @returns {Boolean} true if the action should continue, false if the action was finished in the insert sequence
 		 */
-		insert: function (nodes) {
+		insert: function (options) {
 			this.hostMethods.beforeInsert && this.hostMethods.beforeInsert();
 
 			var _rng = this.getCurrentRange(),
 				range = this._isRangeInElement(_rng, this.element),
 				hostRange = range ? null : this.hostMethods.getHostRange(),
 				changeid = this.startBatchChange(),
-				hadSelection = !!(range && !range.collapsed);
+				hadSelection = !!(range && !range.collapsed),
+				ret = true;
 			
 			
 		// If we have any nodes selected, then we want to delete them before inserting the new text.
@@ -340,6 +343,7 @@
 					range = this.getCurrentRange();
 				}
 				if (range || hostRange) {
+					var nodes = options && options.nodes;
 					if (nodes && ! jQuery.isArray(nodes)) {
 						nodes = [nodes];
 					}
@@ -347,7 +351,7 @@
 					// If we are in a non-tracking/void element, move the range to the end/outside.
 					this._moveRangeToValidTrackingPos(range, hostRange);
 			
-					this._insertNodes(range, hostRange, nodes);
+					ret = ! this._insertNodes(range, hostRange, {nodes: nodes, text: options && options.text});
 				}
 			}
 			catch(e) {
@@ -356,7 +360,7 @@
 			finally {
 				this.endBatchChange(changeid);
 			}
-			return true;//isPropagating;
+			return ret;//isPropagating;
 		},
 	
 		/**
@@ -696,6 +700,17 @@
 				content = ice.dom.contents(node); 
 				dom.replaceWith(node, content);
 				jQuery.each(content, function(i,e) {
+					var txt = ice.dom.TEXT_NODE == e.nodeType && e.nodeValue;
+					if (txt) {
+						var found = false;
+						while (txt.indexOf("  ") >= 0) {
+							found = true;
+							txt = txt.replace("  ", " \u00a0");
+						}
+						if (found) {
+							e.nodeValue = txt;
+						}
+					}
 					var parent = e && e.parentNode;
 					self._normalizeNode(parent);
 				});
@@ -794,6 +809,10 @@
 			}
 		},
 		
+		/**
+		 * Utility function
+		 * Returns the range if its startcontainer is a descendant of (or equal to) the given top element
+		 */
 		_isRangeInElement: function(range, top) {
 			var start = range && range.startContainer;
 			while (start) {
@@ -1033,35 +1052,16 @@
 			}
 		},
 	
-		// passed compare, 2 changes below
-		_insertNodes: function (_range, hostRange, nodes) {
+		_insertNodes: function (_range, hostRange, data) {
 			var range = hostRange || _range,
 				_start = range.startContainer,
 				start = (_start && _start.$) || _start,
-				f = hostRange ? this.hostMethods.makeHostElement : nativeElement;
+				f = hostRange ? this.hostMethods.makeHostElement : nativeElement,
+				nodes = data && data.nodes,
+				text = data && data.text,
+				doc= this.env.document,
+				inserted = false;
 			
-/*			if (!ice.dom.isBlockElement(start) && 
-				!ice.dom.canContainTextElement(ice.dom.getBlockParent(start, this.element)) && 
-				start.previousSibling) {
-				range.setStart(f(start.previousSibling), 0);
-				start = hostRange? hostRange.startContainer && hostRange.startContainer.$ : range.startContainer;
-			} */
-//			var startContainer = range.startContainer;
-//				parentBlock = ice.dom.isBlockElement(startContainer) && startContainer || ice.dom.getBlockParent(startContainer, this.element) || null;
-/*			if (parentBlock === this.element) {
-				var firstPar = document.createElement(this.blockEl);
-				parentBlock.appendChild(firstPar);
-				range.setStart(firstPar, 0);
-				range.collapse();
-				return this._insertNodes(node, range, insertingDummy);
-			}
-			//dfl added null check on parentBlock
-			if (parentBlock && ice.dom.hasNoTextOrStubContent(parentBlock)) {
-				ice.dom.empty(parentBlock);
-				ice.dom.append(parentBlock, '<br>');
-				range.setStart(parentBlock, 0);
-			} */
-	
 			var ctNode = this._getIceNode(start, 'insertType'),
 				inCurrentUserInsert = this._currentUserIceNode(ctNode);
 	
@@ -1069,16 +1069,33 @@
 			if (inCurrentUserInsert) {
 				var head = nodes && nodes[0];
 				if (head) {
+					inserted = true;
 					range.insertNode(f(head));
 					var parent = head.parentNode,
-						sibling = head.nextSibling;
-					for (var i = 1; i < nodes.length; ++i) {
+						sibling = head.nextSibling,
+						len = nodes.length;
+					for (var i = 1; i < len; ++i) {
 						if (sibling) {
 							parent.insertBefore(nodes[i], sibling);
 						}
 						else {
 							parent.appendChild(nodes[i]);
 						}
+					}
+					/* Now move the caret to the end of the last node inserted */
+					var tail = nodes[len - 1];
+					if (ice.dom.TEXT_NODE == tail.nodeType) {
+						range.setEnd(tail, (tail.nodeValue && tail.nodeValue.length) || 0);
+					}
+					else {
+						range.setEndAfter(tail);
+					}
+					range.collapse();
+					if (hostRange) {
+						this.hostMethods.setHostRange(hostRange);
+					}
+					else {
+						this.selection.addRange(range);
 					}
 				}
 			}
@@ -1088,21 +1105,19 @@
 				if (ctNode) {
 					var nChildren = ctNode.childNodes.length;
 					this._normalizeNode(ctNode);
-					if (nChildren != ctNode.childNodes.length) {
+					if (nChildren != ctNode.childNodes.length) { // normalization removed nodes, refresh range
 						if (hostRange) {
 							hostRange = range = this.hostMethods.getHostRange();
 						}
 						else {
-							range = this.getCurrentRange();
+							range.refresh();
 						}
 					}
 					if (ctNode) {
-						var end = (hostRange && hostRange.endContainer.$) || range.endContainer;
+						var end = (hostRange && this.hostMethods.getHostNode(hostRange.endContainer)) || range.endContainer;
 						if ((end.nodeType == 3 && range.endOffset < range.endContainer.length) || (end != ctNode.lastChild)) {
 							ctNode = this._splitNode(ctNode, range.endContainer, range.endOffset);
 						}
-		//				range.setEndAfter(ctNode);
-		//				range.collapse();
 					}
 				}
 				if (ctNode) {
@@ -1113,13 +1128,21 @@
 				range.insertNode(f(node));
 				var len = (nodes && nodes.length) || 0;
 				if (len) {
+					inserted = true;
 					for (var i = 0; i < len; ++i) {
 						node.appendChild(nodes[i]);
 					}
 					range.setStartAfter(f(node.lastChild));
 				}
+				else if (text) {
+					inserted = true;
+					var tn = doc.createTextNode(text);
+					node.appendChild(tn);
+					range.setEnd(tn, 1);
+					range.collapse();
+				}
 				else {
-					var tn = this.element.ownerDocument.createTextNode('\uFEFF');
+					var tn = doc.createTextNode('\uFEFF');
 					node.appendChild(tn);
 					tn = f(tn);
 					range.setStart(tn, 0);
@@ -1131,21 +1154,8 @@
 				else {
 					this.selection.addRange(range);
 				}
-			}			
-
-// Added by dfl
-//			if (inCurrentUserInsert) {
-//				this._normalizeNode(ctNode);
-//			}
-	
-/*			if (insertingDummy) {
-			// Create a selection of the dummy character we inserted
-			// which will be removed after it bubbles up to the final handler.
-				range.setStart(node, 0);
-			} else {
-				range.collapse();
-			} */
-			
+			}
+			return inserted;
 		},
 	
 // compared OK
@@ -1868,7 +1878,7 @@
 						return this._handleEnter();
 					default:
 						// If we are in a deletion, move the range to the end/outside.
-						return this.insert();
+						return this.insert({text: c});
 				}
 			}
 	
