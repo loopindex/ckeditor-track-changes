@@ -625,7 +625,7 @@
 			else {
 				var insSel = '.' + this._getIceNodeClass('insertType'),
 					delSel = '.' + this._getIceNodeClass('deleteType'),
-					self = this, content;
+					content;
 		
 				ice.dom.remove(ice.dom.find(this.element, insSel));
 				ice.dom.each(ice.dom.find(this.element, delSel), function (i, el) {
@@ -633,7 +633,7 @@
 					ice.dom.replaceWith(el, content);
 					jQuery.each(content, function(i,e) {
 						var parent = e && e.parentNode;
-						self._normalizeNode(parent);
+						ice.dom.normalizeNode(parent);
 					});
 				});
 				this._changes = {}; // dfl, reset the changes table
@@ -667,7 +667,7 @@
 		acceptRejectChange: function (node, isAccept) {
 			var delSel, insSel, selector, removeSel, replaceSel, 
 				trackNode, changes, dom = ice.dom, nChanges,
-				changeId, self = this;
+				changeId;
 		
 			if (!node) {
 				var range = this.getCurrentRange();
@@ -712,7 +712,7 @@
 						}
 					}
 					var parent = e && e.parentNode;
-					self._normalizeNode(parent);
+					ice.dom.normalizeNode(parent);
 				});
 			});
 
@@ -1104,7 +1104,7 @@
 				var node = this._createIceNode('insertType');
 				if (ctNode) {
 					var nChildren = ctNode.childNodes.length;
-					this._normalizeNode(ctNode);
+					ice.dom.normalizeNode(ctNode);
 					if (nChildren != ctNode.childNodes.length) { // normalization removed nodes, refresh range
 						if (hostRange) {
 							hostRange = range = this.hostMethods.getHostRange();
@@ -1206,7 +1206,7 @@
 						}
 			
 						if (ice.dom.isStubElement(elem)) {
-							this._addNodeTracking(elem, false, true);
+							this._addDeleteTracking(elem, null, true);
 							continue;
 						}
 						if (ice.dom.hasNoTextOrStubContent(elem)) {
@@ -1220,7 +1220,7 @@
 						continue;
 					}
 					var parentBlock = ice.dom.getBlockParent(elem);
-					this._addNodeTracking(elem, false, true);
+					this._addDeleteTracking(elem, null, true);
 					if (ice.dom.hasNoTextOrStubContent(parentBlock)) {
 						ice.dom.remove(parentBlock);
 					}
@@ -1320,7 +1320,7 @@
 		
 				// If the next container is non-editable, enclose it with a delete ice node and add an empty text node after it to position the caret.
 				if (!nextContainer.isContentEditable) {
-					returnValue = this._addNodeTracking(nextContainer, false, false);
+					returnValue = this._addDeleteTracking(nextContainer, null, false);
 					var emptySpaceNode = document.createTextNode('');
 					nextContainer.parentNode.insertBefore(emptySpaceNode, nextContainer.nextSibling);
 					range.selectNode(emptySpaceNode);
@@ -1332,7 +1332,7 @@
 		
 				// If the caret was placed directly before a stub element, enclose the element with a delete ice node.
 				if (ice.dom.isChildOf(nextContainer, parentBlock) && ice.dom.isStubElement(nextContainer)) {
-					return this._addNodeTracking(nextContainer, range, false);
+					return this._addDeleteTracking(nextContainer, range, false);
 				}
 	
 			}
@@ -1343,7 +1343,7 @@
 	
 			// If we are deleting into a no tracking containiner, then remove the content
 			if (this._getNoTrackElement(range.endContainer.parentElement)) {
-				range._deleteContents();
+				range.deleteContents();
 				return false;
 			}
 	
@@ -1383,7 +1383,7 @@
 				deletedCharacter = entireTextNode.splitText(range.endOffset),
 				remainingTextNode = deletedCharacter.splitText(1);
 	
-			return this._addNodeTracking(deletedCharacter, range, false);
+			return this._addDeleteTracking(deletedCharacter, range, false);
 	
 		},
 	
@@ -1453,7 +1453,7 @@
 		
 				// If the previous container is non-editable, enclose it with a delete ice node and add an empty text node before it to position the caret.
 				if (!prevContainer.isContentEditable) {
-					var returnValue = this._addNodeTracking(prevContainer, false, true);
+					var returnValue = this._addDeleteTracking(prevContainer, null, true);
 					var emptySpaceNode = document.createTextNode('');
 					prevContainer.parentNode.insertBefore(emptySpaceNode, prevContainer);
 					range.selectNode(emptySpaceNode);
@@ -1467,7 +1467,7 @@
 		
 				// If the caret was placed directly after a stub element, enclose the element with a delete ice node.
 				if (ice.dom.isStubElement(prevContainer) && ice.dom.isChildOf(prevContainer, parentBlock) || !prevContainer.isContentEditable) {
-					 return this._addNodeTracking(prevContainer, range, true);
+					 return this._addDeleteTracking(prevContainer, range, true);
 				}
 		
 				// If the previous container is a stub element between blocks
@@ -1515,7 +1515,7 @@
 	
 			// If we are deleting into a no tracking containiner, then remove the content
 			if (this._getNoTrackElement(range.startContainer.parentElement)) {
-				range._deleteContents();
+				range.deleteContents();
 				return false;
 			}
 	
@@ -1573,13 +1573,13 @@
 				deletedCharacter = entireTextNode.splitText(range.startOffset - 1),
 				remainingTextNode = deletedCharacter.splitText(1);
 	
-			return this._addNodeTracking(deletedCharacter, range, true);
+			return this._addDeleteTracking(deletedCharacter, range, true);
 	
 		},
 	
 		// Marks text and other nodes for deletion
 		// compared OK
-		_addNodeTracking: function (contentNode, range, moveLeft) {
+		_addDeleteTracking: function (contentNode, range, moveLeft) {
 	
 			var contentAddNode = this._getIceNode(contentNode, 'insertType');
 	
@@ -1600,13 +1600,14 @@
 					}
 					ice.dom.replaceWith(contentAddNode, ice.dom.contents(contentAddNode));
 				}
+				ice.dom.normalizeNode(contentAddNode);
 		
 				return true;
 	
 			} 
 			else if (range && this._getIceNode(contentNode, 'deleteType')) {
 			// It if the contentNode a text node, merge it with text nodes before and after it.
-				this._normalizeNode(contentNode);// dfl - support ie8
+				ice.dom.normalizeNode(contentNode);// dfl - support ie8
 		
 				var found = false;
 				if (moveLeft) {
@@ -1629,7 +1630,8 @@
 						range.collapse(true);
 					}
 					return true;
-				} else {
+				} 
+				else {
 					// Move the range to the right until there is valid sibling.
 		
 					var nextSibling = ice.dom.getNextContentNode(contentNode, this.element);
@@ -1694,7 +1696,7 @@
 				else {
 					range.collapse();
 				}
-				this._normalizeNode(contentNode); // dfl - support ie8
+				ice.dom.normalizeNode(contentNode); // dfl - support ie8
 			}
 			return true;
 	
@@ -2213,7 +2215,7 @@
 				var userName;
 				if (myUserId && (userid == myUserId)) {
 					userName = myUserName;
-					el.setAttribute(this.attributes.userName, myUserName)
+					el.setAttribute(this.attributes.userName, myUserName);
 				}
 				else {
 					userName = el.getAttribute(this.attributes.userName);
@@ -2331,41 +2333,6 @@
 			}
 			else {
 				this.hostMethods.hideTooltip(node);
-			}
-		},
-		
-		 _normalizeNode : function(node) {
-			if (! node) {
-				return;
-			}
-			if (typeof node.normalize == "function") {
-				return node.normalize();
-			}
-			return this._myNormalizeNode(node);
-		},
-	
-		_myNormalizeNode : function(node) {
-			if (! node) {
-				return;
-			}
-			var ELEMENT_NODE = 1;
-			var TEXT_NODE = 3;
-			var child = node.firstChild;
-			while (child) {
-				if (child.nodeType == ELEMENT_NODE) {
-					this._myNormalizeNode(child);
-				}
-				else if (child.nodeType == TEXT_NODE) { 
-					var next;
-					while ((next = child.nextSibling) && next.nodeType == TEXT_NODE) { 
-						var value = next.nodeValue;
-						if (value != null && value.length) {
-							child.nodeValue = child.nodeValue + value;
-						}
-						node.removeChild(next);
-					}
-				}
-				child = child.nextSibling;
 			}
 		},
 		

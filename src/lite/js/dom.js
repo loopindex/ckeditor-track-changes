@@ -1158,6 +1158,42 @@
 		}
 		return null;
 	};
+	
+	dom.normalizeNode = function(node) {
+		if (! node) {
+			return;
+		}
+		if ("function" == typeof node.normalize) {
+			return node.normalize();
+		}
+		return this._myNormalizeNode(node);
+	};
+
+	function _myNormalizeNode(node) {
+		if (! node) {
+			return;
+		}
+		var ELEMENT_NODE = 1;
+		var TEXT_NODE = 3;
+		var child = node.firstChild;
+		while (child) {
+			if (child.nodeType == ELEMENT_NODE) {
+				this._myNormalizeNode(child);
+			}
+			else if (child.nodeType == TEXT_NODE) { 
+				var next;
+				while ((next = child.nextSibling) && next.nodeType == TEXT_NODE) { 
+					var value = next.nodeValue;
+					if (value != null && value.length) {
+						child.nodeValue = child.nodeValue + value;
+					}
+					node.removeChild(next);
+				}
+			}
+			child = child.nextSibling;
+		}
+	};	
+
 
 	exports.dom = dom;
 
