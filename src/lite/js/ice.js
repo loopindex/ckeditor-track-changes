@@ -200,9 +200,6 @@
 			this.env.window = this.env.document.defaultView || this.env.document.parentWindow || window;
 			this.env.frame = this.env.window.frameElement;
 			this.env.selection = this.selection = new ice.Selection(this.env);
-			// Hack for using custom tags in IE 8/7
-			this.env.document.createElement(this.changeTypes.insertType.tag);
-			this.env.document.createElement(this.changeTypes.deleteType.tag);
 		},
 	
 		/**
@@ -1115,6 +1112,7 @@
 					}
 					if (ctNode) {
 						var end = (hostRange && this.hostMethods.getHostNode(hostRange.endContainer)) || range.endContainer;
+						// if inserting before the end of a tracked node by another user
 						if ((end.nodeType == 3 && range.endOffset < range.endContainer.length) || (end != ctNode.lastChild)) {
 							ctNode = this._splitNode(ctNode, range.endContainer, range.endOffset);
 						}
@@ -1581,30 +1579,43 @@
 		// compared OK
 		_addDeleteTracking: function (contentNode, range, moveLeft) {
 	
-			var contentAddNode = this._getIceNode(contentNode, 'insertType');
+			var contentAddNode = this._getIceNode(contentNode, 'insertType'),
+				ctNode;
 	
-			if (contentAddNode && this._currentUserIceNode(contentAddNode)) {
-				if (range && moveLeft) {
-					range.selectNode(contentNode);
-				}
-				contentNode.parentNode.removeChild(contentNode);
-				var cleanNode = ice.dom.cloneNode(contentAddNode);
-				ice.dom.remove(ice.dom.find(cleanNode, '.iceBookmark'));
-				// Remove a potential empty tracking container
-				if (contentAddNode !== null && (ice.dom.hasNoTextOrStubContent(cleanNode[0]))) {
-					var newstart = this.env.document.createTextNode('');
-					ice.dom.insertBefore(contentAddNode, newstart);
-					if (range) {
-						range.setStart(newstart, 0);
-						range.collapse(true);
+			if (contentAddNode) {
+				if (this._currentUserIceNode(contentAddNode)) {
+					if (range && moveLeft) {
+						range.selectNode(contentNode);
 					}
-					ice.dom.replaceWith(contentAddNode, ice.dom.contents(contentAddNode));
-				}
-				ice.dom.normalizeNode(contentAddNode);
+					contentNode.parentNode.removeChild(contentNode);
+					var cleanNode = ice.dom.cloneNode(contentAddNode);
+					ice.dom.remove(ice.dom.find(cleanNode, '.iceBookmark'));
+					// Remove a potential empty tracking container
+					if (contentAddNode !== null && (ice.dom.hasNoTextOrStubContent(cleanNode[0]))) {
+						var newstart = this.env.document.createTextNode('');
+						ice.dom.insertBefore(contentAddNode, newstart);
+						if (range) {
+							range.setStart(newstart, 0);
+							range.collapse(true);
+						}
+						ice.dom.replaceWith(contentAddNode, ice.dom.contents(contentAddNode));
+					}
+					ice.dom.normalizeNode(contentAddNode);
+			
 		
+				}
+				else {
+					var cInd = rangy.dom.getNodeIndex(contentNode),
+						parent = contentNode.parentNode;
+					parent.removeChild(contentNode);
+					this._splitNode(contentAddNode, parent, cInd);
+					ctNode = this._createIceNode('deleteType');
+					ctNode.appendChild(contentNode);
+					contentAddNode.parentNode.insertBefore(ctNode, contentAddNode);
+
+				}
 				return true;
-	
-			} 
+			}
 			else if (range && this._getIceNode(contentNode, 'deleteType')) {
 			// It if the contentNode a text node, merge it with text nodes before and after it.
 				ice.dom.normalizeNode(contentNode);// dfl - support ie8
@@ -1661,8 +1672,7 @@
 				contentNode.parentNode.removeChild(contentNode.nextSibling);
 			}
 			var prevDelNode = this._getIceNode(contentNode.previousSibling, 'deleteType'),
-				nextDelNode = this._getIceNode(contentNode.nextSibling, 'deleteType'),
-				ctNode;
+				nextDelNode = this._getIceNode(contentNode.nextSibling, 'deleteType');
 	
 			if (prevDelNode && this._currentUserIceNode(prevDelNode)) {
 				ctNode = prevDelNode;
@@ -1677,7 +1687,7 @@
 				ctNode = nextDelNode;
 				ctNode.insertBefore(contentNode, ctNode.firstChild);
 			} 
-			else {
+			else { // not in the neighborhood of a delete node
 				ctNode = this._createIceNode('deleteType');
 				contentNode.parentNode.insertBefore(ctNode, contentNode);
 				ctNode.appendChild(contentNode);
