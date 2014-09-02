@@ -3691,6 +3691,11 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 	});
 });
 (function () {
+	/**
+	 * TODO
+	 * 1. Each time an ice node is removed, refresh change set
+	 */
+
 
 	var exports = this,
 		defaults, InlineChangeEditor;
@@ -3892,9 +3897,6 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 			this.env.window = this.env.document.defaultView || this.env.document.parentWindow || window;
 			this.env.frame = this.env.window.frameElement;
 			this.env.selection = this.selection = new ice.Selection(this.env);
-			// Hack for using custom tags in IE 8/7
-			this.env.document.createElement(this.changeTypes.insertType.tag);
-			this.env.document.createElement(this.changeTypes.deleteType.tag);
 		},
 	
 		/**
@@ -3918,21 +3920,6 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 		 * initializes the editor with any tracking tags found in the editing element.
 		 */
 		initializeEditor: function () {
-			// Clean the element html body - add an empty block if there is no body, or remove any
-			// content between elements.
-/*			var self = this,
-				body = this.env.document.createElement('div');
-			if (this.element.childNodes.length) {
-				body.innerHTML = this.element.innerHTML;
-				ice.dom.removeWhitespace(body);
-				if (body.innerHTML === '') {
-//					body.appendChild(ice.dom.create('<' + this.blockEl + ' ><br/></' + this.blockEl + '>'));
-				} 
-			}
-			else {
-//				body.appendChild(ice.dom.create('<' + this.blockEl + ' ><br/></' + this.blockEl + '>'));
-			}
-//			this.element.innerHTML = body.innerHTML; */
 			this._loadFromDom(); // refactored by dfl
 			this._updateTooltipsState(); // dfl
 		},
@@ -4089,7 +4076,7 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 						range.collapse(false);
 					}
 					else { */
-						if(! this.visible(range.endContainer)) {
+						if(range && ! this.visible(range.endContainer)) {
 							range.setEnd(range.endContainer, Math.max(0, range.endOffset - 1));
 							range.collapse(false);
 						}
@@ -4178,7 +4165,7 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 					}
 				}
 		
-				this.selection.addRange(range);
+				range && this.selection.addRange(range);
 			}
 			finally {
 				this.endBatchChange(changeid);
@@ -4317,15 +4304,17 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 			else {
 				var insSel = '.' + this._getIceNodeClass('insertType'),
 					delSel = '.' + this._getIceNodeClass('deleteType'),
-					self = this, content;
+					content, self = this;
 		
-				ice.dom.remove(ice.dom.find(this.element, insSel));
+				ice.dom.find(this.element, insSel).each(function(i,e) {
+					self._removeNode(e);
+				});
 				ice.dom.each(ice.dom.find(this.element, delSel), function (i, el) {
 					content = ice.dom.contents(el);
 					ice.dom.replaceWith(el, content);
 					jQuery.each(content, function(i,e) {
 						var parent = e && e.parentNode;
-						self._normalizeNode(parent);
+						ice.dom.normalizeNode(parent);
 					});
 				});
 				this._changes = {}; // dfl, reset the changes table
@@ -4359,7 +4348,7 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 		acceptRejectChange: function (node, isAccept) {
 			var delSel, insSel, selector, removeSel, replaceSel, 
 				trackNode, changes, dom = ice.dom, nChanges,
-				changeId, self = this;
+				self = this, changeId;
 		
 			if (!node) {
 				var range = this.getCurrentRange();
@@ -4383,6 +4372,9 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 				// nodes with the same `changeIdAttribute` batch number.
 			changes = dom.find(this.element, removeSel + '[' + this.attributes.changeId + '=' + changeId + ']');
 			nChanges = changes.length;
+			changes.each(function(i, changeNode) {
+				self._removeNode(changeNode);
+			});
 			dom.remove(changes);
 			// we handle the replaced nodes after the deleted nodes because, well, the engine may b buggy, resulting in some nesting
 			changes = dom.find(this.element, replaceSel + '[' + this.attributes.changeId + '=' + changeId + ']');
@@ -4404,7 +4396,7 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 						}
 					}
 					var parent = e && e.parentNode;
-					self._normalizeNode(parent);
+					ice.dom.normalizeNode(parent);
 				});
 			});
 
@@ -4570,7 +4562,7 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 		 * @private
 		 */
 		_currentUserIceNode: function (node) {
-			return ice.dom.attr(node, this.attributes.userId) == this.currentUser.id;
+			return node && (ice.dom.attr(node, this.attributes.userId) == this.currentUser.id);
 		},
 	
 		/**
@@ -4796,7 +4788,7 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 				var node = this._createIceNode('insertType');
 				if (ctNode) {
 					var nChildren = ctNode.childNodes.length;
-					this._normalizeNode(ctNode);
+					ice.dom.normalizeNode(ctNode);
 					if (nChildren != ctNode.childNodes.length) { // normalization removed nodes, refresh range
 						if (hostRange) {
 							hostRange = range = this.hostMethods.getHostRange();
@@ -4807,6 +4799,7 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 					}
 					if (ctNode) {
 						var end = (hostRange && this.hostMethods.getHostNode(hostRange.endContainer)) || range.endContainer;
+						// if inserting before the end of a tracked node by another user
 						if ((end.nodeType == 3 && range.endOffset < range.endContainer.length) || (end != ctNode.lastChild)) {
 							ctNode = this._splitNode(ctNode, range.endContainer, range.endOffset);
 						}
@@ -4867,13 +4860,16 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 	
 			// Bookmark the range and get elements between.
 			var bookmark = new ice.Bookmark(this.env, range),
-			elements = ice.dom.getElementsBetween(bookmark.start, bookmark.end),
-			b1 = ice.dom.parents(range.startContainer, this.blockEls.join(', '))[0],
-			b2 = ice.dom.parents(range.endContainer, this.blockEls.join(', '))[0],
-			betweenBlocks = new Array(); 
-	
+				elements = ice.dom.getElementsBetween(bookmark.start, bookmark.end),
+				b1 = ice.dom.parents(range.startContainer, this.blockEls.join(', '))[0],
+				b2 = ice.dom.parents(range.endContainer, this.blockEls.join(', '))[0],
+				betweenBlocks = new Array(); 
+	// elements length may change during the loop so don't optimize
 			for (var i = 0; i < elements.length; i++) {
 				var elem = elements[i];
+				if (! elem || ! elem.parentNode) { // maybe removed as a side effect of removing other stuff
+					continue;
+				}
 				if (ice.dom.isBlockElement(elem)) {
 					betweenBlocks.push(elem);
 					if (!ice.dom.canContainTextElement(elem)) {
@@ -4898,11 +4894,12 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 						}
 			
 						if (ice.dom.isStubElement(elem)) {
-							this._addNodeTracking(elem, false, true);
+							this._addDeleteTracking(elem, {range:null, moveLeft:true});
 							continue;
 						}
 						if (ice.dom.hasNoTextOrStubContent(elem)) {
-							ice.dom.remove(elem);
+							this._removeNode(elem);
+							continue;
 						}
 			
 						for (var j = 0; j < elem.childNodes.length; j++) {
@@ -4912,7 +4909,7 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 						continue;
 					}
 					var parentBlock = ice.dom.getBlockParent(elem);
-					this._addNodeTracking(elem, false, true);
+					this._addDeleteTracking(elem, {range:null, moveLeft:true});
 					if (ice.dom.hasNoTextOrStubContent(parentBlock)) {
 						ice.dom.remove(parentBlock);
 					}
@@ -4929,8 +4926,9 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 			}
 	
 			bookmark.selectBookmark();
-			range = this.getCurrentRange();
-			range.collapse(true);
+			if (range = this.getCurrentRange()) {
+				range.collapse(true);
+			}
 			return range;
 		},
 	
@@ -4949,7 +4947,9 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 	
 	
 			// If the current block is empty then let the browser handle the delete/event.
-			if (isEmptyBlock) return false;
+			if (isEmptyBlock) {
+				return false;
+			}
 	
 			// Some bugs in Firefox and Webkit make the caret disappear out of text nodes, so we try to put them back in.
 			if (commonAncestor.nodeType !== ice.dom.TEXT_NODE) {
@@ -4958,9 +4958,9 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 				if (initialOffset === 0 && ice.dom.isBlockElement(commonAncestor) && (!ice.dom.canContainTextElement(commonAncestor))) {
 					var firstItem = commonAncestor.firstElementChild;
 					if (firstItem) {
-					range.setStart(firstItem, 0);
-					range.collapse();
-					return this._deleteRight(range);
+						range.setStart(firstItem, 0);
+						range.collapse();
+						return this._deleteRight(range);
 					}
 				}
 		
@@ -4970,7 +4970,9 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 					range.setStart(tempTextContainer, 1);
 					range.collapse(true);
 					returnValue = this._deleteRight(range);
-					ice.dom.remove(tempTextContainer);
+					var tParent = tempTextContainer.parentNode;
+					this._removeNode(tempTextContainer);
+					range.refresh();
 					return returnValue;
 				} 
 				else {
@@ -4984,8 +4986,7 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 			// Move range to position the cursor on the inside of any adjacent container that it is going
 			// to potentially delete into or after a stub element.	E.G.:	test|<em>text</em>	->	test<em>|text</em> or
 			// text1 |<img> text2 -> text1 <img>| text2
-	
-			// Merge blocks: If mergeBlocks is enabled, merge the previous and current block.
+
 			range.moveEnd(ice.dom.CHARACTER_UNIT, 1);
 			range.moveEnd(ice.dom.CHARACTER_UNIT, -1);
 	
@@ -5012,19 +5013,21 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 		
 				// If the next container is non-editable, enclose it with a delete ice node and add an empty text node after it to position the caret.
 				if (!nextContainer.isContentEditable) {
-					returnValue = this._addNodeTracking(nextContainer, false, false);
-					var emptySpaceNode = document.createTextNode('');
+					returnValue = this._addDeleteTracking(nextContainer, {range:null, moveLeft:false, merge: true});
+					var emptySpaceNode = this.env.document.createTextNode('');
 					nextContainer.parentNode.insertBefore(emptySpaceNode, nextContainer.nextSibling);
 					range.selectNode(emptySpaceNode);
 					range.collapse(true);
 					return returnValue;
 				}
 		
-				if (this._handleVoidEl(nextContainer, range)) return true;
+				if (this._handleVoidEl(nextContainer, range)) {
+					return true;
+				}
 		
 				// If the caret was placed directly before a stub element, enclose the element with a delete ice node.
 				if (ice.dom.isChildOf(nextContainer, parentBlock) && ice.dom.isStubElement(nextContainer)) {
-					return this._addNodeTracking(nextContainer, range, false);
+					return this._addDeleteTracking(nextContainer, {range:range, moveLeft:false, merge:true});
 				}
 	
 			}
@@ -5035,7 +5038,7 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 	
 			// If we are deleting into a no tracking containiner, then remove the content
 			if (this._getNoTrackElement(range.endContainer.parentElement)) {
-				range._deleteContents();
+				range.deleteContents();
 				return false;
 			}
 	
@@ -5044,24 +5047,24 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 					// Since the range is moved by character, it may have passed through empty blocks.
 					// <p>text {RANGE.START}</p><p></p><p>{RANGE.END} text</p>
 					if (nextBlock !== ice.dom.getBlockParent(range.endContainer, this.element)) {
-					range.setEnd(nextBlock, 0);
+						range.setEnd(nextBlock, 0);
 					}
 					// The browsers like to auto-insert breaks into empty paragraphs - remove them.
 					var elements = ice.dom.getElementsBetween(range.startContainer, range.endContainer);
 					for (var i = 0; i < elements.length; i++) {
-					ice.dom.remove(elements[i]);
+						ice.dom.remove(elements[i]);
 					}
-					var startContainer = range.startContainer;
-					var endContainer = range.endContainer;
+					var startContainer = range.startContainer,
+						endContainer = range.endContainer;
 					ice.dom.remove(ice.dom.find(startContainer, 'br'));
 					ice.dom.remove(ice.dom.find(endContainer, 'br'));
 					return ice.dom.mergeBlockWithSibling(range, ice.dom.getBlockParent(range.endContainer, this.element) || parentBlock);
 				} else {
 					// If the next block is empty, remove the next block.
 					if (nextBlockIsEmpty) {
-					ice.dom.remove(nextBlock);
-					range.collapse(true);
-					return true;
+						ice.dom.remove(nextBlock);
+						range.collapse(true);
+						return true;
 					}
 		
 					// Place the caret at the start of the next block.
@@ -5075,7 +5078,7 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 				deletedCharacter = entireTextNode.splitText(range.endOffset),
 				remainingTextNode = deletedCharacter.splitText(1);
 	
-			return this._addNodeTracking(deletedCharacter, range, false);
+			return this._addDeleteTracking(deletedCharacter, {range:range, moveLeft:false, merge:true});
 	
 		},
 	
@@ -5145,7 +5148,7 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 		
 				// If the previous container is non-editable, enclose it with a delete ice node and add an empty text node before it to position the caret.
 				if (!prevContainer.isContentEditable) {
-					var returnValue = this._addNodeTracking(prevContainer, false, true);
+					var returnValue = this._addDeleteTracking(prevContainer, {range:null, moveLeft:true, merge:true});
 					var emptySpaceNode = document.createTextNode('');
 					prevContainer.parentNode.insertBefore(emptySpaceNode, prevContainer);
 					range.selectNode(emptySpaceNode);
@@ -5159,7 +5162,7 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 		
 				// If the caret was placed directly after a stub element, enclose the element with a delete ice node.
 				if (ice.dom.isStubElement(prevContainer) && ice.dom.isChildOf(prevContainer, parentBlock) || !prevContainer.isContentEditable) {
-					 return this._addNodeTracking(prevContainer, range, true);
+					 return this._addDeleteTracking(prevContainer, {range:range, moveLeft:true, merge:true});
 				}
 		
 				// If the previous container is a stub element between blocks
@@ -5207,140 +5210,93 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 	
 			// If we are deleting into a no tracking containiner, then remove the content
 			if (this._getNoTrackElement(range.startContainer.parentElement)) {
-				range._deleteContents();
+				range.deleteContents();
 				return false;
 			}
 	
 			// Handles cases in which the caret is at the start of the block.
 			if (ice.dom.isOnBlockBoundary(range.startContainer, range.endContainer, this.element)) {
-	
-			// If the previous block is empty, remove the previous block.
-			if (prevBlockIsEmpty) {
-				ice.dom.remove(prevBlock);
-				range.collapse();
-				return true;
-			}
-	
-			// Merge blocks: If mergeBlocks is enabled, merge the previous and current block.
-			if (this.mergeBlocks && ice.dom.is(ice.dom.getBlockParent(prevContainer, this.element), this.blockEl)) {
-				// Since the range is moved by character, it may have passed through empty blocks.
-				// <p>text {RANGE.START}</p><p></p><p>{RANGE.END} text</p>
-				if (prevBlock !== ice.dom.getBlockParent(range.startContainer, this.element)) {
-				range.setStart(prevBlock, prevBlock.childNodes.length);
+		
+				// If the previous block is empty, remove the previous block.
+				if (prevBlockIsEmpty) {
+					ice.dom.remove(prevBlock);
+					range.collapse();
+					return true;
 				}
-				// The browsers like to auto-insert breaks into empty paragraphs - remove them.
-				var elements = ice.dom.getElementsBetween(range.startContainer, range.endContainer)
-				for (var i = 0; i < elements.length; i++) {
-				ice.dom.remove(elements[i]);
+		
+				// Merge blocks: If mergeBlocks is enabled, merge the previous and current block.
+				if (this.mergeBlocks && ice.dom.is(ice.dom.getBlockParent(prevContainer, this.element), this.blockEl)) {
+					// Since the range is moved by character, it may have passed through empty blocks.
+					// <p>text {RANGE.START}</p><p></p><p>{RANGE.END} text</p>
+					if (prevBlock !== ice.dom.getBlockParent(range.startContainer, this.element)) {
+					range.setStart(prevBlock, prevBlock.childNodes.length);
+					}
+					// The browsers like to auto-insert breaks into empty paragraphs - remove them.
+					var elements = ice.dom.getElementsBetween(range.startContainer, range.endContainer)
+					for (var i = 0; i < elements.length; i++) {
+						ice.dom.remove(elements[i]);
+					}
+					var startContainer = range.startContainer;
+					var endContainer = range.endContainer;
+					ice.dom.remove(ice.dom.find(startContainer, 'br'));
+					ice.dom.remove(ice.dom.find(endContainer, 'br'));
+					return ice.dom.mergeBlockWithSibling(range, ice.dom.getBlockParent(range.endContainer, this.element) || parentBlock);
 				}
-				var startContainer = range.startContainer;
-				var endContainer = range.endContainer;
-				ice.dom.remove(ice.dom.find(startContainer, 'br'));
-				ice.dom.remove(ice.dom.find(endContainer, 'br'));
-				return ice.dom.mergeBlockWithSibling(range, ice.dom.getBlockParent(range.endContainer, this.element) || parentBlock);
-			}
-	
-			// If the previous Block ends with a stub element, set the caret behind it.
-			if (prevBlock && prevBlock.lastChild && ice.dom.isStubElement(prevBlock.lastChild)) {
-				range.setStartAfter(prevBlock.lastChild);
-				range.collapse(true);
+		
+				// If the previous Block ends with a stub element, set the caret behind it.
+				if (prevBlock && prevBlock.lastChild && ice.dom.isStubElement(prevBlock.lastChild)) {
+					range.setStartAfter(prevBlock.lastChild);
+					range.collapse(true);
+					return true;
+				}
+		
+				// Place the caret at the end of the previous block.
+				lastSelectable = range.getLastSelectableChild(prevBlock);
+				if (lastSelectable) {
+					range.setStart(lastSelectable, lastSelectable.data.length);
+					range.collapse(true);
+				} 
+				else if (prevBlock) {
+					range.setStart(prevBlock, prevBlock.childNodes.length);
+					range.collapse(true);
+				}
+		
 				return true;
-			}
-	
-			// Place the caret at the end of the previous block.
-			lastSelectable = range.getLastSelectableChild(prevBlock);
-			if (lastSelectable) {
-				range.setStart(lastSelectable, lastSelectable.data.length);
-				range.collapse(true);
-			} 
-			else if (prevBlock) {
-				range.setStart(prevBlock, prevBlock.childNodes.length);
-				range.collapse(true);
-			}
-	
-			return true;
 			}
 	
 			var entireTextNode = range.startContainer,
-				deletedCharacter = entireTextNode.splitText(range.startOffset - 1),
-				remainingTextNode = deletedCharacter.splitText(1);
+				deletedCharacter = entireTextNode.splitText(range.startOffset - 1);
+				
+			deletedCharacter.splitText(1);
 	
-			return this._addNodeTracking(deletedCharacter, range, true);
+			return this._addDeleteTracking(deletedCharacter, {range:range, moveLeft:true, merge:true});
 	
+		},
+		
+		_removeNode: function(node) {
+			var parent = node && node.parentNode;
+			if (parent) {
+				parent.removeChild(node);
+				if (ice.dom.hasNoTextOrStubContent(parent)) {
+					this._removeNode(parent);
+				}
+			}
 		},
 	
 		// Marks text and other nodes for deletion
 		// compared OK
-		_addNodeTracking: function (contentNode, range, moveLeft) {
+		_addDeleteTracking: function (contentNode, options) {
 	
-			var contentAddNode = this._getIceNode(contentNode, 'insertType');
+			var contentAddNode = this._getIceNode(contentNode, 'insertType'),
+				ctNode;
 	
-			if (contentAddNode && this._currentUserIceNode(contentAddNode)) {
-				if (range && moveLeft) {
-					range.selectNode(contentNode);
-				}
-				contentNode.parentNode.removeChild(contentNode);
-				var cleanNode = ice.dom.cloneNode(contentAddNode);
-				ice.dom.remove(ice.dom.find(cleanNode, '.iceBookmark'));
-				// Remove a potential empty tracking container
-				if (contentAddNode !== null && (ice.dom.hasNoTextOrStubContent(cleanNode[0]))) {
-					var newstart = this.env.document.createTextNode('');
-					ice.dom.insertBefore(contentAddNode, newstart);
-					if (range) {
-						range.setStart(newstart, 0);
-						range.collapse(true);
-					}
-					ice.dom.replaceWith(contentAddNode, ice.dom.contents(contentAddNode));
-				}
-		
-				return true;
-	
-			} 
-			else if (range && this._getIceNode(contentNode, 'deleteType')) {
-			// It if the contentNode a text node, merge it with text nodes before and after it.
-				this._normalizeNode(contentNode);// dfl - support ie8
-		
-				var found = false;
-				if (moveLeft) {
-					// Move to the left until there is valid sibling.
-					var previousSibling = ice.dom.getPrevContentNode(contentNode, this.element);
-					while (!found) {
-						ctNode = this._getIceNode(previousSibling, 'deleteType');
-						if (!ctNode) {
-							found = true;
-						} else {
-							previousSibling = ice.dom.getPrevContentNode(previousSibling, this.element);
-						}
-					}
-					if (previousSibling) {
-						var lastSelectable = range.getLastSelectableChild(previousSibling);
-						if (lastSelectable) {
-							previousSibling = lastSelectable;
-						}
-						range.setStart(previousSibling, ice.dom.getNodeCharacterLength(previousSibling));
-						range.collapse(true);
-					}
-					return true;
-				} else {
-					// Move the range to the right until there is valid sibling.
-		
-					var nextSibling = ice.dom.getNextContentNode(contentNode, this.element);
-					while (!found) {
-						ctNode = this._getIceNode(nextSibling, 'deleteType');
-						if (!ctNode) {
-							found = true;
-						} 
-						else {
-							nextSibling = ice.dom.getNextContentNode(nextSibling, this.element);
-						}
-					}
-		
-					if (nextSibling) {
-						range.selectNodeContents(nextSibling);
-						range.collapse(true);
-					}
-					return true;
-				}
+			if (contentAddNode) {
+				return this._addDeletionInInsertNode(contentNode, contentAddNode, options);
+			}
+			
+			var range = options && options.range;
+			if (range && this._getIceNode(contentNode, 'deleteType')) {
+				return this._deleteInDeleted(contentNode, options);
 	
 			}
 			// Webkit likes to insert empty text nodes next to elements. We remove them here.
@@ -5351,8 +5307,7 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 				contentNode.parentNode.removeChild(contentNode.nextSibling);
 			}
 			var prevDelNode = this._getIceNode(contentNode.previousSibling, 'deleteType'),
-				nextDelNode = this._getIceNode(contentNode.nextSibling, 'deleteType'),
-				ctNode;
+				nextDelNode = this._getIceNode(contentNode.nextSibling, 'deleteType');
 	
 			if (prevDelNode && this._currentUserIceNode(prevDelNode)) {
 				ctNode = prevDelNode;
@@ -5367,13 +5322,14 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 				ctNode = nextDelNode;
 				ctNode.insertBefore(contentNode, ctNode.firstChild);
 			} 
-			else {
+			else { // not in the neighborhood of a delete node
 				ctNode = this._createIceNode('deleteType');
 				contentNode.parentNode.insertBefore(ctNode, contentNode);
 				ctNode.appendChild(contentNode);
 			}
 	
 			if (range) {
+				var moveLeft = options && options.moveLeft;
 				if (ice.dom.isStubElement(contentNode)) {
 					range.selectNode(contentNode);
 				} 
@@ -5386,10 +5342,164 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 				else {
 					range.collapse();
 				}
-				this._normalizeNode(contentNode); // dfl - support ie8
+				ice.dom.normalizeNode(contentNode); // dfl - support ie8
 			}
 			return true;
 	
+		},
+		
+		_deleteInDeleted: function(contentNode, options) {
+			var range = options.range, 
+				moveLeft = options.moveLeft,
+				ctNode;
+
+			// It if the contentNode a text node, merge it with text nodes before and after it.
+			ice.dom.normalizeNode(contentNode);// dfl - support ie8
+	
+			var found = false;
+			if (moveLeft) {
+				// Move to the left until there is valid sibling.
+				var previousSibling = ice.dom.getPrevContentNode(contentNode, this.element);
+				while (!found) {
+					ctNode = this._getIceNode(previousSibling, 'deleteType');
+					if (!ctNode) {
+						found = true;
+					} 
+					else {
+						previousSibling = ice.dom.getPrevContentNode(previousSibling, this.element);
+					}
+				}
+				if (previousSibling) {
+					var lastSelectable = range.getLastSelectableChild(previousSibling);
+					if (lastSelectable) {
+						previousSibling = lastSelectable;
+					}
+					range.setStart(previousSibling, ice.dom.getNodeCharacterLength(previousSibling));
+					range.collapse(true);
+				}
+			} 
+			else {
+				// Move the range to the right until there is valid sibling.
+	
+				var nextSibling = ice.dom.getNextContentNode(contentNode, this.element);
+				while (!found) {
+					ctNode = this._getIceNode(nextSibling, 'deleteType');
+					if (!ctNode) {
+						found = true;
+					} 
+					else {
+						nextSibling = ice.dom.getNextContentNode(nextSibling, this.element);
+					}
+				}
+	
+				if (nextSibling) {
+					range.selectNodeContents(nextSibling);
+					range.collapse(true);
+				}
+			}
+			return true;
+		},
+		
+		//TODO
+		// Maybe all we need is to select the newly added node, either to the right or to the left
+		_addDeletionInInsertNode: function(contentNode, contentAddNode, options) {
+			var range = options && options.range,
+				moveLeft = options && options.moveLeft;
+			if (this._currentUserIceNode(contentAddNode)) {
+				if (range) {
+					if (moveLeft) {
+						range.setStartBefore(contentNode);
+					}
+					else {
+						range.setStartAfter(contentNode);
+					}
+					range.collapse(moveLeft);
+				}
+				contentNode.parentNode.removeChild(contentNode);
+				if (! this._browser.msie) {
+					ice.dom.normalizeNode(contentAddNode);	
+				}
+				var bmCount = ice.dom.find(contentAddNode, ".iceBookmark").length,
+					cleanNode;
+				if (bmCount > 0) {
+					cleanNode = ice.dom.cloneNode(contentAddNode);
+					ice.dom.remove(ice.dom.find(cleanNode, '.iceBookmark'));
+					cleanNode = cleanNode[0];
+				}
+				else {
+					cleanNode = contentAddNode;
+				}
+					
+				// Remove a potential empty tracking container
+				if (ice.dom.hasNoTextOrStubContent(cleanNode)) {
+//					var newstart = this.env.document.createTextNode('');
+//					ice.dom.insertBefore(contentAddNode, newstart);
+					if (range) {
+						range.setStartBefore(contentAddNode);
+						range.collapse(true);
+					}
+					ice.dom.replaceWith(contentAddNode, ice.dom.contents(contentAddNode));
+				}
+			}
+			else { // other user insert
+				var cInd = rangy.dom.getNodeIndex(contentNode),
+					parent = contentNode.parentNode,
+					nChildren = parent.childNodes.length,
+					ctNode;
+				parent.removeChild(contentNode);
+				ctNode = this._createIceNode('deleteType');
+				ctNode.appendChild(contentNode);
+				if (cInd > 0 && cInd >= (nChildren - 1)) {
+					contentAddNode.parentNode.appendChild(ctNode);
+				}
+				else {
+					if (cInd > 0) {
+						this._splitNode(contentAddNode, parent, cInd);
+					}
+					contentAddNode.parentNode.insertBefore(ctNode, contentAddNode);
+				}
+				this._deleteEmptyNode(contentAddNode);
+
+
+				if (range && moveLeft) {
+					range.setStartBefore(ctNode);
+					range.collapse(true);
+					this.selection.addRange(range);
+				}
+				if (options && options.merge) {
+					this._mergeDeleteNode(ctNode);
+				}
+				if (range) {
+					range.refresh();
+				}
+
+			}
+			return true;
+		},
+		
+		_deleteEmptyNode: function(node) {
+			var parent = node && node.parentNode;
+			if (parent && ice.dom.hasNoTextOrStubContent(node)) {
+				parent.removeChild(node);
+			}
+		},
+	
+		_mergeDeleteNode: function(delNode) {
+			var siblingDel,
+				content;
+	
+			if (this._currentUserIceNode(siblingDel = this._getIceNode(delNode.previousSibling, 'deleteType'))) {
+				content = ice.dom.extractContent(delNode);
+				delNode.parentNode.removeChild(delNode);
+				ice.dom.append(siblingDel, content);
+				this._mergeDeleteNode(siblingDel);
+			}
+			else if (this._currentUserIceNode(siblingDel = this._getIceNode(delNode.nextSibling, 'deleteType'))) {
+					content = ice.dom.extractContent(siblingDel);
+					delNode.parentNode.removeChild(siblingDel);
+					ice.dom.append(delNode, content);
+					this._mergeDeleteNode(delNode);
+			} 
 		},
 	
 	
@@ -5905,7 +6015,7 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 				var userName;
 				if (myUserId && (userid == myUserId)) {
 					userName = myUserName;
-					el.setAttribute(this.attributes.userName, myUserName)
+					el.setAttribute(this.attributes.userName, myUserName);
 				}
 				else {
 					userName = el.getAttribute(this.attributes.userName);
@@ -6023,41 +6133,6 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 			}
 			else {
 				this.hostMethods.hideTooltip(node);
-			}
-		},
-		
-		 _normalizeNode : function(node) {
-			if (! node) {
-				return;
-			}
-			if (typeof node.normalize == "function") {
-				return node.normalize();
-			}
-			return this._myNormalizeNode(node);
-		},
-	
-		_myNormalizeNode : function(node) {
-			if (! node) {
-				return;
-			}
-			var ELEMENT_NODE = 1;
-			var TEXT_NODE = 3;
-			var child = node.firstChild;
-			while (child) {
-				if (child.nodeType == ELEMENT_NODE) {
-					this._myNormalizeNode(child);
-				}
-				else if (child.nodeType == TEXT_NODE) { 
-					var next;
-					while ((next = child.nextSibling) && next.nodeType == TEXT_NODE) { 
-						var value = next.nodeValue;
-						if (value != null && value.length) {
-							child.nodeValue = child.nodeValue + value;
-						}
-						node.removeChild(next);
-					}
-				}
-				child = child.nextSibling;
 			}
 		},
 		
@@ -7194,11 +7269,13 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 				};
 			};
 	
-			var matched = uaMatch( navigator.userAgent );
-			var browser = {
-				type: "unknown",
-				version : 0
-			};
+			var ua = navigator.userAgent.toLowerCase(),
+				matched = uaMatch(ua),
+				browser = {
+					type: "unknown",
+					version : 0,
+					msie: false
+				};
 	
 			if ( matched.browser ) {
 				browser[ matched.browser ] = true;
@@ -7215,7 +7292,10 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 			if (browser.webkit) {
 				browser.type = "webkit";
 			}
-			browser.firefox = (/Firefox/.test(navigator.userAgent) == true);
+			browser.firefox = (/firefox/.test(ua) == true);
+			if (! browser.msie) {
+				browser.msie = !! /trident/.test(ua); 
+			}
 			
 			return browser;
 		})();
@@ -7450,6 +7530,42 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 		}
 		return null;
 	};
+	
+	dom.normalizeNode = function(node) {
+		if (! node) {
+			return;
+		}
+		if ("function" == typeof node.normalize) {
+			return node.normalize();
+		}
+		return this._myNormalizeNode(node);
+	};
+
+	function _myNormalizeNode(node) {
+		if (! node) {
+			return;
+		}
+		var ELEMENT_NODE = 1;
+		var TEXT_NODE = 3;
+		var child = node.firstChild;
+		while (child) {
+			if (child.nodeType == ELEMENT_NODE) {
+				this._myNormalizeNode(child);
+			}
+			else if (child.nodeType == TEXT_NODE) { 
+				var next;
+				while ((next = child.nextSibling) && next.nodeType == TEXT_NODE) { 
+					var value = next.nodeValue;
+					if (value != null && value.length) {
+						child.nodeValue = child.nodeValue + value;
+					}
+					node.removeChild(next);
+				}
+			}
+			child = child.nextSibling;
+		}
+	};	
+
 
 	exports.dom = dom;
 
@@ -7457,14 +7573,14 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 (function () {
 
 	var exports = this,
-	Selection;
+		Selection;
 
 	Selection = function (env) {
-	this._selection = null;
-	this.env = env;
-
-	this._initializeRangeLibrary();
-	this._getSelection();
+		this._selection = null;
+		this.env = env;
+	
+		this._initializeRangeLibrary();
+		this._getSelection();
 	};
 
 	Selection.prototype = {
@@ -7498,14 +7614,17 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 	 * position 0 will be the only allocation filled.
 	 */
 	getRangeAt: function (pos) {
-		this._selection.refresh();
+		var ret = null;
 		try {
-			return this._selection.getRangeAt(pos);
+			this._selection.refresh();
+			ret =this._selection.getRangeAt(pos);
 		} 
 		catch (e) {
 			this._selection = null;
-			return this._getSelection().getRangeAt(0);
+			ret = this._getSelection().getRangeAt(0);
 		}
+
+		return ret;
 	},
 
 	/**
@@ -7570,11 +7689,12 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 		 * to the given `container` with `offset` units.
 		 */
 		rangy.rangePrototype.setRange = function (start, container, offset) {
-		if (start) {
-			this.setStart(container, offset);
-		} else {
-			this.setEnd(container, offset);
-		}
+			if (start) {
+				this.setStart(container, offset);
+			} 
+			else {
+				this.setEnd(container, offset);
+			}
 		};
 
 		/**
@@ -7620,57 +7740,57 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 		 * <p><TEXT>some </TEXT><SPAN>test</SPAN><TEXT> text</TEXT></p>
 		 */
 		rangy.rangePrototype.moveCharLeft = function (moveStart, units) {
-		var container, offset;
-
-		if (moveStart) {
-			container = this.startContainer;
-			offset = this.startOffset;
-		} else {
-			container = this.endContainer;
-			offset = this.endOffset;
-		}
-
-		// Handle the case where the range conforms to (2) (noted in the comment above).
-		if (container.nodeType === ice.dom.ELEMENT_NODE) {
-			if (container.hasChildNodes()) {
-			container = container.childNodes[offset];
-
-			container = this.getPreviousTextNode(container);
-
-			// Get the previous text container that is not an empty text node.
-			while (container && container.nodeType == ice.dom.TEXT_NODE && container.nodeValue === "") {
-				container = this.getPreviousTextNode(container);
-			}
-
-			offset = container.data.length - units;
+			var container, offset;
+	
+			if (moveStart) {
+				container = this.startContainer;
+				offset = this.startOffset;
 			} else {
-			offset = units * -1;
+				container = this.endContainer;
+				offset = this.endOffset;
 			}
-		} else {
-			offset -= units;
-		}
-
-		if (offset < 0) {
-			// We need to move to a previous selectable container.
-			while (offset < 0) {
-			var skippedBlockElem = [];
-
-			container = this.getPreviousTextNode(container, skippedBlockElem);
-
-			// We are at the beginning/out of the editable - break.
-			if (!container) {
-				return;
-			}
-
+	
+			// Handle the case where the range conforms to (2) (noted in the comment above).
 			if (container.nodeType === ice.dom.ELEMENT_NODE) {
-				continue;
+				if (container.hasChildNodes()) {
+				container = container.childNodes[offset];
+	
+				container = this.getPreviousTextNode(container);
+	
+				// Get the previous text container that is not an empty text node.
+				while (container && container.nodeType == ice.dom.TEXT_NODE && container.nodeValue === "") {
+					container = this.getPreviousTextNode(container);
+				}
+	
+				offset = container.data.length - units;
+				} else {
+				offset = units * -1;
+				}
+			} else {
+				offset -= units;
 			}
-
-			offset += container.data.length;
+	
+			if (offset < 0) {
+				// We need to move to a previous selectable container.
+				while (offset < 0) {
+					var skippedBlockElem = [];
+		
+					container = this.getPreviousTextNode(container, skippedBlockElem);
+		
+					// We are at the beginning/out of the editable - break.
+					if (!container) {
+						return;
+					}
+		
+					if (container.nodeType === ice.dom.ELEMENT_NODE) {
+						continue;
+					}
+		
+					offset += container.data.length;
+				}
 			}
-		}
-
-		this.setRange(moveStart, container, offset);
+	
+			this.setRange(moveStart, container, offset);
 		};
 
 		/**
@@ -7772,44 +7892,44 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 		 * the the container's firstChild is returned.
 		 */
 		rangy.rangePrototype.getNextContainer = function (container, skippedBlockElem) {
-		if (!container) {
-			return null;
-		}
-
-		while (container.nextSibling) {
+			if (!container) {
+				return null;
+			}
+	
+			while (container.nextSibling) {
+				container = container.nextSibling;
+				if (container.nodeType !== ice.dom.TEXT_NODE) {
+				var child = this.getFirstSelectableChild(container);
+				if (child !== null) {
+					return child;
+				}
+				} else if (this.isSelectable(container) === true) {
+				return container;
+				}
+			}
+	
+			// Look at parents next sibling.
+			while (container && !container.nextSibling) {
+				container = container.parentNode;
+			}
+	
+			if (!container) {
+				return null;
+			}
+	
 			container = container.nextSibling;
-			if (container.nodeType !== ice.dom.TEXT_NODE) {
-			var child = this.getFirstSelectableChild(container);
-			if (child !== null) {
-				return child;
+			if (this.isSelectable(container) === true) {
+				return container;
+			} else if (skippedBlockElem && ice.dom.isBlockElement(container) === true) {
+				skippedBlockElem.push(container);
 			}
-			} else if (this.isSelectable(container) === true) {
-			return container;
+	
+			var selChild = this.getFirstSelectableChild(container);
+			if (selChild !== null) {
+				return selChild;
 			}
-		}
-
-		// Look at parents next sibling.
-		while (container && !container.nextSibling) {
-			container = container.parentNode;
-		}
-
-		if (!container) {
-			return null;
-		}
-
-		container = container.nextSibling;
-		if (this.isSelectable(container) === true) {
-			return container;
-		} else if (skippedBlockElem && ice.dom.isBlockElement(container) === true) {
-			skippedBlockElem.push(container);
-		}
-
-		var selChild = this.getFirstSelectableChild(container);
-		if (selChild !== null) {
-			return selChild;
-		}
-
-		return this.getNextContainer(container, skippedBlockElem);
+	
+			return this.getNextContainer(container, skippedBlockElem);
 		};
 
 		/**
@@ -7818,147 +7938,148 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 		 * then the container's lastChild is returned.
 		 */
 		rangy.rangePrototype.getPreviousContainer = function (container, skippedBlockElem) {
-		if (!container) {
-			return null;
-		}
-
-		while (container.previousSibling) {
-			container = container.previousSibling;
-			if (container.nodeType !== ice.dom.TEXT_NODE) {
-			if (ice.dom.isStubElement(container) === true) {
+			if (!container) {
+				return null;
+			}
+	
+			while (container.previousSibling) {
+				container = container.previousSibling;
+				if (container.nodeType !== ice.dom.TEXT_NODE) {
+				if (ice.dom.isStubElement(container) === true) {
+					return container;
+				} else {
+					var child = this.getLastSelectableChild(container);
+					if (child !== null) {
+					return child;
+					}
+				}
+				} else if (this.isSelectable(container) === true) {
 				return container;
-			} else {
-				var child = this.getLastSelectableChild(container);
-				if (child !== null) {
-				return child;
 				}
 			}
-			} else if (this.isSelectable(container) === true) {
-			return container;
+	
+			// Look at parents next sibling.
+			while (container && !container.previousSibling) {
+				container = container.parentNode;
 			}
-		}
-
-		// Look at parents next sibling.
-		while (container && !container.previousSibling) {
-			container = container.parentNode;
-		}
-
-		if (!container) {
-			return null;
-		}
-
-		container = container.previousSibling;
-		if (this.isSelectable(container) === true) {
-			return container;
-		} else if (skippedBlockElem && ice.dom.isBlockElement(container) === true) {
-			skippedBlockElem.push(container);
-		}
-
-		var selChild = this.getLastSelectableChild(container);
-		if (selChild !== null) {
-			return selChild;
-		}
-		return this.getPreviousContainer(container, skippedBlockElem);
+	
+			if (!container) {
+				return null;
+			}
+	
+			container = container.previousSibling;
+			if (this.isSelectable(container) === true) {
+				return container;
+			} 
+			else if (skippedBlockElem && ice.dom.isBlockElement(container) === true) {
+				skippedBlockElem.push(container);
+			}
+	
+			var selChild = this.getLastSelectableChild(container);
+			if (selChild !== null) {
+				return selChild;
+			}
+			return this.getPreviousContainer(container, skippedBlockElem);
 		};
-
+	
 		rangy.rangePrototype.getNextTextNode = function (container) {
-		if (container.nodeType === ice.dom.ELEMENT_NODE) {
-			if (container.childNodes.length !== 0) {
-			return this.getFirstSelectableChild(container);
+			if (container.nodeType === ice.dom.ELEMENT_NODE) {
+				if (container.childNodes.length !== 0) {
+				return this.getFirstSelectableChild(container);
+				}
 			}
-		}
-
-		container = this.getNextContainer(container);
-		if (container.nodeType === ice.dom.TEXT_NODE) {
-			return container;
-		}
-
-		return this.getNextTextNode(container);
+	
+			container = this.getNextContainer(container);
+			if (container.nodeType === ice.dom.TEXT_NODE) {
+				return container;
+			}
+	
+			return this.getNextTextNode(container);
 		};
-
+	
 		rangy.rangePrototype.getPreviousTextNode = function (container, skippedBlockEl) {
-		container = this.getPreviousContainer(container, skippedBlockEl);
-		if (container.nodeType === ice.dom.TEXT_NODE) {
-			return container;
-		}
-
-		return this.getPreviousTextNode(container, skippedBlockEl);
+			container = this.getPreviousContainer(container, skippedBlockEl);
+			if (container.nodeType === ice.dom.TEXT_NODE) {
+				return container;
+			}
+	
+			return this.getPreviousTextNode(container, skippedBlockEl);
 		};
-
+	
 		rangy.rangePrototype.getFirstSelectableChild = function (element) {
-		if (element) {
-			if (element.nodeType !== ice.dom.TEXT_NODE) {
-			var child = element.firstChild;
-			while (child) {
-				if (this.isSelectable(child) === true) {
-				return child;
-				} else if (child.firstChild) {
-				// This node does have child nodes.
-				var res = this.getFirstSelectableChild(child);
-				if (res !== null) {
-					return res;
-				} else {
+			if (element) {
+				if (element.nodeType !== ice.dom.TEXT_NODE) {
+				var child = element.firstChild;
+				while (child) {
+					if (this.isSelectable(child) === true) {
+					return child;
+					} else if (child.firstChild) {
+					// This node does have child nodes.
+					var res = this.getFirstSelectableChild(child);
+					if (res !== null) {
+						return res;
+					} else {
+						child = child.nextSibling;
+					}
+					} else {
 					child = child.nextSibling;
+					}
 				}
 				} else {
-				child = child.nextSibling;
+				// Given element is a text node so return it.
+				return element;
 				}
 			}
-			} else {
-			// Given element is a text node so return it.
-			return element;
-			}
-		}
-		return null;
+			return null;
 		};
 
 		rangy.rangePrototype.getLastSelectableChild = function (element) {
-		if (element) {
-			if (element.nodeType !== ice.dom.TEXT_NODE) {
-			var child = element.lastChild;
-			while (child) {
-				if (this.isSelectable(child) === true) {
-				return child;
-				} else if (child.lastChild) {
-				// This node does have child nodes.
-				var res = this.getLastSelectableChild(child);
-				if (res !== null) {
-					return res;
-				} else {
+			if (element) {
+				if (element.nodeType !== ice.dom.TEXT_NODE) {
+				var child = element.lastChild;
+				while (child) {
+					if (this.isSelectable(child) === true) {
+					return child;
+					} else if (child.lastChild) {
+					// This node does have child nodes.
+					var res = this.getLastSelectableChild(child);
+					if (res !== null) {
+						return res;
+					} else {
+						child = child.previousSibling;
+					}
+					} else {
 					child = child.previousSibling;
+					}
 				}
 				} else {
-				child = child.previousSibling;
+				// Given element is a text node so return it.
+				return element;
 				}
 			}
-			} else {
-			// Given element is a text node so return it.
-			return element;
-			}
-		}
-		return null;
+			return null;
 		};
 
 		rangy.rangePrototype.isSelectable = function (container) {
-		if (container && container.nodeType === ice.dom.TEXT_NODE && container.data.length !== 0) {
-			return true;
-		}
-		return false;
+			if (container && container.nodeType === ice.dom.TEXT_NODE && container.data.length !== 0) {
+				return true;
+			}
+			return false;
 		};
 
 		rangy.rangePrototype.getHTMLContents = function (clonedSelection) {
-		if (!clonedSelection) {
-			clonedSelection = this.cloneContents();
+			if (!clonedSelection) {
+				clonedSelection = this.cloneContents();
+			}
+			var div = self.env.document.createElement('div');
+			div.appendChild(clonedSelection.cloneNode(true));
+			return div.innerHTML;
+			};
+	
+			rangy.rangePrototype.getHTMLContentsObj = function () {
+			return this.cloneContents();
+			};
 		}
-		var div = self.env.document.createElement('div');
-		div.appendChild(clonedSelection.cloneNode(true));
-		return div.innerHTML;
-		};
-
-		rangy.rangePrototype.getHTMLContentsObj = function () {
-		return this.cloneContents();
-		};
-	}
 	};
 
 	exports.Selection = Selection;
@@ -7966,168 +8087,176 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 }).call(this.ice);
 (function() {
 
-  var exports = this, Bookmark;
+	var exports = this,
+		Bookmark;
 
-  Bookmark = function(env, range, keepOldBookmarks) {
+	Bookmark = function(env, range, keepOldBookmarks) {
 
-    this.env = env;
-    this.element = env.element;
-    this.selection = this.env.selection;
+		this.env = env;
+		this.element = env.element;
+		this.selection = this.env.selection;
 
-    // Remove all bookmarks?
-    if (!keepOldBookmarks) {
-      this.removeBookmarks(this.element);
-    }
+		// Remove all bookmarks?
+		if (!keepOldBookmarks) {
+			this.removeBookmarks(this.element);
+		}
 
-    var currRange = range || this.selection.getRangeAt(0),
-    	range = currRange.cloneRange(),
-    	startContainer = range.startContainer,
-    	endContainer = range.endContainer,
-    	startOffset  = range.startOffset,
-    	endOffset = range.endOffset,
-    	tmp;
+		var currRange = range || this.selection.getRangeAt(0),
+			range = currRange.cloneRange(),
+			startContainer = range.startContainer,
+			startOffset = range.startOffset,
+			endOffset = range.endOffset,
+			tmp;
 
-    // Collapse to the end of range.
-    range.collapse(false);
+		// Collapse to the end of range.
+		range.collapse(false);
 
-    var endBookmark  = this.env.document.createElement('span');
-    endBookmark.style.display = 'none';
-    ice.dom.setHtml(endBookmark, '&nbsp;');
-    ice.dom.addClass(endBookmark, 'iceBookmark iceBookmark_end');
-    endBookmark.setAttribute('iceBookmark', 'end');
-    range.insertNode(endBookmark);
-    if(!ice.dom.isChildOf(endBookmark, this.element)) {
-      this.element.appendChild(endBookmark);
-    }
+		var endBookmark = this.env.document.createElement('span');
+		endBookmark.style.display = 'none';
+		ice.dom.setHtml(endBookmark, '&nbsp;');
+		ice.dom.addClass(endBookmark, 'iceBookmark iceBookmark_end');
+		endBookmark.setAttribute('iceBookmark', 'end');
+		range.insertNode(endBookmark);
+		if (!ice.dom.isChildOf(endBookmark, this.element)) {
+			this.element.appendChild(endBookmark);
+		}
 
-    // Move the range to where it was before.
-    range.setStart(startContainer, startOffset);
-    range.collapse(true);
+		// Move the range to where it was before.
+		range.setStart(startContainer, startOffset);
+		range.collapse(true);
 
-    // Create the start bookmark.
-    var startBookmark = this.env.document.createElement('span');
-    startBookmark.style.display = 'none';
-    ice.dom.addClass(startBookmark, 'iceBookmark iceBookmark_start');
-    ice.dom.setHtml(startBookmark, '&nbsp;');
-    startBookmark.setAttribute('iceBookmark', 'start');
-    try {
-      range.insertNode(startBookmark);
+		// Create the start bookmark.
+		var startBookmark = this.env.document.createElement('span');
+		startBookmark.style.display = 'none';
+		ice.dom.addClass(startBookmark, 'iceBookmark iceBookmark_start');
+		ice.dom.setHtml(startBookmark, '&nbsp;');
+		startBookmark.setAttribute('iceBookmark', 'start');
+		try {
+			range.insertNode(startBookmark);
 
-      // Make sure start and end are in correct position.
-      if (startBookmark.previousSibling === endBookmark) {
-        // Reverse..
-        tmp  = startBookmark;
-        startBookmark = endBookmark;
-        endBookmark = tmp;
-      }
-    } catch (e) {
-      // NS_ERROR_UNEXPECTED: I believe this is a Firefox bug.
-      // It seems like if the range is collapsed and the text node is empty
-      // (i.e. length = 0) then Firefox tries to split the node for no reason and fails...
-      ice.dom.insertBefore(endBookmark, startBookmark);
-    }
+			// Make sure start and end are in correct position.
+			if (startBookmark.previousSibling === endBookmark) {
+				// Reverse..
+				tmp = startBookmark;
+				startBookmark = endBookmark;
+				endBookmark = tmp;
+			}
+		} catch (e) {
+			// NS_ERROR_UNEXPECTED: I believe this is a Firefox bug.
+			// It seems like if the range is collapsed and the text node is empty
+			// (i.e. length = 0) then Firefox tries to split the node for no reason and fails...
+			ice.dom.insertBefore(endBookmark, startBookmark);
+		}
 
-    if (ice.dom.isChildOf(startBookmark, this.element) === false) {
-      if (this.element.firstChild) {
-        ice.dom.insertBefore(this.element.firstChild, startBookmark);
-      } else {
-        // Should not happen...
-        this.element.appendChild(startBookmark);
-      }
-    }
+		if (ice.dom.isChildOf(startBookmark, this.element) === false) {
+			if (this.element.firstChild) {
+				ice.dom.insertBefore(this.element.firstChild, startBookmark);
+			} else {
+				// Should not happen...
+				this.element.appendChild(startBookmark);
+			}
+		}
 
-    if (!endBookmark.previousSibling) {
-      tmp = this.env.document.createTextNode('');
-      ice.dom.insertBefore(endBookmark, tmp);
-    }
+		if (!endBookmark.previousSibling) {
+			tmp = this.env.document.createTextNode('');
+			ice.dom.insertBefore(endBookmark, tmp);
+		}
 
-    // The original range object must be changed.
-    if (!startBookmark.nextSibling) {
-      tmp = this.env.document.createTextNode('');
-      ice.dom.insertAfter(startBookmark, tmp);
-    }
+		// The original range object must be changed.
+		if (!startBookmark.nextSibling) {
+			tmp = this.env.document.createTextNode('');
+			ice.dom.insertAfter(startBookmark, tmp);
+		}
 
-    currRange.setStart(startBookmark.nextSibling, 0);
-    currRange.setEnd(endBookmark.previousSibling, (endBookmark.previousSibling.length || 0));
+		currRange.setStart(startBookmark.nextSibling, 0);
+		currRange.setEnd(endBookmark.previousSibling, (endBookmark.previousSibling.length || 0));
 
-    this.start = startBookmark;
-    this.end = endBookmark;
-  };
+		this.start = startBookmark;
+		this.end = endBookmark;
+	};
 
-  Bookmark.prototype = {
+	Bookmark.prototype = {
 
-    selectBookmark: function() {
-      var range = this.selection.getRangeAt(0);
-      var startPos = null;
-      var endPos = null;
-      var startOffset = 0;
-      var endOffset = null;
-      if (this.start.nextSibling === this.end || ice.dom.getElementsBetween(this.start, this.end).length === 0) {
-        // Bookmark is collapsed.
-        if (this.end.nextSibling) {
-          startPos = ice.dom.getFirstChild(this.end.nextSibling);
-        } else if (this.start.previousSibling) {
-          startPos = ice.dom.getFirstChild(this.start.previousSibling);
-          if (startPos.nodeType === ice.dom.TEXT_NODE) {
-            startOffset = startPos.length;
-          }
-        } else {
-          // Create a text node in parent.
-          this.end.parentNode.appendChild(this.env.document.createTextNode(''));
-          startPos = ice.dom.getFirstChild(this.end.nextSibling);
-        }
-      } else {
-        if (this.start.nextSibling) {
-          startPos = ice.dom.getFirstChild(this.start.nextSibling);
-        } else {
-          if (!this.start.previousSibling) {
-            var tmp = this.env.document.createTextNode('');
-            ice.dom.insertBefore(this.start, tmp);
-          }
+		selectBookmark: function() {
+			var range = this.selection.getRangeAt(0),
+				startPos = null,
+				endPos = null,
+				startOffset = 0,
+				endOffset = null,
+				parent = this.start && this.start.parentNode;
 
-          startPos = ice.dom.getLastChild(this.start.previousSibling);
-          startOffset = startPos.length;
-        }
+			if (this.start.nextSibling === this.end || ice.dom.getElementsBetween(this.start, this.end).length === 0) {
+				// Bookmark is collapsed.
+				if (this.end.nextSibling) {
+					startPos = ice.dom.getFirstChild(this.end.nextSibling);
+				} else if (this.start.previousSibling) {
+					startPos = ice.dom.getFirstChild(this.start.previousSibling);
+					if (startPos.nodeType === ice.dom.TEXT_NODE) {
+						startOffset = startPos.length;
+					}
+				} else {
+					// Create a text node in parent.
+					this.end.parentNode.appendChild(this.env.document.createTextNode(''));
+					startPos = ice.dom.getFirstChild(this.end.nextSibling);
+				}
+			} else {
+				if (this.start.nextSibling) {
+					startPos = ice.dom.getFirstChild(this.start.nextSibling);
+				} else {
+					if (!this.start.previousSibling) {
+						var tmp = this.env.document.createTextNode('');
+						ice.dom.insertBefore(this.start, tmp);
+					}
 
-        if (this.end.previousSibling) {
-          endPos = ice.dom.getLastChild(this.end.previousSibling);
-        } else {
-          endPos = ice.dom.getFirstChild(this.end.nextSibling || this.end);
-          endOffset = 0;
-        }
-      }
+					startPos = ice.dom.getLastChild(this.start.previousSibling);
+					startOffset = startPos.length;
+				}
 
-      ice.dom.remove([this.start, this.end]);
+				if (this.end.previousSibling) {
+					endPos = ice.dom.getLastChild(this.end.previousSibling);
+				} else {
+					endPos = ice.dom.getFirstChild(this.end.nextSibling || this.end);
+					endOffset = 0;
+				}
+			}
 
-      if (endPos === null) {
-        range.setEnd(startPos, startOffset);
-        range.collapse(false);
-      } else {
-        range.setStart(startPos, startOffset);
-        if (endOffset === null) {
-          endOffset = (endPos.length || 0);
-        }
-        range.setEnd(endPos, endOffset);
-      }
+			ice.dom.remove([this.start, this.end]);
+			try {
+				ice.dom.normalize(parent);
+			} 
+			catch (e) {}
 
-      try {
-        this.selection.addRange(range);
-      } catch (e) {
-        // IE may throw exception for hidden elements..
-      }
-    },
+			if (endPos === null) {
+				range.setEnd(startPos, startOffset);
+				range.collapse(false);
+			} 
+			else {
+				range.setStart(startPos, startOffset);
+				if (endOffset === null) {
+					endOffset = (endPos.length || 0);
+				}
+				range.setEnd(endPos, endOffset);
+			}
 
-    getBookmark: function(parent, type) {
-      var elem = ice.dom.getClass('iceBookmark_' + type, parent)[0];
-      return elem;
-    },
+			try {
+				this.selection.addRange(range);
+			} 
+			catch (e) {
+				// IE may throw exception for hidden elements..
+			}
+		},
 
-    removeBookmarks: function(elem) {
-      ice.dom.remove(ice.dom.getClass('iceBookmark', elem, 'span'));
-    }
-  };
+		getBookmark: function(parent, type) {
+			var elem = ice.dom.getClass('iceBookmark_' + type, parent)[0];
+			return elem;
+		},
 
-  exports.Bookmark = Bookmark;
+		removeBookmarks: function(elem) {
+			ice.dom.remove(ice.dom.getClass('iceBookmark', elem, 'span'));
+		}
+	};
+
+	exports.Bookmark = Bookmark;
 
 }).call(this.ice);/**
 Copyright 2013 LoopIndex, This file is part of the Track Changes plugin for CKEditor.

@@ -902,11 +902,13 @@
 				};
 			};
 	
-			var matched = uaMatch( navigator.userAgent );
-			var browser = {
-				type: "unknown",
-				version : 0
-			};
+			var ua = navigator.userAgent.toLowerCase(),
+				matched = uaMatch(ua),
+				browser = {
+					type: "unknown",
+					version : 0,
+					msie: false
+				};
 	
 			if ( matched.browser ) {
 				browser[ matched.browser ] = true;
@@ -923,7 +925,10 @@
 			if (browser.webkit) {
 				browser.type = "webkit";
 			}
-			browser.firefox = (/Firefox/.test(navigator.userAgent) == true);
+			browser.firefox = (/firefox/.test(ua) == true);
+			if (! browser.msie) {
+				browser.msie = !! /trident/.test(ua); 
+			}
 			
 			return browser;
 		})();

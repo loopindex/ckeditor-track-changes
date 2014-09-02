@@ -1172,7 +1172,7 @@
 				b1 = ice.dom.parents(range.startContainer, this.blockEls.join(', '))[0],
 				b2 = ice.dom.parents(range.endContainer, this.blockEls.join(', '))[0],
 				betweenBlocks = new Array(); 
-	
+	// elements length may change during the loop so don't optimize
 			for (var i = 0; i < elements.length; i++) {
 				var elem = elements[i];
 				if (! elem || ! elem.parentNode) { // maybe removed as a side effect of removing other stuff
@@ -1294,8 +1294,7 @@
 			// Move range to position the cursor on the inside of any adjacent container that it is going
 			// to potentially delete into or after a stub element.	E.G.:	test|<em>text</em>	->	test<em>|text</em> or
 			// text1 |<img> text2 -> text1 <img>| text2
-	
-			// Merge blocks: If mergeBlocks is enabled, merge the previous and current block.
+
 			range.moveEnd(ice.dom.CHARACTER_UNIT, 1);
 			range.moveEnd(ice.dom.CHARACTER_UNIT, -1);
 	
@@ -1323,14 +1322,16 @@
 				// If the next container is non-editable, enclose it with a delete ice node and add an empty text node after it to position the caret.
 				if (!nextContainer.isContentEditable) {
 					returnValue = this._addDeleteTracking(nextContainer, {range:null, moveLeft:false, merge: true});
-					var emptySpaceNode = document.createTextNode('');
+					var emptySpaceNode = this.env.document.createTextNode('');
 					nextContainer.parentNode.insertBefore(emptySpaceNode, nextContainer.nextSibling);
 					range.selectNode(emptySpaceNode);
 					range.collapse(true);
 					return returnValue;
 				}
 		
-				if (this._handleVoidEl(nextContainer, range)) return true;
+				if (this._handleVoidEl(nextContainer, range)) {
+					return true;
+				}
 		
 				// If the caret was placed directly before a stub element, enclose the element with a delete ice node.
 				if (ice.dom.isChildOf(nextContainer, parentBlock) && ice.dom.isStubElement(nextContainer)) {
@@ -1707,30 +1708,45 @@
 			return true;
 		},
 		
+		//TODO
+		// Maybe all we need is to select the newly added node, either to the right or to the left
 		_addDeletionInInsertNode: function(contentNode, contentAddNode, options) {
 			var range = options && options.range,
 				moveLeft = options && options.moveLeft;
 			if (this._currentUserIceNode(contentAddNode)) {
-				if (range && moveLeft) {
-					range.selectNode(contentNode);
+				if (range) {
+					if (moveLeft) {
+						range.setStartBefore(contentNode);
+					}
+					else {
+						range.setStartAfter(contentNode);
+					}
+					range.collapse(moveLeft);
 				}
 				contentNode.parentNode.removeChild(contentNode);
-				var cleanNode = ice.dom.cloneNode(contentAddNode);
-				ice.dom.remove(ice.dom.find(cleanNode, '.iceBookmark'));
+				if (! this._browser.msie) {
+					ice.dom.normalizeNode(contentAddNode);	
+				}
+				var bmCount = ice.dom.find(contentAddNode, ".iceBookmark").length,
+					cleanNode;
+				if (bmCount > 0) {
+					cleanNode = ice.dom.cloneNode(contentAddNode);
+					ice.dom.remove(ice.dom.find(cleanNode, '.iceBookmark'));
+					cleanNode = cleanNode[0];
+				}
+				else {
+					cleanNode = contentAddNode;
+				}
+					
 				// Remove a potential empty tracking container
-				if (contentAddNode !== null && (ice.dom.hasNoTextOrStubContent(cleanNode[0]))) {
-					var newstart = this.env.document.createTextNode('');
-					ice.dom.insertBefore(contentAddNode, newstart);
+				if (ice.dom.hasNoTextOrStubContent(cleanNode)) {
+//					var newstart = this.env.document.createTextNode('');
+//					ice.dom.insertBefore(contentAddNode, newstart);
 					if (range) {
-						range.setStart(newstart, 0);
+						range.setStartBefore(contentAddNode);
 						range.collapse(true);
 					}
 					ice.dom.replaceWith(contentAddNode, ice.dom.contents(contentAddNode));
-				}
-				ice.dom.normalizeNode(contentAddNode);
-				this._deleteEmptyNode(contentAddNode);
-				if (range) {
-					range.refresh();
 				}
 			}
 			else { // other user insert
@@ -1776,39 +1792,6 @@
 			}
 		},
 	
-		_addDeletionInInsertNode1: function(contentNode, contentAddNode, range, moveLeft) {
-			if (this._currentUserIceNode(contentAddNode)) {
-				if (range && moveLeft) {
-					range.selectNode(contentNode);
-				}
-				contentNode.parentNode.removeChild(contentNode);
-				var cleanNode = ice.dom.cloneNode(contentAddNode);
-				ice.dom.remove(ice.dom.find(cleanNode, '.iceBookmark'));
-				// Remove a potential empty tracking container
-				if (contentAddNode !== null && (ice.dom.hasNoTextOrStubContent(cleanNode[0]))) {
-					var newstart = this.env.document.createTextNode('');
-					ice.dom.insertBefore(contentAddNode, newstart);
-					if (range) {
-						range.setStart(newstart, 0);
-						range.collapse(true);
-					}
-					ice.dom.replaceWith(contentAddNode, ice.dom.contents(contentAddNode));
-				}
-				ice.dom.normalizeNode(contentAddNode);	
-			}
-			else {
-				var cInd = rangy.dom.getNodeIndex(contentNode),
-					parent = contentNode.parentNode;
-				parent.removeChild(contentNode);
-				this._splitNode(contentAddNode, parent, cInd);
-				ctNode = this._createIceNode('deleteType');
-				ctNode.appendChild(contentNode);
-				contentAddNode.parentNode.insertBefore(ctNode, contentAddNode);
-
-			}
-			return true;
-		},
-		
 		_mergeDeleteNode: function(delNode) {
 			var siblingDel,
 				content;
