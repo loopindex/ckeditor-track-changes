@@ -96,8 +96,10 @@ Paths are relative to the LITE plugin folder
 <div class="doc">
 <ul>
 <li><h3>Get a reference to the lite plugin</h3>
-To interact with the <code>lite</code> plugin, either access it through the editor's <code>plugins.lite</code> property, or listen to the event <code>LITE.Events.INIT</code> fired by the editor instance. The <code>data</code> member of the event will
-contain a property called <code>lite</code> which references the lite plugin instance, initialized and ready for action.
+To interact with the <code>lite</code> plugin, you need to obtain a reference to the actual plugin object which is unique for each instance of CKEditor. The safest way to do this is by listening to the event <code>LITE.Events.INIT</code> fired by the editor instance. 
+The <code>data</code> member of the event will contain a property called <code>lite</code> which references the lite plugin instance, initialized and ready for action.<p>
+You can also obtain a reference directly from a fully initialized CKEditor by calling <code>myEditor.plugins.lite.findPlugin(myEditor)</code>. 
+</p>
 <li><h3>toggleTracking(bTrack, bNotify)</h3>
 Toggles change tracking in the editor. 
 <h4>Parameters</h4>

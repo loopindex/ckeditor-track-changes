@@ -987,7 +987,9 @@
 			changeid = this._batchChangeId || changeid;
 			var change = this.getChange(changeid);
 			
-			if (!ctNode.getAttribute(this.attributes.changeId)) ctNode.setAttribute(this.attributes.changeId, changeid);
+			if (!ctNode.getAttribute(this.attributes.changeId)) {
+				ctNode.setAttribute(this.attributes.changeId, changeid);
+			}
 // modified by dfl, handle missing userid, try to set username according to userid
 			var userId = ctNode.getAttribute(this.attributes.userId); 
 			if (! userId) {
@@ -1257,8 +1259,10 @@
 			return range;
 		},
 	
-		// Delete
-		// passed compare
+<span id='ice-InlineChangeEditor-method-_deleteRight'>		/**
+</span>		 * Deletes to the right (delete key)
+		 * @private
+		 */
 		_deleteRight: function (range) {
 	
 			var parentBlock = ice.dom.isBlockElement(range.startContainer) &amp;&amp; range.startContainer || ice.dom.getBlockParent(range.startContainer, this.element) || null,
@@ -1407,7 +1411,10 @@
 	
 		},
 	
-		// Backspace
+<span id='ice-InlineChangeEditor-method-_deleteLeft'>		/**
+</span>		 * Deletes to the left (backspace)
+		 * @private
+		 */
 		_deleteLeft: function (range) {
 	
 			var parentBlock = ice.dom.isBlockElement(range.startContainer) &amp;&amp; range.startContainer || ice.dom.getBlockParent(range.startContainer, this.element) || null,
@@ -1610,6 +1617,11 @@
 	
 		// Marks text and other nodes for deletion
 		// compared OK
+<span id='ice-InlineChangeEditor-method-_addDeleteTracking'>/**
+</span> * @private
+ * Adds delete tracking to the provided node. The node is checked for containment in various tracking contexts
+ * (e.g. inside an insert block, delete block)
+ */
 		_addDeleteTracking: function (contentNode, options) {
 	
 			var contentAddNode = this._getIceNode(contentNode, 'insertType'),
@@ -1673,6 +1685,9 @@
 	
 		},
 		
+<span id='ice-InlineChangeEditor-method-_deleteInDeleted'>		/**
+</span>		 * Handle the case of deletion inside a delete element
+		 */
 		_deleteInDeleted: function(contentNode, options) {
 			var range = options.range, 
 				moveLeft = options.moveLeft,
@@ -1725,8 +1740,14 @@
 			return true;
 		},
 		
-		//TODO
-		// Maybe all we need is to select the newly added node, either to the right or to the left
+
+<span id='ice-InlineChangeEditor-method-_addDeletionInInsertNode'>/**
+</span> * @private
+ * Adds delete tracking markup around a content node
+ * @param contentNode the content to be marked as deleted
+ * @param contentAddNode the insert node surrounding the content
+ * @options may contain range, moveLeft, merge
+ */
 		_addDeletionInInsertNode: function(contentNode, contentAddNode, options) {
 			var range = options &amp;&amp; options.range,
 				moveLeft = options &amp;&amp; options.moveLeft;
@@ -1802,6 +1823,11 @@
 			return true;
 		},
 		
+
+<span id='ice-InlineChangeEditor-method-_deleteEmptyNode'>		/**
+</span>		 * @private
+		 * Deletes a node if it does not contain anything 
+		 */
 		_deleteEmptyNode: function(node) {
 			var parent = node &amp;&amp; node.parentNode;
 			if (parent &amp;&amp; ice.dom.hasNoTextOrStubContent(node)) {
@@ -1809,6 +1835,9 @@
 			}
 		},
 	
+<span id='ice-InlineChangeEditor-method-_mergeDeleteNode'>		/**
+</span>		 * Merges a delete node with its siblings if they belong to the same user
+		 */
 		_mergeDeleteNode: function(delNode) {
 			var siblingDel,
 				content;
@@ -2383,7 +2412,7 @@
 			nodes.each((function(i,node) {
 				var match = (! user) || (user.id == node.getAttribute(this.attributes.userId));
 				if (user &amp;&amp; match) {
-					node.setAttribute(this.userNameAttribute, user.name);
+					node.setAttribute(this.attributes.userName, user.name);
 				}
 			}).bind(this));
 		},

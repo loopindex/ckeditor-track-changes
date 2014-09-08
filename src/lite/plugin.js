@@ -223,8 +223,86 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		else {
 			return "on " + months[date.getMonth()] + " " + date.getDate() + ", " + date.getFullYear();
 		}
-	}	
+	}
 	
+	/**
+	 * @class LITE.configuration
+	 * The configuration object for the {@link LITE.lite} and the {@link LITE.LITEPlugin} objects
+	 * This object is usually created in the CKEditor configuration file. It can also be created/modified
+	 * in the callback for CKEditor's <strong>configLoaded</strong> event
+	 * <p>In the config file, create this object with code such as:
+	 * <pre>
+	 * CKEDITOR.editorConfig = function( config ) {
+	 * // ... your own configuration
+	 *		var lite = config.lite = config.lite || {};
+	 * // now assign values to properties: lite.xxx = yyy;
+	 * </pre>
+	 * And here's an example for configuring lite in the <strong>configLoaded</strong> event:
+	 * <pre>
+	 * 		function onConfigLoaded(e) {
+	 *  		var conf = e.editor.config;
+	 *  		var lt = conf.lite = conf.lite || {};
+	 *  		lt.isTracking = false; 
+	 *  	}
+	 *  </pre>
+	 */	
+
+	
+	/**
+	 * @member LITE.configuration
+	 * @property {Boolean} isTracking
+	 */
+	
+	/**
+	 * @member LITE.configuration
+	 * @property {Object} debug
+	 * set debug.log to true for LITE to print error messages in the browser console
+	 */
+	
+	/**
+	 * @member LITE.configuration
+	 * @property {Array} includes
+	 * sets the javascript include files to be included in LITE instead of the default. Use only for debugging or extending the plugin
+	 */
+
+	/**
+	 * @member LITE.configuration
+	 * @property {Object} userStyles
+	 * A map of user id=>user style index
+	 * Normally LITE will assign a style number for each user id it encounters in the markup. If you want to maintain consistent
+	 * style per users (e.g. Melixon is always colored green, Thierry in chartreuse), assign a value to this property, e.g.
+	 * <pre> 
+	 * 	lite.userStyles = {
+	 * 		15: 1,
+	 * 		18:2,
+	 * 		21:3
+	 * 	};
+	 * </pre>
+	 */
+	
+	/**
+	 * @member LITE.configuration
+	 * @property {Object} tooltips
+	 * Configures the tooltips shown by LITE
+	 * These are the default values used by LITE:
+	 * <pre>
+	 * 	lite.tooltips = {
+	 * 		show: true, // set to false to prevent tooltips
+	 * 		path: "js/opentip-adapter.js", // change to point to your own implementation
+	 * 		classPath: "OpentipAdapter", // the full name of tooltip class construtor
+	 * 		cssPath: "css/opentip.css", // the stylesheet file of the tooltips
+	 * 		delay: 500 // the delay in milliseconds between hovering over a change node and the appearance of a tooltip
+	 * 	};
+	 * </pre>
+	 * 
+	 */
+	
+	/**
+	 * @member LITE.configuration
+	 * @property {String} jQueryPath
+	 * the path (relative to the LITE plugin.js file) to jQuery
+	 * @default js/jquery.min.js 
+	 */
 	
 	/**
 	 * @class LITE.lite
@@ -1196,7 +1274,6 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		 * @param editor
 		 * @param props
 		 */
-		
 		_setPluginFeatures : function(editor, props) {
 			if (! editor || ! editor.filter || ! editor.filter.addFeature) {
 				return;
@@ -1212,7 +1289,6 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 				}
 				
 				function makeAttributes(tag) {
-		//			allowedContent:'span[data-cid,data-time,data-userdata,data-userid,data-username,title]'
 					var attrs = ['title'];
 					for (var key in props.attributes) {
 						if (props.attributes.hasOwnProperty(key)) {
@@ -1235,12 +1311,12 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 						allowedContent: props.insertTag+features.join("")
 					});
 				}
-				if (props.deleteTag && props.deleteTag != props.insertTag) {
+				if (props.deleteTag && props.deleteTag !== props.insertTag) {
 					features.push(makeClasses(props.deleteTag));
 					features.push(makeAttributes(props.deleteTag));
 					editor.filter.addFeature({
 						name: "lite2",
-						allowedContent: props.insertTag+features.join("")
+						allowedContent: props.deleteTag+features.join("")
 					});
 				}
 				

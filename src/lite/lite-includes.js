@@ -4662,7 +4662,9 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 			changeid = this._batchChangeId || changeid;
 			var change = this.getChange(changeid);
 			
-			if (!ctNode.getAttribute(this.attributes.changeId)) ctNode.setAttribute(this.attributes.changeId, changeid);
+			if (!ctNode.getAttribute(this.attributes.changeId)) {
+				ctNode.setAttribute(this.attributes.changeId, changeid);
+			}
 // modified by dfl, handle missing userid, try to set username according to userid
 			var userId = ctNode.getAttribute(this.attributes.userId); 
 			if (! userId) {
@@ -4932,8 +4934,10 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 			return range;
 		},
 	
-		// Delete
-		// passed compare
+		/**
+		 * Deletes to the right (delete key)
+		 * @private
+		 */
 		_deleteRight: function (range) {
 	
 			var parentBlock = ice.dom.isBlockElement(range.startContainer) && range.startContainer || ice.dom.getBlockParent(range.startContainer, this.element) || null,
@@ -5082,7 +5086,10 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 	
 		},
 	
-		// Backspace
+		/**
+		 * Deletes to the left (backspace)
+		 * @private
+		 */
 		_deleteLeft: function (range) {
 	
 			var parentBlock = ice.dom.isBlockElement(range.startContainer) && range.startContainer || ice.dom.getBlockParent(range.startContainer, this.element) || null,
@@ -5285,6 +5292,11 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 	
 		// Marks text and other nodes for deletion
 		// compared OK
+/**
+ * @private
+ * Adds delete tracking to the provided node. The node is checked for containment in various tracking contexts
+ * (e.g. inside an insert block, delete block)
+ */
 		_addDeleteTracking: function (contentNode, options) {
 	
 			var contentAddNode = this._getIceNode(contentNode, 'insertType'),
@@ -5348,6 +5360,9 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 	
 		},
 		
+		/**
+		 * Handle the case of deletion inside a delete element
+		 */
 		_deleteInDeleted: function(contentNode, options) {
 			var range = options.range, 
 				moveLeft = options.moveLeft,
@@ -5400,8 +5415,14 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 			return true;
 		},
 		
-		//TODO
-		// Maybe all we need is to select the newly added node, either to the right or to the left
+
+/**
+ * @private
+ * Adds delete tracking markup around a content node
+ * @param contentNode the content to be marked as deleted
+ * @param contentAddNode the insert node surrounding the content
+ * @options may contain range, moveLeft, merge
+ */
 		_addDeletionInInsertNode: function(contentNode, contentAddNode, options) {
 			var range = options && options.range,
 				moveLeft = options && options.moveLeft;
@@ -5477,6 +5498,11 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 			return true;
 		},
 		
+
+		/**
+		 * @private
+		 * Deletes a node if it does not contain anything 
+		 */
 		_deleteEmptyNode: function(node) {
 			var parent = node && node.parentNode;
 			if (parent && ice.dom.hasNoTextOrStubContent(node)) {
@@ -5484,6 +5510,9 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 			}
 		},
 	
+		/**
+		 * Merges a delete node with its siblings if they belong to the same user
+		 */
 		_mergeDeleteNode: function(delNode) {
 			var siblingDel,
 				content;
@@ -6058,7 +6087,7 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 			nodes.each((function(i,node) {
 				var match = (! user) || (user.id == node.getAttribute(this.attributes.userId));
 				if (user && match) {
-					node.setAttribute(this.userNameAttribute, user.name);
+					node.setAttribute(this.attributes.userName, user.name);
 				}
 			}).bind(this));
 		},
