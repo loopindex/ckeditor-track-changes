@@ -893,7 +893,7 @@
 		 */
 		_cleanupTextSelection: function(range, start) {
 			this._cleanupAroundNode(start);
-			if (this._isEmptyTextNode) {
+			if (this._isEmptyTextNode(start)) {
 				var parent = start.parentNode, 
 					ind = ice.dom.getNodeIndex(start);
 				parent.removeChild(start);
