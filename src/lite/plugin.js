@@ -599,24 +599,28 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		 * Change the state of change tracking for the change editor associated with this plugin.
 		 * Toggles tracking visibility in accordance with the tracking state. 
 		 * @param {Boolean} track if undefined - toggle the state, otherwise set the tracking state to this value, 
-		 * @param {Boolean} bNotify if not false, dispatch the TRACKING event
+		 * @param {Object} options an optional object with the following fields: <ul><li>notify: boolean, if not false, dispatch the TRACKING event
+		 * <li>force: if true, don't check for pending changes and just toggle</ul>
 		 */	
-		toggleTracking: function(track, bNotify) {
+		toggleTracking: function(track, options) {
+			if ("boolean" === typeof options) {
+				options = {
+						notify: options
+				};
+			}
+			options = options || {};
+			
 			var tracking = (undefined === track) ? ! this._isTracking : track,
-				e = this._editor;
+				e = this._editor,
+				force = options && options.force;
+			if (! tracking && this._isTracking) {
+				var nChanges = this._tracker.countChanges({verify: true});
+				if (nChanges) {
+					return window.alert("Your document containssome pending changes.\nPlease resolve them before turning off change tracking.");
+				}
+			}
 			this._isTracking = tracking;
 			this._setCommandsState(this._liteCommandNames, tracking ? CKEDITOR.TRISTATE_OFF : CKEDITOR.TRISTATE_DISABLED);
-/*			for (var i = this._liteCommandNames.length - 1; i >= 0; --i) {
-				var cmd = e.getCommand(this._liteCommandNames[i]);
-				if (cmd) {
-					if (tracking) {
-						cmd.enable();
-					}
-					else {
-						cmd.disable();
-					}
-				}
-			} */
 			
 			this._updateTrackingState();
 			this.toggleShow(tracking, false);
@@ -626,7 +630,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			if (ui) {
 				this._setButtonTitle(ui, tracking ? 'Stop tracking changes' : 'Start tracking changes');
 			}
-			if (bNotify !== false) {
+			if (options.notify !== false) {
 				e.fire(LITE.Events.TRACKING, {tracking:tracking, lite:this});
 			}
 		},

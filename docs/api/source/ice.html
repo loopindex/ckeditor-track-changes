@@ -334,7 +334,7 @@
 			var _rng = this.getCurrentRange(),
 				range = this._isRangeInElement(_rng, this.element),
 				hostRange = range ? null : this.hostMethods.getHostRange(),
-				changeid = this.startBatchChange(),
+				changeid = this._startBatchChange(),
 				hadSelection = !!(range &amp;&amp; !range.collapsed),
 				ret = true;
 			
@@ -362,7 +362,7 @@
 				logError(e, &quot;while trying to insert nodes&quot;);
 			}
 			finally {
-				this.endBatchChange(changeid);
+				this._endBatchChange(changeid);
 			}
 			return ret;//isPropagating;
 		},
@@ -386,7 +386,7 @@
 			else {
 				range = this.getCurrentRange();
 			}
-			var changeid = this.startBatchChange();
+			var changeid = this._startBatchChange();
 			try {
 				if (range.collapsed === false) {
 					range = this._deleteSelection(range);
@@ -493,7 +493,7 @@
 				range &amp;&amp; this.selection.addRange(range);
 			}
 			finally {
-				this.endBatchChange(changeid);
+				this._endBatchChange(changeid);
 			}
 			return prevent;
 		},
@@ -714,7 +714,7 @@
 						var found = false;
 						while (txt.indexOf(&quot;  &quot;) &gt;= 0) {
 							found = true;
-							txt = txt.replace(&quot;  &quot;, &quot; \u00a0&quot;);
+							txt = txt.replace(&quot;  &quot;, &quot; \u00a0&quot;); // replace two spaces with space+nbsp
 						}
 						if (found) {
 							e.nodeValue = txt;
@@ -871,6 +871,125 @@
 			catch(e) {
 				logError(e, &quot;While trying to get void element of&quot;, node);
 				return null;
+			}
+		},
+		
+<span id='ice-InlineChangeEditor-method-_isEmptyTextNode'>		/**
+</span>		 * @private
+		 * Return true if the parameter is a text node that contains nothing or a filler char 
+		 */
+		_isEmptyTextNode: function(node) {
+			if (! node || (ice.dom.TEXT_NODE !== node.nodeType)) {
+				return false;
+			}
+			var nv = node.nodeValue;
+			return &quot;&quot; === nv || '\u200B' === nv || '\uFEFF' === nv; 
+		},
+
+<span id='ice-InlineChangeEditor-method-_cleanupSelection'>		/**
+</span>		 * @private
+		 * If the range is collapsed, removes empty nodes around the caret
+		 */
+		_cleanupSelection: function(range) {
+			var start;
+			if (! range || ! range.collapsed || ! (start = range.startContainer)) {
+				return;
+			}
+			var nt = start.nodeType;
+			if (ice.dom.TEXT_NODE == nt) {
+				return this._cleanupTextSelection(range, start);
+			}
+			else {
+				return this._cleanupElementSelection(range);
+			}
+		},
+		
+<span id='ice-InlineChangeEditor-method-_cleanupTextSelection'>		/**
+</span>		 * @private
+		 * assumes range is valid for this operation
+		 */
+		_cleanupTextSelection: function(range, start) {
+			this._cleanupAroundNode(start);
+			if (this._isEmptyTextNode) {
+				var parent = start.parentNode, 
+					ind = ice.dom.getNodeIndex(start);
+				parent.removeChild(start);
+				ind = Math.max(0, ind - 1);
+				range.setStart(parent, ind);
+				range.setEnd(parent, ind);
+			}
+		},
+
+			
+<span id='ice-InlineChangeEditor-method-_cleanupElementSelection'>			/**
+</span>		 * @private
+		 * assumes range is valid for this operation
+		 */
+		_cleanupElementSelection: function(range) {
+			var start, includeStart = false,
+				parent = range.startContainer,
+				childCount = parent.childNodes.length;
+			if (childCount &lt; 1) {
+				return;
+			}
+			try {
+				if (range.startOffset &gt; 0) {
+					start = parent.childNodes[range.startOffset - 1];
+				}
+				else {
+					start = parent.firstChild;
+					includeStart = true;
+				}
+				if (! start) {
+					return;
+				}
+			}
+			catch(e) {
+				return;
+			}
+			this._cleanupAroundNode(start, includeStart);
+			if (range.startOffset === 0) {
+				return;
+			}
+			var ind = ice.dom.getNodeIndex(start) + 1;
+			if (this._isEmptyTextNode(start)) {
+				ind = Math.max(0, ind - 1);
+				parent.removeChild(start);
+			}
+			if (parent.childNodes.length != childCount) {
+				range.setStart(parent, ind);
+				range.setEnd(parent, ind);
+			}
+		},
+		
+		_cleanupAroundNode: function(node, includeNode) {
+			var parent = node.parentNode,
+				anchor = node.nextSibling,
+				tmp;
+			childCount = parent.childNodes.length;
+			while (anchor) {
+				if (this._isEmptyTextNode(anchor)) {
+					tmp = anchor;
+					anchor = anchor.nextSibling;
+					parent.removeChild(tmp);
+				}
+				else {
+					anchor = anchor.nextSibling;
+				}
+			}
+			anchor = node.previousSibling;
+			while (anchor) {
+				if (this._isEmptyTextNode(anchor)) {
+					tmp = anchor;
+					anchor = anchor.previousSibling;
+					parent.removeChild(tmp);
+				}
+				else {
+					anchor = anchor.previousSibling;
+				}
+			}
+			if (includeNode &amp;&amp; this._isEmptyTextNode(node)) {
+				parent.removeChild(node);
 			}
 		},
 	
@@ -1032,21 +1151,30 @@
 			return id;
 		},
 	
-<span id='ice-InlineChangeEditor-method-startBatchChange'>		/**
-</span>		 * Start a batch change if none is already underway
+<span id='ice-InlineChangeEditor-method-_startBatchChange'>		/**
+</span>		 * @private
+		 * Start a batch change if none is already underway
 		 * @return a change id if a new batch has been started, otherwise null
 		 */
-		startBatchChange: function () {
+		_startBatchChange: function () {
 			return this._batchChangeId ? null : 
 				(this._batchChangeId = this.getNewChangeId());
 		},
-	
-<span id='ice-InlineChangeEditor-method-endBatchChange'>		/**
-</span>		 * End the batch change
+		
+<span id='ice-InlineChangeEditor-method-getContentElement'>		/**
+</span>		 * Returns the top level DOM element handled by this change tracker
+		 */
+		getContentElement: function() {
+			return this.element;
+		},
+		
+<span id='ice-InlineChangeEditor-method-_endBatchChange'>		/**
+</span>		 * @private
+		 * End the batch change
 		 * @param changeid If not identical to the current change id, no action is taken
 		 * this allows callers to start a batch change but end it only if the change was really started by the caller
 		 */
-		endBatchChange: function (changeid) {
+		_endBatchChange: function (changeid) {
 			if (changeid &amp;&amp; (changeid === this._batchChangeId)) {
 				this._batchChangeId = null;
 				this._triggerChangeText();
@@ -1076,7 +1204,6 @@
 			var ctNode = this._getIceNode(start, 'insertType'),
 				inCurrentUserInsert = this._currentUserIceNode(ctNode);
 	
-			// Do nothing, let this bubble-up to insertion handler.
 			if (inCurrentUserInsert) {
 				var head = nodes &amp;&amp; nodes[0];
 				if (head) {
@@ -1136,7 +1263,9 @@
 					range.setStartAfter(f(ctNode));
 					range.collapse(true);
 				}
-	
+
+				
+				this._cleanupSelection(range);
 				range.insertNode(f(node));
 				var len = (nodes &amp;&amp; nodes.length) || 0;
 				if (len) {
@@ -1144,7 +1273,8 @@
 					for (var i = 0; i &lt; len; ++i) {
 						node.appendChild(nodes[i]);
 					}
-					range.setStartAfter(f(node.lastChild));
+					range.setEndAfter(f(node.lastChild));
+					range.collapse();
 				}
 				else if (text) {
 					inserted = true;
@@ -2059,61 +2189,28 @@
 	
 			var preventDefault = false;
 			switch (keyCode) {
-			case 65:
-				// added by dfl
-				if (! this._handleSelectAll) {
-					return true;
-				}
-				// Check for CTRL/CMD + A (select all).
-				if (e.ctrlKey === true || e.metaKey === true) {
-					preventDefault = true;
-					var range = this.getCurrentRange();
+				case 120:
+				case 88:
+					if (true === e.ctrlKey || true === e.metaKey) {
+						this.prepareToCut();
+					}
+					break;
+				case 67:
+				case 99:
+					if (true === e.ctrlKey || true === e.metaKey) {
+						this.prepareToCopy();
+					}
+					break;
+	/*				if (e.ctrlKey === true || e.metaKey === true) {
+						ice.dom.preventDefault(e);
+						this.hostMethods.hostCopy();
+						this._deleteContents();
+						return false;
+					} */
 		
-					if (ice.dom.isBrowser('msie') === true) {
-						var selStart = this.env.document.createTextNode('');
-						var selEnd = this.env.document.createTextNode('');
-		
-						if (this.element.firstChild) {
-						ice.dom.insertBefore(this.element.firstChild, selStart);
-						} else {
-						this.element.appendChild(selStart);
-						}
-		
-						this.element.appendChild(selEnd);
-		
-						range.setStart(selStart, 0);
-						range.setEnd(selEnd, 0);
-					} else {
-						range.setStart(range.getFirstSelectableChild(this.element), 0);
-						var lastSelectable = range.getLastSelectableChild(this.element);
-						range.setEnd(lastSelectable, lastSelectable.length);
-					} //end if
-		
-					this.selection.addRange(range);
-				} //end if
-				break;
-			case 120:
-			case 88:
-				if (true === e.ctrlKey || true === e.metaKey) {
-					this.prepareToCut();
-				}
-				break;
-			case 67:
-			case 99:
-				if (true === e.ctrlKey || true === e.metaKey) {
-					this.prepareToCopy();
-				}
-				break;
-/*				if (e.ctrlKey === true || e.metaKey === true) {
-					ice.dom.preventDefault(e);
-					this.hostMethods.hostCopy();
-					this._deleteContents();
-					return false;
-				} */
-	
-			default:
-				// Not a special key.
-				break;
+				default:
+					// Not a special key.
+					break;
 			} //end switch
 	
 			if (preventDefault === true) {
@@ -2124,15 +2221,6 @@
 			return true;
 		},
 	
-		/* Added by dfl */
-		
-<span id='ice-InlineChangeEditor-method-getContentElement'>		/**
-</span>		 * Returns the top level DOM element handled by this change tracker
-		 */
-		getContentElement: function() {
-			return this.element;
-		},
-		
 		_getIceNodes : function() {
 			var classList = [];
 			var self = this;
@@ -2248,7 +2336,7 @@
 //			printRange(range, &quot;after set start before the head&quot;);
 			range.setEndAfter(tail);
 //			printRange(range, &quot;after set end after the tail&quot;);
-			var cid = this.startBatchChange();
+			var cid = this._startBatchChange();
 			try {
 				this._deleteSelection(range);
 			}
@@ -2256,7 +2344,7 @@
 				logError(e, &quot;While trying to delete selection&quot;);
 			}
 			finally {
-				this.endBatchChange(cid);
+				this._endBatchChange(cid);
 				this.selection.addRange(origRange);
 				this._removeTrackingInRange(origRange, false);
 //				printRange(this.selection.getRangeAt(0), &quot;range after deletion&quot;);
@@ -2311,18 +2399,22 @@
 		
 <span id='ice-InlineChangeEditor-method-_filterChanges'>		/**
 </span>		 * Filters the current change set based on options
-		 * @param options may contain one of:
-		 * exclude: an array of user ids to exclude, include: an array of user ids to include
-		 * and
-		 * filter: a filter function of the form function({userid, time, data}):boolean
+		 * @param options may contain one of:&lt;ul&gt;
+		 * &lt;li&gt;exclude: an array of user ids to exclude&lt;li&gt;include: an array of user ids to include
+		 * &lt;li&gt;filter: a filter function of the form function({userid, time, data}):boolean
+		 * &lt;li&gt;verify: a boolean indicating whether or not to verify that there are matching dom nodes for each matching change
+		 * &lt;/ul&gt;
 		 *	 @return an object with two members: count, changes (map of id:changeObject)
 		 * @private
 		 */
-		_filterChanges : function(options) {
-			var count = 0, changes = {};
-			var filter = options &amp;&amp; options.filter;
-			var exclude = options &amp;&amp; options.exclude ? jQuery.map(options.exclude, function(e) { return String(e); }) : null;
-			var include = options &amp;&amp; options.include ? jQuery.map(options.include, function(e) { return String(e); }) : null;
+		_filterChanges : function(_options) {
+			var count = 0, changes = {},
+				options = _options || {},
+				filter = options.filter,
+				exclude = options.exclude ? jQuery.map(options.exclude, function(e) { return String(e); }) : null,
+				include = options.include ? jQuery.map(options.include, function(e) { return String(e); }) : null,
+				verify = options.verify,
+				elements = null;
 			for (var key in this._changes) {
 				var change = this._changes[key];
 				if (change &amp;&amp; change.type) {	
@@ -2330,8 +2422,14 @@
 						(exclude &amp;&amp; exclude.indexOf(change.userid) &gt;= 0) ||
 						(include &amp;&amp; include.indexOf(change.userid) &lt; 0);
 					if (! skip) {
-						++count;
-						changes[key] = change;
+						if (verify) {
+							elements = ice.dom.find(this.element, &quot;[&quot; + this.attributes.changeId + &quot;]&quot;);
+							skip = ! elements.length;
+						}
+						if (! skip) {
+							++count;
+							changes[key] = change;
+						}
 					}
 				}
 			}
@@ -2630,6 +2728,7 @@
 			if (! txt) {
 				return &quot;&quot;;
 			}
+			txt = txt.replace('/\n/g', &quot;\\n&quot;).replace('/\r/g', &quot;&quot;).replace('\u200B', &quot;{filler}&quot;).replace('\uFEFF', &quot;{filler}&quot;)
 			if (txt.length &lt;= 15) {
 				return txt;
 			}
@@ -2637,70 +2736,61 @@
 		}
 		function addNode(node) {
 			var str;
-			if (node.nodeType == 3) {
+			if (node.nodeType === 3) {
 				str = &quot;Text:&quot; + printText(node.nodeValue); 
 			}
 			else {
-				str = node.nodeName + &quot;(&quot; + printText(node.innerText) + &quot;)&quot;;
+				var txt = node.innerText;
+				str = node.nodeName + (txt ? &quot;(&quot; + printText(txt) + &quot;)&quot; :'');
 			}
-			parts.push(&quot;&lt;&quot; + str + &quot;&gt;&quot;);
+			parts.push(&quot;&lt;&quot; + str + &quot; /&gt;&quot;);
 		}
 		function printNode(node, offset1, offset2) {
-			if (&quot;number&quot; != typeof offset1) {
-				offset1 = -1;
-			}
-			if (offset1===offset2 || &quot;number&quot; != typeof offset2) {
+			if (&quot;number&quot; != typeof offset2) {
 				offset2 = -1;
 			}
 			if (3 == node.nodeType) { // text
 				var txt = node.nodeValue;
-				if (offset1 &gt;= 0) {
-					parts.push(printText(txt.substring(0, offset1)));
+				parts.push(printText(txt.substring(0, offset1)));
+				parts.push(&quot;|&quot;);
+				if (offset2 &gt; offset1) {
+					parts.push(printText(txt.substring(offset1, offset2)));
 					parts.push(&quot;|&quot;);
-					if (offset2 &gt; 0) {
-						parts.push(printText(txt.substring(offset1, offset2)));
-						parts.push(&quot;|&quot;);
-						parts.push(printText(txt.substring(offset2)));
-					}
-					else {
-						parts.push(printText(txt.substring(offset1)));
-					}
+					parts.push(printText(txt.substring(offset2)));
 				}
 				else {
-					parts.push(printText(txt));
+					parts.push(printText(txt.substring(offset1)));
 				}
 			}
 			else if (1 == node.nodeType) {
-				if (offset1 &gt;= 0) {
-					var i = 0,
-						child = node.firstChild;
+				var i = 0,
+					children = node.childNodes;
+					start = (i &gt; 6 ? i - 5 : 0);
+				addNode(node);
+				if (start &gt; 0) {
+					parts.push(&quot;(...&quot; + start + &quot; nodes)&quot;);
+				}
+				for (i = start; i &lt; offset1; ++i) {
+					addNode(children[i]);
+				}
+				parts.push(&quot;|&quot;);
+				if (offset2 &gt; offset1) {
+					for (i = offset1; i &lt; offset2; ++i) {
+						addNode(children[i]);
+					}
+					parts.push('|');
+				}
+				if (offset2 &gt; 0 &amp;&amp; offset2 &lt; children.length){
+					var child = children[offset2];
 					while (child) {
-						if (i &lt; offset1 - 1) {
-							i++;
-							continue;
-						}
-						if ((offset2 &gt;= 0 &amp;&amp; i &gt; offset2 + 1) ||
-							(offset2 &lt; 0 &amp;&amp; i &gt; offset1 + 1)) {
-							break;
-						}
-						if (i == offset1) {
-							parts.push(&quot;|&quot;);
-						}
-						if (i == offset2) {
-							parts.push(&quot;|&quot;);
-						}
 						addNode(child);
 						child = child.nextSibling;
-						i++;
 					}
+				}
 
-				}
-				else {
-					addNode(node);
-				}
 			}
 		}
-		if (range.startContainer == range.endContainer) {
+		if (range.startContainer === range.endContainer) {
 			printNode(range.startContainer, range.startOffset, range.endOffset);
 		}
 		else {
@@ -2716,6 +2806,7 @@
 
 
 	exports.ice = this.ice || {};
+	this.ice.printRange = printRange;
 	exports.ice.InlineChangeEditor = InlineChangeEditor;
 
 }).call(this);

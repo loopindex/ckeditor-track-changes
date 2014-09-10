@@ -4009,7 +4009,7 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 			var _rng = this.getCurrentRange(),
 				range = this._isRangeInElement(_rng, this.element),
 				hostRange = range ? null : this.hostMethods.getHostRange(),
-				changeid = this.startBatchChange(),
+				changeid = this._startBatchChange(),
 				hadSelection = !!(range && !range.collapsed),
 				ret = true;
 			
@@ -4037,7 +4037,7 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 				logError(e, "while trying to insert nodes");
 			}
 			finally {
-				this.endBatchChange(changeid);
+				this._endBatchChange(changeid);
 			}
 			return ret;//isPropagating;
 		},
@@ -4061,7 +4061,7 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 			else {
 				range = this.getCurrentRange();
 			}
-			var changeid = this.startBatchChange();
+			var changeid = this._startBatchChange();
 			try {
 				if (range.collapsed === false) {
 					range = this._deleteSelection(range);
@@ -4168,7 +4168,7 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 				range && this.selection.addRange(range);
 			}
 			finally {
-				this.endBatchChange(changeid);
+				this._endBatchChange(changeid);
 			}
 			return prevent;
 		},
@@ -4389,7 +4389,7 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 						var found = false;
 						while (txt.indexOf("  ") >= 0) {
 							found = true;
-							txt = txt.replace("  ", " \u00a0");
+							txt = txt.replace("  ", " \u00a0"); // replace two spaces with space+nbsp
 						}
 						if (found) {
 							e.nodeValue = txt;
@@ -4546,6 +4546,125 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 			catch(e) {
 				logError(e, "While trying to get void element of", node);
 				return null;
+			}
+		},
+		
+		/**
+		 * @private
+		 * Return true if the parameter is a text node that contains nothing or a filler char 
+		 */
+		_isEmptyTextNode: function(node) {
+			if (! node || (ice.dom.TEXT_NODE !== node.nodeType)) {
+				return false;
+			}
+			var nv = node.nodeValue;
+			return "" === nv || '\u200B' === nv || '\uFEFF' === nv; 
+		},
+
+		/**
+		 * @private
+		 * If the range is collapsed, removes empty nodes around the caret
+		 */
+		_cleanupSelection: function(range) {
+			var start;
+			if (! range || ! range.collapsed || ! (start = range.startContainer)) {
+				return;
+			}
+			var nt = start.nodeType;
+			if (ice.dom.TEXT_NODE == nt) {
+				return this._cleanupTextSelection(range, start);
+			}
+			else {
+				return this._cleanupElementSelection(range);
+			}
+		},
+		
+		/**
+		 * @private
+		 * assumes range is valid for this operation
+		 */
+		_cleanupTextSelection: function(range, start) {
+			this._cleanupAroundNode(start);
+			if (this._isEmptyTextNode) {
+				var parent = start.parentNode, 
+					ind = ice.dom.getNodeIndex(start);
+				parent.removeChild(start);
+				ind = Math.max(0, ind - 1);
+				range.setStart(parent, ind);
+				range.setEnd(parent, ind);
+			}
+		},
+
+			
+			/**
+		 * @private
+		 * assumes range is valid for this operation
+		 */
+		_cleanupElementSelection: function(range) {
+			var start, includeStart = false,
+				parent = range.startContainer,
+				childCount = parent.childNodes.length;
+			if (childCount < 1) {
+				return;
+			}
+			try {
+				if (range.startOffset > 0) {
+					start = parent.childNodes[range.startOffset - 1];
+				}
+				else {
+					start = parent.firstChild;
+					includeStart = true;
+				}
+				if (! start) {
+					return;
+				}
+			}
+			catch(e) {
+				return;
+			}
+			this._cleanupAroundNode(start, includeStart);
+			if (range.startOffset === 0) {
+				return;
+			}
+			var ind = ice.dom.getNodeIndex(start) + 1;
+			if (this._isEmptyTextNode(start)) {
+				ind = Math.max(0, ind - 1);
+				parent.removeChild(start);
+			}
+			if (parent.childNodes.length != childCount) {
+				range.setStart(parent, ind);
+				range.setEnd(parent, ind);
+			}
+		},
+		
+		_cleanupAroundNode: function(node, includeNode) {
+			var parent = node.parentNode,
+				anchor = node.nextSibling,
+				tmp;
+			childCount = parent.childNodes.length;
+			while (anchor) {
+				if (this._isEmptyTextNode(anchor)) {
+					tmp = anchor;
+					anchor = anchor.nextSibling;
+					parent.removeChild(tmp);
+				}
+				else {
+					anchor = anchor.nextSibling;
+				}
+			}
+			anchor = node.previousSibling;
+			while (anchor) {
+				if (this._isEmptyTextNode(anchor)) {
+					tmp = anchor;
+					anchor = anchor.previousSibling;
+					parent.removeChild(tmp);
+				}
+				else {
+					anchor = anchor.previousSibling;
+				}
+			}
+			if (includeNode && this._isEmptyTextNode(node)) {
+				parent.removeChild(node);
 			}
 		},
 	
@@ -4708,20 +4827,29 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 		},
 	
 		/**
+		 * @private
 		 * Start a batch change if none is already underway
 		 * @return a change id if a new batch has been started, otherwise null
 		 */
-		startBatchChange: function () {
+		_startBatchChange: function () {
 			return this._batchChangeId ? null : 
 				(this._batchChangeId = this.getNewChangeId());
 		},
-	
+		
 		/**
+		 * Returns the top level DOM element handled by this change tracker
+		 */
+		getContentElement: function() {
+			return this.element;
+		},
+		
+		/**
+		 * @private
 		 * End the batch change
 		 * @param changeid If not identical to the current change id, no action is taken
 		 * this allows callers to start a batch change but end it only if the change was really started by the caller
 		 */
-		endBatchChange: function (changeid) {
+		_endBatchChange: function (changeid) {
 			if (changeid && (changeid === this._batchChangeId)) {
 				this._batchChangeId = null;
 				this._triggerChangeText();
@@ -4751,7 +4879,6 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 			var ctNode = this._getIceNode(start, 'insertType'),
 				inCurrentUserInsert = this._currentUserIceNode(ctNode);
 	
-			// Do nothing, let this bubble-up to insertion handler.
 			if (inCurrentUserInsert) {
 				var head = nodes && nodes[0];
 				if (head) {
@@ -4811,7 +4938,9 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 					range.setStartAfter(f(ctNode));
 					range.collapse(true);
 				}
-	
+
+				
+				this._cleanupSelection(range);
 				range.insertNode(f(node));
 				var len = (nodes && nodes.length) || 0;
 				if (len) {
@@ -4819,7 +4948,8 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 					for (var i = 0; i < len; ++i) {
 						node.appendChild(nodes[i]);
 					}
-					range.setStartAfter(f(node.lastChild));
+					range.setEndAfter(f(node.lastChild));
+					range.collapse();
 				}
 				else if (text) {
 					inserted = true;
@@ -5734,61 +5864,28 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 	
 			var preventDefault = false;
 			switch (keyCode) {
-			case 65:
-				// added by dfl
-				if (! this._handleSelectAll) {
-					return true;
-				}
-				// Check for CTRL/CMD + A (select all).
-				if (e.ctrlKey === true || e.metaKey === true) {
-					preventDefault = true;
-					var range = this.getCurrentRange();
+				case 120:
+				case 88:
+					if (true === e.ctrlKey || true === e.metaKey) {
+						this.prepareToCut();
+					}
+					break;
+				case 67:
+				case 99:
+					if (true === e.ctrlKey || true === e.metaKey) {
+						this.prepareToCopy();
+					}
+					break;
+	/*				if (e.ctrlKey === true || e.metaKey === true) {
+						ice.dom.preventDefault(e);
+						this.hostMethods.hostCopy();
+						this._deleteContents();
+						return false;
+					} */
 		
-					if (ice.dom.isBrowser('msie') === true) {
-						var selStart = this.env.document.createTextNode('');
-						var selEnd = this.env.document.createTextNode('');
-		
-						if (this.element.firstChild) {
-						ice.dom.insertBefore(this.element.firstChild, selStart);
-						} else {
-						this.element.appendChild(selStart);
-						}
-		
-						this.element.appendChild(selEnd);
-		
-						range.setStart(selStart, 0);
-						range.setEnd(selEnd, 0);
-					} else {
-						range.setStart(range.getFirstSelectableChild(this.element), 0);
-						var lastSelectable = range.getLastSelectableChild(this.element);
-						range.setEnd(lastSelectable, lastSelectable.length);
-					} //end if
-		
-					this.selection.addRange(range);
-				} //end if
-				break;
-			case 120:
-			case 88:
-				if (true === e.ctrlKey || true === e.metaKey) {
-					this.prepareToCut();
-				}
-				break;
-			case 67:
-			case 99:
-				if (true === e.ctrlKey || true === e.metaKey) {
-					this.prepareToCopy();
-				}
-				break;
-/*				if (e.ctrlKey === true || e.metaKey === true) {
-					ice.dom.preventDefault(e);
-					this.hostMethods.hostCopy();
-					this._deleteContents();
-					return false;
-				} */
-	
-			default:
-				// Not a special key.
-				break;
+				default:
+					// Not a special key.
+					break;
 			} //end switch
 	
 			if (preventDefault === true) {
@@ -5799,15 +5896,6 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 			return true;
 		},
 	
-		/* Added by dfl */
-		
-		/**
-		 * Returns the top level DOM element handled by this change tracker
-		 */
-		getContentElement: function() {
-			return this.element;
-		},
-		
 		_getIceNodes : function() {
 			var classList = [];
 			var self = this;
@@ -5923,7 +6011,7 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 //			printRange(range, "after set start before the head");
 			range.setEndAfter(tail);
 //			printRange(range, "after set end after the tail");
-			var cid = this.startBatchChange();
+			var cid = this._startBatchChange();
 			try {
 				this._deleteSelection(range);
 			}
@@ -5931,7 +6019,7 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 				logError(e, "While trying to delete selection");
 			}
 			finally {
-				this.endBatchChange(cid);
+				this._endBatchChange(cid);
 				this.selection.addRange(origRange);
 				this._removeTrackingInRange(origRange, false);
 //				printRange(this.selection.getRangeAt(0), "range after deletion");
@@ -5986,18 +6074,22 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 		
 		/**
 		 * Filters the current change set based on options
-		 * @param options may contain one of:
-		 * exclude: an array of user ids to exclude, include: an array of user ids to include
-		 * and
-		 * filter: a filter function of the form function({userid, time, data}):boolean
+		 * @param options may contain one of:<ul>
+		 * <li>exclude: an array of user ids to exclude<li>include: an array of user ids to include
+		 * <li>filter: a filter function of the form function({userid, time, data}):boolean
+		 * <li>verify: a boolean indicating whether or not to verify that there are matching dom nodes for each matching change
+		 * </ul>
 		 *	 @return an object with two members: count, changes (map of id:changeObject)
 		 * @private
 		 */
-		_filterChanges : function(options) {
-			var count = 0, changes = {};
-			var filter = options && options.filter;
-			var exclude = options && options.exclude ? jQuery.map(options.exclude, function(e) { return String(e); }) : null;
-			var include = options && options.include ? jQuery.map(options.include, function(e) { return String(e); }) : null;
+		_filterChanges : function(_options) {
+			var count = 0, changes = {},
+				options = _options || {},
+				filter = options.filter,
+				exclude = options.exclude ? jQuery.map(options.exclude, function(e) { return String(e); }) : null,
+				include = options.include ? jQuery.map(options.include, function(e) { return String(e); }) : null,
+				verify = options.verify,
+				elements = null;
 			for (var key in this._changes) {
 				var change = this._changes[key];
 				if (change && change.type) {	
@@ -6005,8 +6097,14 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 						(exclude && exclude.indexOf(change.userid) >= 0) ||
 						(include && include.indexOf(change.userid) < 0);
 					if (! skip) {
-						++count;
-						changes[key] = change;
+						if (verify) {
+							elements = ice.dom.find(this.element, "[" + this.attributes.changeId + "]");
+							skip = ! elements.length;
+						}
+						if (! skip) {
+							++count;
+							changes[key] = change;
+						}
 					}
 				}
 			}
@@ -6305,6 +6403,7 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 			if (! txt) {
 				return "";
 			}
+			txt = txt.replace('/\n/g', "\\n").replace('/\r/g', "").replace('\u200B', "{filler}").replace('\uFEFF', "{filler}")
 			if (txt.length <= 15) {
 				return txt;
 			}
@@ -6312,70 +6411,61 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 		}
 		function addNode(node) {
 			var str;
-			if (node.nodeType == 3) {
+			if (node.nodeType === 3) {
 				str = "Text:" + printText(node.nodeValue); 
 			}
 			else {
-				str = node.nodeName + "(" + printText(node.innerText) + ")";
+				var txt = node.innerText;
+				str = node.nodeName + (txt ? "(" + printText(txt) + ")" :'');
 			}
-			parts.push("<" + str + ">");
+			parts.push("<" + str + " />");
 		}
 		function printNode(node, offset1, offset2) {
-			if ("number" != typeof offset1) {
-				offset1 = -1;
-			}
-			if (offset1===offset2 || "number" != typeof offset2) {
+			if ("number" != typeof offset2) {
 				offset2 = -1;
 			}
 			if (3 == node.nodeType) { // text
 				var txt = node.nodeValue;
-				if (offset1 >= 0) {
-					parts.push(printText(txt.substring(0, offset1)));
+				parts.push(printText(txt.substring(0, offset1)));
+				parts.push("|");
+				if (offset2 > offset1) {
+					parts.push(printText(txt.substring(offset1, offset2)));
 					parts.push("|");
-					if (offset2 > 0) {
-						parts.push(printText(txt.substring(offset1, offset2)));
-						parts.push("|");
-						parts.push(printText(txt.substring(offset2)));
-					}
-					else {
-						parts.push(printText(txt.substring(offset1)));
-					}
+					parts.push(printText(txt.substring(offset2)));
 				}
 				else {
-					parts.push(printText(txt));
+					parts.push(printText(txt.substring(offset1)));
 				}
 			}
 			else if (1 == node.nodeType) {
-				if (offset1 >= 0) {
-					var i = 0,
-						child = node.firstChild;
+				var i = 0,
+					children = node.childNodes;
+					start = (i > 6 ? i - 5 : 0);
+				addNode(node);
+				if (start > 0) {
+					parts.push("(..." + start + " nodes)");
+				}
+				for (i = start; i < offset1; ++i) {
+					addNode(children[i]);
+				}
+				parts.push("|");
+				if (offset2 > offset1) {
+					for (i = offset1; i < offset2; ++i) {
+						addNode(children[i]);
+					}
+					parts.push('|');
+				}
+				if (offset2 > 0 && offset2 < children.length){
+					var child = children[offset2];
 					while (child) {
-						if (i < offset1 - 1) {
-							i++;
-							continue;
-						}
-						if ((offset2 >= 0 && i > offset2 + 1) ||
-							(offset2 < 0 && i > offset1 + 1)) {
-							break;
-						}
-						if (i == offset1) {
-							parts.push("|");
-						}
-						if (i == offset2) {
-							parts.push("|");
-						}
 						addNode(child);
 						child = child.nextSibling;
-						i++;
 					}
+				}
 
-				}
-				else {
-					addNode(node);
-				}
 			}
 		}
-		if (range.startContainer == range.endContainer) {
+		if (range.startContainer === range.endContainer) {
 			printNode(range.startContainer, range.startOffset, range.endOffset);
 		}
 		else {
@@ -6391,6 +6481,7 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 
 
 	exports.ice = this.ice || {};
+	this.ice.printRange = printRange;
 	exports.ice.InlineChangeEditor = InlineChangeEditor;
 
 }).call(this);
