@@ -4565,17 +4565,20 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 		 * @private
 		 * If the range is collapsed, removes empty nodes around the caret
 		 */
-		_cleanupSelection: function(range) {
+		_cleanupSelection: function(range, isHostRange) {
 			var start;
 			if (! range || ! range.collapsed || ! (start = range.startContainer)) {
 				return;
 			}
+			if (isHostRange) {
+				start = this.hostMethods.getHostNode(start);
+			}
 			var nt = start.nodeType;
 			if (ice.dom.TEXT_NODE == nt) {
-				return this._cleanupTextSelection(range, start);
+				return this._cleanupTextSelection(range, start, isHostRange);
 			}
 			else {
-				return this._cleanupElementSelection(range);
+				return this._cleanupElementSelection(range, isHostRange);
 			}
 		},
 		
@@ -4583,15 +4586,16 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 		 * @private
 		 * assumes range is valid for this operation
 		 */
-		_cleanupTextSelection: function(range, start) {
+		_cleanupTextSelection: function(range, start, isHostRange) {
 			this._cleanupAroundNode(start);
 			if (this._isEmptyTextNode(start)) {
 				var parent = start.parentNode, 
-					ind = ice.dom.getNodeIndex(start);
+					ind = ice.dom.getNodeIndex(start),
+					f = isHostRange ? this.hostMethods.makeHostElement : nativeElement;
 				parent.removeChild(start);
 				ind = Math.max(0, ind - 1);
-				range.setStart(parent, ind);
-				range.setEnd(parent, ind);
+				range.setStart(f(parent), ind);
+				range.setEnd(f(parent), ind);
 			}
 		},
 
@@ -4600,9 +4604,9 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 		 * @private
 		 * assumes range is valid for this operation
 		 */
-		_cleanupElementSelection: function(range) {
+		_cleanupElementSelection: function(range, isHostRange) {
 			var start, includeStart = false,
-				parent = range.startContainer,
+				parent = isHostRange ? this.hostMethods.getHostNode(range.startContainer) : range.startContainer,
 				childCount = parent.childNodes.length;
 			if (childCount < 1) {
 				return;
@@ -4632,8 +4636,9 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 				parent.removeChild(start);
 			}
 			if (parent.childNodes.length != childCount) {
-				range.setStart(parent, ind);
-				range.setEnd(parent, ind);
+				var f = isHostRange ? this.hostMethods.makeHostElement : nativeElement;
+				range.setStart(f(parent), ind);
+				range.setEnd(f(parent), ind);
 			}
 		},
 		
@@ -4940,7 +4945,7 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 				}
 
 				
-				this._cleanupSelection(range);
+				this._cleanupSelection(range, !! hostRange);
 				range.insertNode(f(node));
 				var len = (nodes && nodes.length) || 0;
 				if (len) {
