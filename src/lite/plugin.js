@@ -234,14 +234,14 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 	 * <pre>
 	 * CKEDITOR.editorConfig = function( config ) {
 	 * // ... your own configuration
-	 *		var lite = config.lite = config.lite || {};
+	 *		var lite = config.lite = (config.lite || {});
 	 * // now assign values to properties: lite.xxx = yyy;
 	 * </pre>
 	 * And here's an example for configuring lite in the <strong>configLoaded</strong> event:
 	 * <pre>
 	 * 		function onConfigLoaded(e) {
 	 *  		var conf = e.editor.config;
-	 *  		var lt = conf.lite = conf.lite || {};
+	 *  		var lt = conf.lite = (conf.lite || {});
 	 *  		lt.isTracking = false; 
 	 *  	}
 	 *  </pre>
@@ -447,7 +447,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		/**
 		 * Called by CKEditor to init the plugin
 		 * @param ed an instance of CKEditor
-		 * @param {Object} config a configuration object, not null, ready to be used as a local copy
+		 * @param {LITE.configuration} config a LITE configuration object, not null, ready to be used as a local copy
 		 */
 		init: function(ed, config) {
 			this._editor = ed;
