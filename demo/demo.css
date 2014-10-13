@@ -1,12 +1,14 @@
 body {
 	font-family: verdana, arial, sans-serif;
 	font-size:11pt;
+
 }
 #main-ui {
 	text-align: center;
 	margin-left:auto;
 	margin-right:auto;
 	max-width:80%;
+	margin-top:25px;
 }
 
 #main-ui * {
@@ -127,8 +129,10 @@ a.btn:hover {
 
 button,
 .button {
-  display : inline-block;
+  position:fixed;
+  width:100%;
   cursor : pointer;
+  top:0;
   
   border-style : solid;
   border-width : 1px;
