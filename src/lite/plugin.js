@@ -91,7 +91,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 	
 	tooltipDefaults = {
 		show: true,
-		path: "js/opentip-adapter.min.js",
+		path: "js/opentip-adapter.js",
 		classPath: "OpentipAdapter",
 		cssPath: "css/opentip.css",
 		delay: 500
@@ -913,7 +913,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 					}
 					catch (e){}
 					if (! this._tooltipsHandler) {
-						this._logError("Unable to create tooltip handler", config.tooltips.classPath);
+						_logError("Unable to create tooltip handler", config.tooltips.classPath);
 					}
 					else {
 						var hideTT = this._hideTooltip.bind(this);
@@ -940,7 +940,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 					this._onIceChange(null);
 				}
 				catch(e) {
-					this._logError("ICE plugin init:", e);
+					_logError("ICE plugin init:", e);
 				}
 			}
 		},
@@ -1163,7 +1163,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 					toInsert = jQuery.makeArray(container.childNodes);
 				}
 				catch (e) {
-					this._logError("ice plugin paste:", e);
+					_logError("ice plugin paste:", e);
 				}
 			}
 			else if (node) {
@@ -1326,7 +1326,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 				
 			}
 			catch (e){
-				this._logError(e);
+				_logError(e);
 			}
 		},
 		

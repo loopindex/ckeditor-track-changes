@@ -49,7 +49,7 @@ h4 {
 <ol>
 <li>Include the lite plugin's interface in your html, e.g.
 <pre>
-	&lt;script type="text/javascript" src="ckeditor/plugins/lite/lite_interface.js"&gt;&lt;/script&gt;
+	&lt;script type="text/javascript" src="ckeditor/plugins/lite/lite-interface.js"&gt;&lt;/script&gt;
 </pre>
 You don't have to include this file, but doing so will allow you to use the constants defined in it, e.g. <code>LITE.Commands.TOGGLE_TRACKING, LITE.Events.ACCEPT</code>
 <li>If <code>LITE</code> is not included in ckedito's plugins list, add it to the editor's configuration. The simplest way to do this is by adding the following line to ckeditor's <code>config.js</code>:<pre>
@@ -74,7 +74,7 @@ If your configuration already contains some plugin tweaking, just make sure that
 	config.lite.includes = ["js/my-includes.min.js", "js/some-plugins.min.js"];
 </pre>
 Paths are relative to the LITE plugin folder
-<li>Select the <code>LITE</code> commands you want to include in ckeditor's toolbar. By default all the commands in <code>lite_interace.js</code> are available in the toolbar except for toggle tooltips. To configure this, edit <code>config.js</code> and set a value to the <code>config.lite.commands</code>, e.g.
+<li>Select the <code>LITE</code> commands you want to include in ckeditor's toolbar. By default all the commands in <code>lite-interace.js</code> are available in the toolbar except for toggle tooltips. To configure this, edit <code>config.js</code> and set a value to the <code>config.lite.commands</code>, e.g.
 <pre>
 // display only the show/hide, accept all and reject all commands.
 	config.lite.commands = [LITE.Commands.TOGGLE_SHOW, LITE.Commands.ACCEPT_ALL, LITE.Commands.REJECT_ALL];
@@ -168,7 +168,7 @@ Associates an arbitrary string with the changes made from now on. This string is
 
 <h2>Events</h2>
 <div class="doc"></div>
-The LITE plugin events are listen in <code>lite_interface.js</code> under <code>LITE.Events</code>. The following events are fired by the LITE plugin instance through its instance of <code>ckeditor</code>, with the parameter in the <code>data</code> member of the event info:
+The LITE plugin events are listen in <code>lite-interface.js</code> under <code>LITE.Events</code>. The following events are fired by the LITE plugin instance through its instance of <code>ckeditor</code>, with the parameter in the <code>data</code> member of the event info:
 <ul>
 <li>INIT (parameters: lite, the LITE instance)<div>Fired each time <code>LITE</code> creates and initializes an instance of the <code>ICE</code> change tracker. This happens, e.g., when you switch back from <code>Source</code> mode to <code>Wysiwyg</code>.</div>
 <li>ACCEPT(parameter : the <code>options</code> object passed to acceptAll, if relevant)<div>Fired after some changes (possibly all) were accepted.

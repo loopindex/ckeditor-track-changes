@@ -2,7 +2,7 @@ CKEDITOR.editorConfig = function( config ) {
 	var lite = config.lite = config.lite || {};
 	config.extraPlugins = 'lite';
 	config.removePlugins = 'pagebreak';
-	lite.includes  = ["js/rangy/rangy-core.js", "js/ice.js", "js/dom.js", "js/selection.js", "js/bookmark.js","lite_interface.js"];
+	lite.includes  = ["js/rangy/rangy-core.js", "js/ice.js", "js/dom.js", "js/selection.js", "js/bookmark.js","lite-interface.js"];
 	lite.isTracking = true;
 	lite.userStyles = {
 		15: 1,

@@ -108,7 +108,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 	
 	tooltipDefaults = {
 		show: true,
-		path: &quot;js/opentip-adapter.min.js&quot;,
+		path: &quot;js/opentip-adapter.js&quot;,
 		classPath: &quot;OpentipAdapter&quot;,
 		cssPath: &quot;css/opentip.css&quot;,
 		delay: 500
@@ -251,14 +251,14 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 	 * &lt;pre&gt;
 	 * CKEDITOR.editorConfig = function( config ) {
 	 * // ... your own configuration
-	 *		var lite = config.lite = config.lite || {};
+	 *		var lite = config.lite = (config.lite || {});
 	 * // now assign values to properties: lite.xxx = yyy;
 	 * &lt;/pre&gt;
 	 * And here's an example for configuring lite in the &lt;strong&gt;configLoaded&lt;/strong&gt; event:
 	 * &lt;pre&gt;
 	 * 		function onConfigLoaded(e) {
 	 *  		var conf = e.editor.config;
-	 *  		var lt = conf.lite = conf.lite || {};
+	 *  		var lt = conf.lite = (conf.lite || {});
 	 *  		lt.isTracking = false; 
 	 *  	}
 	 *  &lt;/pre&gt;
@@ -464,7 +464,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 <span id='LITE-LITEPlugin-method-init'>		/**
 </span>		 * Called by CKEditor to init the plugin
 		 * @param ed an instance of CKEditor
-		 * @param {Object} config a configuration object, not null, ready to be used as a local copy
+		 * @param {LITE.configuration} config a LITE configuration object, not null, ready to be used as a local copy
 		 */
 		init: function(ed, config) {
 			this._editor = ed;
@@ -930,7 +930,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 					}
 					catch (e){}
 					if (! this._tooltipsHandler) {
-						this._logError(&quot;Unable to create tooltip handler&quot;, config.tooltips.classPath);
+						_logError(&quot;Unable to create tooltip handler&quot;, config.tooltips.classPath);
 					}
 					else {
 						var hideTT = this._hideTooltip.bind(this);
@@ -957,7 +957,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 					this._onIceChange(null);
 				}
 				catch(e) {
-					this._logError(&quot;ICE plugin init:&quot;, e);
+					_logError(&quot;ICE plugin init:&quot;, e);
 				}
 			}
 		},
@@ -1180,7 +1180,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 					toInsert = jQuery.makeArray(container.childNodes);
 				}
 				catch (e) {
-					this._logError(&quot;ice plugin paste:&quot;, e);
+					_logError(&quot;ice plugin paste:&quot;, e);
 				}
 			}
 			else if (node) {
@@ -1343,7 +1343,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 				
 			}
 			catch (e){
-				this._logError(e);
+				_logError(e);
 			}
 		},
 		
