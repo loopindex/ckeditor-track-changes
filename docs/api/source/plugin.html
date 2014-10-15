@@ -920,13 +920,13 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 						setHostRange: this._setHostRange.bind(this),
 						hostCopy: this._hostCopy.bind(this),
 						beforeEdit: this._beforeEdit.bind(this)
-					},
-					tooltips: config.tooltips.show,
-					tooltipsDelay: config.tooltips.delay
+					}
 				};
 				if (config.tooltips.classPath) {
 					try {
 						this._tooltipsHandler = new window[config.tooltips.classPath]();
+						iceProps.tooltips = config.tooltips.show;
+						iceProps.tooltipsDelay = config.tooltips.delay;
 					}
 					catch (e){}
 					if (! this._tooltipsHandler) {
