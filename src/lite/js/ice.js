@@ -524,7 +524,7 @@
 		 * prepare gets run before the body is cleaned by ice.
 		 */
 		getCleanContent: function (body, callback, prepare) {
-			var newBody = this.getCleanDOM(body, {callback:callback, prepare: prepace, clone: true});
+			var newBody = this.getCleanDOM(body, {callback:callback, prepare: prepare, clone: true});
 			return (newBody && newBody.innerHTML) || "";
 		},
 		
