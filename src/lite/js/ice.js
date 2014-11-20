@@ -2473,7 +2473,7 @@
 				}
 				var lastTimeStamp = parseInt(el.getAttribute(this.attributes.lastTime) || "");
 				if (isNaN(lastTimeStamp)) {
-					lastTimeStamp = now;
+					lastTimeStamp = timeStamp;
 				}
 				var changeData = ice.dom.attr(el, this.attributes.changeData) || "";
 				var change = {
