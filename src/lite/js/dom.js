@@ -146,7 +146,9 @@
 // dfl switch to DOM node from dom.js node
 		node = node.$ || node;
 // dfl don't test text nodes
-		return (node.nodeType != 3 && dom.is(node, selector)) ? node : dom.parents(node, selector)[0] || null;
+		return (node.nodeType != dom.TEXT_NODE && dom.is(node, selector)) ? 
+				node 
+				: dom.parents(node, selector)[0] || null;
 	},
 
 	dom.getParents = function (elements, filter, stopEl) {

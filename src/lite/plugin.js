@@ -877,71 +877,73 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 				}
 			}
 		
-			if (null == this._tracker) {
-				var iceprops = {
-					element: body,
-					handleEvents : true,
-					mergeBlocks : true,
-					currentUser: {
-						id: config.userId || "",
-						name: config.userName || ""
+			if (this._tracker) {
+				return;
+			}
+			var iceprops = {
+				element: body,
+				handleEvents : true,
+				mergeBlocks : true,
+				currentUser: {
+					id: config.userId || "",
+					name: config.userName || ""
+				},
+				userStyles: config.userStyles,
+				changeTypes: {
+					insertType: {tag: this.props.insertTag, alias: this.props.insertClass, action:"Inserted"},
+					deleteType: {tag: this.props.deleteTag, alias: this.props.deleteClass, action:"Deleted"}
+				},
+				hostMethods: {
+					getHostRange : this._getHostRange.bind(this),
+					getHostRangeData: this._getHostRangeData.bind(this),
+					makeHostElement: function(node) {
+						return new CKEDITOR.dom.element(node);
 					},
-					userStyles: config.userStyles,
-					changeTypes: {
-						insertType: {tag: this.props.insertTag, alias: this.props.insertClass, action:"Inserted"},
-						deleteType: {tag: this.props.deleteTag, alias: this.props.deleteClass, action:"Deleted"}
+					getHostNode: function(node) {
+						return node && node.$;
 					},
-					hostMethods: {
-						getHostRange : this._getHostRange.bind(this),
-						getHostRangeData: this._getHostRangeData.bind(this),
-						makeHostElement: function(node) {
-							return new CKEDITOR.dom.element(node);
-						},
-						getHostNode: function(node) {
-							return node && node.$;
-						},
-						setHostRange: this._setHostRange.bind(this),
-						hostCopy: this._hostCopy.bind(this),
-						beforeEdit: this._beforeEdit.bind(this)
-					}
-				};
+					setHostRange: this._setHostRange.bind(this),
+					hostCopy: this._hostCopy.bind(this),
+					beforeEdit: this._beforeEdit.bind(this)
+				}
+			};
+			if (debug.log) {
+				iceprops.hostMethods.logError = _logError;
+			}
+
+			iceprops.tooltips = config.tooltips.show;
+			if (iceprops.tooltips) {
+				var hideTT = this._hideTooltip.bind(this);
+				iceprops.hostMethods.showTooltip = this._showTooltip.bind(this);
+				iceprops.hostMethods.hideTooltip = hideTT;
+				iceprops.hostMethods.beforeDelete = iceprops.hostMethods.beforeInsert = hideTT;
 				if (config.tooltips.classPath) {
 					try {
 						this._tooltipsHandler = new window[config.tooltips.classPath]();
-						iceProps.tooltips = config.tooltips.show;
-						iceProps.tooltipsDelay = config.tooltips.delay;
+						iceprops.tooltipsDelay = config.tooltips.delay;
 					}
 					catch (e){}
 					if (! this._tooltipsHandler) {
 						_logError("Unable to create tooltip handler", config.tooltips.classPath);
 					}
 					else {
-						var hideTT = this._hideTooltip.bind(this);
 						this._tooltipsHandler.init(config.tooltips);
-						iceprops.hostMethods.showTooltip = this._showTooltip.bind(this);
-						iceprops.hostMethods.hideTooltip = hideTT;
-						iceprops.hostMethods.beforeDelete = iceprops.hostMethods.beforeInsert = hideTT;
-						
 					}
 				}
-				if (debug.log) {
-					iceprops.logError = _logError;
-				}
-
-				jQuery.extend(iceprops, this.props);
-				this._tracker = new ice.InlineChangeEditor(iceprops);
-				try {
-					this._tracker.startTracking();
-					this.toggleTracking(this._isTracking, false);
-					this._updateTrackingState();
-					jQuery(this._tracker).on("change", this._onIceChange.bind(this)).on("textChange", this._onIceTextChanged.bind(this));
-					e.fire(LITE.Events.INIT, {lite: this});
-					this._onSelectionChanged(null);
-					this._onIceChange(null);
-				}
-				catch(e) {
-					_logError("ICE plugin init:", e);
-				}
+			}
+			jQuery.extend(iceprops, this.props);
+			this._tracker = new ice.InlineChangeEditor(iceprops);
+			try {
+				this._tracker.startTracking();
+				this.toggleTracking(this._isTracking, false);
+				this._updateTrackingState();
+				jQuery(this._tracker).on("change", this._onIceChange.bind(this)).on("textChange", this._onIceTextChanged.bind(this));
+				e.fire(LITE.Events.INIT, {lite: this});
+				this._onSelectionChanged(null);
+				this._onIceChange(null);
+			}
+			catch(e) {
+				_logError("ICE plugin init:", e);
 			}
 		},
 		
@@ -1073,9 +1075,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		 * Remove tooltips from dom
 		 */
 		_onBeforeGetData: function(evt) {
-			if (this._tooltipsHandler) {
-				this._tooltipsHandler.hideAll();
-			}
+			this._hideTooltip();
 		},
 		
 		/**
@@ -1083,7 +1083,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		 * Remove tooltips from dom
 		 */
 		_onAfterSetData: function(evt) {
-			if (this._tracker && this._tracker.isTracking()) {
+			if (this._tracker/* && this._tracker.isTracking() */) {
 				this._tracker.reload();
 			}
 		},
@@ -1400,10 +1400,15 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		 */
 		_showTooltip: function(node, change) {
 			var config = this._config.tooltips;
-			if (config.show && this._tooltipsHandler) {
+			if (config.show) {
 				var title = this._makeTooltipTitle(change);
-				this._tooltipsHandler.hideAll();
-				this._tooltipsHandler.showTooltip(node, title, this._editor.container.$);
+				if (this._tooltipsHandler) {
+					this._tooltipsHandler.hideAll();
+					this._tooltipsHandler.showTooltip(node, title, this._editor.container.$);
+				}
+				else {
+					node.setAttribute("title", title);
+				}
 			}
 		},
 		
@@ -1418,6 +1423,19 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 				}
 				else {
 					this._tooltipsHandler.hideAll();
+				}
+			}
+			else {
+				if (this._tracker) {
+					if (node) {
+						node.removeAttribute("title");
+					}
+					else {
+						var nodes = this._tracker.getIceNodes();
+						if (nodes) {
+							nodes.removeAttr("title");
+						}
+					}
 				}
 			}
 		},
@@ -1448,8 +1466,9 @@ Written by (David *)Frenkiel - https://github.com/imdfl
  * @param change
  * @returns {Boolean}
  */		_makeTooltipTitle: function(change) {
-			var title = this._config.tooltipTemplate || defaultTooltipTemplate;
-			var time = new Date(change.time);
+			var title = this._config.tooltipTemplate || defaultTooltipTemplate,
+				time = new Date(change.time),
+				lastTime = new Date(change.lastTime);
 			title = title.replace(/%a/g, "insert" == change.type ? "added" : "deleted");
 			title = title.replace(/%t/g, relativeDateFormat(time));
 			title = title.replace(/%u/g, change.userName);
@@ -1463,6 +1482,18 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			title = title.replace(/%n/g, time.getMinutes());
 			title = title.replace(/%hh/g, padNumber(time.getHours(), 2));
 			title = title.replace(/%h/g, time.getHours());
+
+			title = title.replace(/%T/g, relativeDateFormat(lastTime));
+			title = title.replace(/%DD/g, padNumber(lastTime.getDate(), 2));
+			title = title.replace(/%D/g, lastTime.getDate());
+			title = title.replace(/%MM/g, padNumber(lastTime.getMonth() + 1, 2));
+			title = title.replace(/%M/g, lastTime.getMonth() + 1);
+			title = title.replace(/%YY/g, padNumber(lastTime.getYear() - 100, 2));
+			title = title.replace(/%Y/g, lastTime.getFullYear());
+			title = title.replace(/%NN/g, padNumber(lastTime.getMinutes(), 2));
+			title = title.replace(/%N/g, lastTime.getMinutes());
+			title = title.replace(/%HH/g, padNumber(lastTime.getHours(), 2));
+			title = title.replace(/%H/g, lastTime.getHours());
 
 			return title;
 		}

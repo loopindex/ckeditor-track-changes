@@ -11,11 +11,12 @@
 	defaults = {
 	// ice node attribute names:
 		attributes: {
-			changeId: 'data-cid',
-			userId: 'data-userid',
-			userName: 'data-username',
-			time: 'data-time',
-			changeData: 'data-changedata', // dfl, arbitrary data to associate with the node, e.g. version
+			changeId: "data-cid",
+			userId: "data-userid",
+			userName: "data-username",
+			time: "data-time",
+			lastTime: "data-last-change-time",
+			changeData: "data-changedata", // arbitrary data to associate with the node, e.g. version
 		},
 		// Prepended to `changeType.alias` for classname uniqueness, if needed
 		attrValuePrefix: '',
@@ -64,22 +65,19 @@
 		// Switch for toggling track changes on/off - when `false` events will be ignored.
 		_isTracking: true,
 	
-		// NOT IMPLEMENTED - Selector for elements that will not get track changes
-		noTrack: '.ice-no-track',
+		tooltips: false,
 		
-		tooltips: false, //dfl
-		
-		tooltipsDelay: 200, //dfl
+		tooltipsDelay: 1,
 	
 		// Switch for whether paragraph breaks should be removed when the user is deleting over a
 		// paragraph break while changes are tracked.
 		mergeBlocks: true,
 		
-		_isVisible : true, // dfl, state of change tracking visibility
+		_isVisible : true, // state of change tracking visibility
 		
-		_changeData : null, //dfl, a string you can associate with the current change set, e.g. version
+		_changeData : null, // a string you can associate with the current change set, e.g. version
 		
-		_handleSelectAll: false, // dfl, if true, handle ctrl/cmd-A in the change tracker
+		_handleSelectAll: false, // if true, handle ctrl/cmd-A in the change tracker
 	};
 
 	/**
@@ -122,7 +120,7 @@
 				}
 			}
 		}
-		logError = options.logError || function(){};
+		logError = options.hostMethods.logError || function(){ return undefined; };
 	};
 
 	InlineChangeEditor.prototype = {
@@ -731,6 +729,20 @@
 		},
 	
 		/**
+		 * Returns a jquery list of all the tracking nodes in the current editable element
+		 */
+		getIceNodes : function() {
+			var classList = [];
+			var self = this;
+			ice.dom.each(this.changeTypes, 
+				function (type, i) {
+					classList.push('.' + self._getIceNodeClass(type));
+				});
+			classList = classList.join(',');
+			return jQuery(this.element).find(classList);
+		},
+		
+		/**
 		 * Returns this `node` or the first parent tracking node with the given `changeType`.
 		 * @private
 		 */
@@ -816,23 +828,6 @@
 			return null;
 		},
 	
-		/**
-		 * Returns the given `node` or the first parent node that matches against the list of no track elements.
-		 * @private
-		 */
-		_getNoTrackElement: function (node) {
-			var noTrackSelector = this._getNoTrackSelector();
-			var parent = ice.dom.is(node, noTrackSelector) ? node : (ice.dom.parents(node, noTrackSelector)[0] || null);
-			return parent;
-		},
-	
-		/**
-		 * Returns a selector for not tracking changes
-		 * @private
-		 */
-		_getNoTrackSelector: function () {
-			return this.noTrack;
-		},
 	
 		/**
 		 * Returns the given `node` or the first parent node that matches against the list of void elements.
@@ -1067,10 +1062,12 @@
 				self = this;
 
 			if (!this._changes[changeid]) {
+				var now =  (new Date()).getTime();
 				// Create the change object.
 				this._changes[changeid] = {
 					type: this._getChangeTypeFromAlias(ctnType),
-					time: (new Date()).getTime(),
+					time: now,
+					lastTime: now,
 					userid: String(this.currentUser.id),// dfl: must stringify for consistency - when we read the props from dom attrs they are strings
 					username: this.currentUser.name,
 					data : this._changeData || ""
@@ -1116,6 +1113,10 @@
 				ctNode.setAttribute(this.attributes.time, change.time);
 			}
 			
+			if (!ctNode.getAttribute(this.attributes.lastTime)) {
+				ctNode.setAttribute(this.attributes.lastTime, change.lastTime);
+			}
+			
 //			if (!ice.dom.hasClass(ctNode, this._getIceNodeClass(change.type))) ice.dom.addClass(ctNode, this._getIceNodeClass(change.type));
 	
 			var style = this._getUserStyle(change.userid);
@@ -1133,8 +1134,8 @@
 		getNewChangeId: function () {
 			var id = ++this._uniqueIDIndex;
 			if (this._changes[id]) {
-			// Dupe.. create another..
-			id = this.getNewChangeId();
+				// Dupe.. create another..
+				id = this.getNewChangeId();
 			}
 			return id;
 		},
@@ -1193,7 +1194,8 @@
 				inCurrentUserInsert = this._currentUserIceNode(ctNode);
 	
 			if (inCurrentUserInsert) {
-				var head = nodes && nodes[0];
+				var head = nodes && nodes[0],
+					changeId = ctNode.getAttribute(this.attributes.changeId);
 				if (head) {
 					inserted = true;
 					range.insertNode(f(head));
@@ -1224,6 +1226,8 @@
 						this.selection.addRange(range);
 					}
 				}
+				// even if there was no data to insert, we are probably setting up for a char insertion
+				this._updateChangeTime(changeId);
 			}
 			else {
 				// If we aren't in an insert node which belongs to the current user, then create a new ins node
@@ -1286,6 +1290,23 @@
 				}
 			}
 			return inserted;
+		},
+		
+		/**
+		 * @private
+		 * updates the change with the current time stamp and copies to change nodes
+		 */
+		_updateChangeTime: function(changeId) {
+			var change = this._changes[changeId];
+			if (change) {
+				var now = (new Date()).getTime(),
+					nodes = ice.dom.find(this.element, '[' + this.attributes.changeId + '=' + changeId + ']'),
+					attr = this.attributes.lastTime;
+				change.lastTime = now; 
+				nodes.each(function(index, node) {
+					node.setAttribute(attr, now);
+				});
+			}
 		},
 	
 // compared OK
@@ -1483,12 +1504,6 @@
 				return true;
 			}
 	
-			// If we are deleting into a no tracking containiner, then remove the content
-			if (this._getNoTrackElement(range.endContainer.parentElement)) {
-				range.deleteContents();
-				return false;
-			}
-	
 			if (ice.dom.isOnBlockBoundary(range.startContainer, range.endContainer, this.element)) {
 				if (this.mergeBlocks && ice.dom.is(ice.dom.getBlockParent(nextContainer, this.element), this.blockEl)) {
 					// Since the range is moved by character, it may have passed through empty blocks.
@@ -1657,12 +1672,6 @@
 			// text1 <img>| text2 -> text1 |<img> text2
 			range.moveStart(ice.dom.CHARACTER_UNIT, -1);
 			range.moveStart(ice.dom.CHARACTER_UNIT, 1);
-	
-			// If we are deleting into a no tracking containiner, then remove the content
-			if (this._getNoTrackElement(range.startContainer.parentElement)) {
-				range.deleteContents();
-				return false;
-			}
 	
 			// Handles cases in which the caret is at the start of the block.
 			if (ice.dom.isOnBlockBoundary(range.startContainer, range.endContainer, this.element)) {
@@ -2209,17 +2218,6 @@
 			return true;
 		},
 	
-		_getIceNodes : function() {
-			var classList = [];
-			var self = this;
-			ice.dom.each(this.changeTypes, 
-				function (type, i) {
-					classList.push('.' + self._getIceNodeClass(type));
-				});
-			classList = classList.join(',');
-			return jQuery(this.element).find(classList);
-		},
-		
 		/**
 		 * Returns the first ice node in the hierarchy of the given node, or the current collapsed range.
 		 * null if not in a track changes hierarchy
@@ -2228,17 +2226,20 @@
 			var selector = '.' + this._getIceNodeClass('insertType') + ', .' + this._getIceNodeClass('deleteType');
 			if (!node) {
 				var range = this.getCurrentRange();
-				if (!range || !range.collapsed) {
+				if (! range) {
 					return false;
 				}
-				else {
+				if (range.collapsed) {
 					node = range.startContainer;
 				}
+				else {
+					node = range.commonAncestorContainer;
+				}
 			}
-			return ice.dom.getNode(node, selector);
+			return node && ice.dom.getNode(node, selector);
 		},
 		
-		setShowChanges : function(bShow) {
+		setShowChanges: function(bShow) {
 			bShow = !! bShow;
 			this._isVisible = bShow;
 			var $body = jQuery(this.element);
@@ -2247,11 +2248,11 @@
 			this._updateTooltipsState();
 		},
 	
-		reload : function() {
+		reload: function() {
 			this._loadFromDom();
 		},
 		
-		hasChanges : function() {
+		hasChanges: function() {
 			for (var key in this._changes) {
 				var change = this._changes[key];
 				if (change && change.type) {
@@ -2261,19 +2262,19 @@
 			return false;
 		},
 		
-		countChanges : function(options) {
+		countChanges: function(options) {
 			var changes = this._filterChanges(options);
 			return changes.count;
 		},
 		
-		setChangeData : function(data) {
+		setChangeData: function(data) {
 			if (null == data || (typeof data == "undefined")) {
 				data = "";
 			}
 			this._changeData = String(data);
 		},
 		
-		getDeleteClass : function() {
+		getDeleteClass: function() {
 			return this._getIceNodeClass('deleteType');
 		},
 		
@@ -2340,7 +2341,7 @@
 			return true;
 		},
 
-		toString : function() {
+		toString: function() {
 			return "ICE " + ((this.element && this.element.id) || "(no element id)");
 		},
 		
@@ -2357,21 +2358,23 @@
 			  return node.previousSibling;
 		},
 		
-		_triggerChange : function() {
-			this.$this.trigger("change");
+		_triggerChange: function() {
+			if (this._isTracking) {
+				this.$this.trigger("change");
+			}
 		},
 	
-		_triggerChangeText : function() {
+		_triggerChangeText: function() {
 			this.$this.trigger("textChange");
 		},
 		
 		_updateNodeTooltip: function(node) {
-			if (this.tooltips && this._isTracking && this._isVisible) {
+			if (this.tooltips /*&& this._isTracking */&& this._isVisible) {
 				this._addTooltip(node);
 			}
 		},
 	
-		_acceptRejectSome : function(options, isAccept) {
+		_acceptRejectSome: function(options, isAccept) {
 			var f = (function(index, node) {
 				this.acceptRejectChange(node, isAccept);
 			}).bind(this);
@@ -2395,7 +2398,7 @@
 		 *	 @return an object with two members: count, changes (map of id:changeObject)
 		 * @private
 		 */
-		_filterChanges : function(_options) {
+		_filterChanges: function(_options) {
 			var count = 0, changes = {},
 				options = _options || {},
 				filter = options.filter,
@@ -2427,19 +2430,17 @@
 		
 		_loadFromDom : function() {
 			this._changes = {};
-//			this._userStyles = {};
-//			this._styles = {};
 			this._uniqueStyleIndex = 0;
-			var myUserId = this.currentUser && this.currentUser.id;
-			var myUserName = (this.currentUser && this.currentUser.name) || "";
-			var now = (new Date()).getTime();
+			var myUserId = this.currentUser && this.currentUser.id,
+				myUserName = (this.currentUser && this.currentUser.name) || "",
+				now = (new Date()).getTime(),
 			// Grab class for each changeType
-			var changeTypeClasses = [];
+				changeTypeClasses = [];
 			for (var changeType in this.changeTypes) {
 				changeTypeClasses.push(this._getIceNodeClass(changeType));
 			}
 	
-			var nodes = this._getIceNodes();
+			var nodes = this.getIceNodes();
 			function f(i, el) {
 				var styleIndex = 0;
 				var ctnType = '';
@@ -2470,12 +2471,17 @@
 				if (isNaN(timeStamp)) {
 					timeStamp = now;
 				}
+				var lastTimeStamp = parseInt(el.getAttribute(this.attributes.lastTime) || "");
+				if (isNaN(lastTimeStamp)) {
+					lastTimeStamp = now;
+				}
 				var changeData = ice.dom.attr(el, this.attributes.changeData) || "";
 				var change = {
 					type: ctnType,
 					userid: String(userid),// dfl: must stringify for consistency - when we read the props from dom attrs they are strings
 					username: userName,
 					time: timeStamp,
+					lastTime: lastTimeStamp,
 					data : changeData
 				};
 				this._changes[changeid] = change;
@@ -2494,7 +2500,7 @@
 					}
 				}
 			}
-			var nodes = this._getIceNodes();
+			var nodes = this.getIceNodes();
 			nodes.each((function(i,node) {
 				var match = (! user) || (user.id == node.getAttribute(this.attributes.userId));
 				if (user && match) {
@@ -2504,7 +2510,7 @@
 		},
 		
 		_showTitles : function(bShow) {
-			var nodes = this._getIceNodes();
+			var nodes = this.getIceNodes();
 			if (bShow) {
 				jQuery(nodes).each((function(i, node) {
 					this._updateNodeTooltip(node);
@@ -2516,10 +2522,11 @@
 		},
 		
 		_updateTooltipsState: function() {
-			if (this.tooltips && this._isTracking && this._isVisible) {
+			// show tooltips if they are enabled and change tracking is on
+			if (this.tooltips /*&& this._isTracking */ && this._isVisible) {
 				if (! this._showingTips) {
 					this._showingTips = true;
-					var $nodes = this._getIceNodes(),
+					var $nodes = this.getIceNodes(),
 						self = this;
 					$nodes.each(function(i, node) {
 						self._addTooltip(node);
@@ -2528,7 +2535,7 @@
 			}
 			else if (this._showingTips) {
 				this._showingTips = false;
-				var $nodes = this._getIceNodes();
+				var $nodes = this.getIceNodes();
 				$nodes.each(function(i, node) {
 					jQuery(node).unbind("mouseover").unbind("mouseout");
 				});					
@@ -2555,6 +2562,7 @@
 							userName: change.username,
 							userId: change.userid,
 							time: change.time,
+							lastTime: change.lastTime,
 							type: type
 						});
 					}
