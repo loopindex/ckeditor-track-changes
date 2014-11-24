@@ -336,11 +336,12 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		deleteClass: 'ice-del',
 		insertClass: 'ice-ins',
 		attributes: {
-				changeId: 'data-cid',
-				userId: 'data-userid',
-				userName: 'data-username',
-				changeData: 'data-changedata',
-				time: 'data-time'
+				changeId: &quot;data-cid&quot;,
+				userId: &quot;data-userid&quot;,
+				userName: &quot;data-username&quot;,
+				sessionId: &quot;data-session-id&quot;,
+				changeData: &quot;data-changedata&quot;,
+				time: &quot;data-time&quot;
 		},
 		stylePrefix: 'ice-cts',
 		preserveOnPaste: 'p',
@@ -442,6 +443,20 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 	 */
 	findPlugin : function(editor) {
 		return _findPlugin(editor);
+	},
+	
+<span id='LITE-lite-method-startNewSession'>	/**
+</span>	 * starts a new session in the plugin instance associated with an editor
+	 * @param editor
+	 */
+	startNewSession: function(editor) {
+		var plugin = _findPlugin(editor);
+		if (plugin) {
+			plugin.startNewSession();
+		}
+		else {
+			_logError(&quot;startNewSession: plugin not found&quot;);
+		}
 	}
 	
 });
@@ -756,6 +771,14 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			return true;
 		},
 		
+		startNewSession: function() {
+			var now = new Date();
+			this._sessionId = String.fromCharCode(65 + Math.round(Math.random() * 26)) + now.getDate() + now.getDay() + now.getHours() + now.getMinutes() + now.getMilliseconds();
+			if (this._tracker) {
+				this._tracker.setSessionId(this._sessionId);
+			}
+		},
+		
 		getCleanMarkup: function(text) {
 			if (null === text || undefined === text) {
 				text = (this._editor &amp;&amp; this._editor.getData())  || &quot;&quot;;
@@ -952,6 +975,9 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			this._tracker = new ice.InlineChangeEditor(iceprops);
 			try {
 				this._tracker.startTracking();
+				if (config.useSession) {
+					this.startNewSession();
+				}
 				this.toggleTracking(this._isTracking, false);
 				this._updateTrackingState();
 				jQuery(this._tracker).on(&quot;change&quot;, this._onIceChange.bind(this)).on(&quot;textChange&quot;, this._onIceTextChanged.bind(this));
@@ -1523,7 +1549,10 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 </span>	 * @ignore
 	 */
 	function _logError() {
-		console.error.apply(console, arguments);
+		var console = window.console;
+		if (console &amp;&amp; console.error) {
+			console.error.apply(console, [].slice.call(arguments));
+		}
 	}
 	
 	function testClipboardCommand(editor, command) {

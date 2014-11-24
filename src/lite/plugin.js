@@ -319,11 +319,12 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		deleteClass: 'ice-del',
 		insertClass: 'ice-ins',
 		attributes: {
-				changeId: 'data-cid',
-				userId: 'data-userid',
-				userName: 'data-username',
-				changeData: 'data-changedata',
-				time: 'data-time'
+				changeId: "data-cid",
+				userId: "data-userid",
+				userName: "data-username",
+				sessionId: "data-session-id",
+				changeData: "data-changedata",
+				time: "data-time"
 		},
 		stylePrefix: 'ice-cts',
 		preserveOnPaste: 'p',
@@ -425,6 +426,20 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 	 */
 	findPlugin : function(editor) {
 		return _findPlugin(editor);
+	},
+	
+	/**
+	 * starts a new session in the plugin instance associated with an editor
+	 * @param editor
+	 */
+	startNewSession: function(editor) {
+		var plugin = _findPlugin(editor);
+		if (plugin) {
+			plugin.startNewSession();
+		}
+		else {
+			_logError("startNewSession: plugin not found");
+		}
 	}
 	
 });
@@ -739,6 +754,14 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			return true;
 		},
 		
+		startNewSession: function() {
+			var now = new Date();
+			this._sessionId = String.fromCharCode(65 + Math.round(Math.random() * 26)) + now.getDate() + now.getDay() + now.getHours() + now.getMinutes() + now.getMilliseconds();
+			if (this._tracker) {
+				this._tracker.setSessionId(this._sessionId);
+			}
+		},
+		
 		getCleanMarkup: function(text) {
 			if (null === text || undefined === text) {
 				text = (this._editor && this._editor.getData())  || "";
@@ -935,6 +958,9 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			this._tracker = new ice.InlineChangeEditor(iceprops);
 			try {
 				this._tracker.startTracking();
+				if (config.useSession) {
+					this.startNewSession();
+				}
 				this.toggleTracking(this._isTracking, false);
 				this._updateTrackingState();
 				jQuery(this._tracker).on("change", this._onIceChange.bind(this)).on("textChange", this._onIceTextChanged.bind(this));
@@ -1506,7 +1532,10 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 	 * @ignore
 	 */
 	function _logError() {
-		console.error.apply(console, arguments);
+		var console = window.console;
+		if (console && console.error) {
+			console.error.apply(console, [].slice.call(arguments));
+		}
 	}
 	
 	function testClipboardCommand(editor, command) {

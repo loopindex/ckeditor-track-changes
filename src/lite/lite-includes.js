@@ -3706,6 +3706,7 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 			changeId: "data-cid",
 			userId: "data-userid",
 			userName: "data-username",
+			sessionId: "data-session-id",
 			time: "data-time",
 			lastTime: "data-last-change-time",
 			changeData: "data-changedata", // arbitrary data to associate with the node, e.g. version
@@ -3770,6 +3771,8 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 		_changeData : null, // a string you can associate with the current change set, e.g. version
 		
 		_handleSelectAll: false, // if true, handle ctrl/cmd-A in the change tracker
+		
+		_sessionId: null
 	};
 
 	/**
@@ -3959,6 +3962,14 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 		setCurrentUser: function (user) {
 			this.currentUser = user;
 			this._updateUserData(user); // dfl, update data dependant on the user details
+		},
+
+		/**
+		 * Set the session id. If the session id is not null, the tracker aggregates change span
+		 * from the same user only if they have the same session id
+		 */
+		setSessionId: function (sid) {
+			this._sessionId = sid;
 		},
 		
 		/**
@@ -4409,10 +4420,12 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 		/**
 		 * Returns true if the given `node`, or the current collapsed range is in a tracking
 		 * node; otherwise, false.
+		 * @param node The node to test or null to test the selection
+		 * @param onlyNode if true, test only the node
 		 */
-		isInsideChange: function (node) {
+		isInsideChange: function (node, onlyNode) {
 			try {
-				return !! this.currentChangeNode(node); // refactored by dfl
+				return !! this.currentChangeNode(node, onlyNode); // refactored by dfl
 			}
 			catch (e) {
 				logError(e, "While testing if isInsideChange");
@@ -4681,7 +4694,11 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 		 * @private
 		 */
 		_currentUserIceNode: function (node) {
-			return node && (ice.dom.attr(node, this.attributes.userId) == this.currentUser.id);
+			var ret = node && (ice.dom.attr(node, this.attributes.userId) == this.currentUser.id);
+			if (ret && this._sessionId) {
+				ret = ice.dom.attr(node, this.attributes.sessionId) === this._sessionId;
+			}
+			return ret;
 		},
 	
 		/**
@@ -4760,6 +4777,7 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 					type: this._getChangeTypeFromAlias(ctnType),
 					time: now,
 					lastTime: now,
+					sessionId: this._sessionId,
 					userid: String(this.currentUser.id),// dfl: must stringify for consistency - when we read the props from dom attrs they are strings
 					username: this.currentUser.name,
 					data : this._changeData || ""
@@ -4786,7 +4804,7 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 			if (!ctNode.getAttribute(this.attributes.changeId)) {
 				ctNode.setAttribute(this.attributes.changeId, changeid);
 			}
-// modified by dfl, handle missing userid, try to set username according to userid
+// handle missing userid, try to set username according to userid
 			var userId = ctNode.getAttribute(this.attributes.userId); 
 			if (! userId) {
 				ctNode.setAttribute(this.attributes.userId, userId = change.userid);
@@ -4795,7 +4813,7 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 				ctNode.setAttribute(this.attributes.userName, change.username);
 			}
 			
-// dfl add change data
+// add change data
 			var changeData = ctNode.getAttribute(this.attributes.changeData);
 			if (null == changeData) {
 				ctNode.setAttribute(this.attributes.changeData, this._changeData || "");
@@ -4809,8 +4827,10 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 				ctNode.setAttribute(this.attributes.lastTime, change.lastTime);
 			}
 			
-//			if (!ice.dom.hasClass(ctNode, this._getIceNodeClass(change.type))) ice.dom.addClass(ctNode, this._getIceNodeClass(change.type));
-	
+			if (change.sessionId && ! ctNode.getAttribute(this.attributes.sessionId)) {
+				ctNode.setAttribute(this.attributes.sessionId, change.sessionId);
+			}
+			
 			var style = this._getUserStyle(change.userid);
 			if (!ice.dom.hasClass(ctNode, style)) {
 				ice.dom.addClass(ctNode, style);
@@ -5912,9 +5932,11 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 	
 		/**
 		 * Returns the first ice node in the hierarchy of the given node, or the current collapsed range.
+		 * @param node if null, check the current selection
+		 * @param onlyNode if true, check only the node, not its parents
 		 * null if not in a track changes hierarchy
 		 */
-		currentChangeNode: function (node) {
+		currentChangeNode: function (node, onlyNode) {
 			var selector = '.' + this._getIceNodeClass('insertType') + ', .' + this._getIceNodeClass('deleteType');
 			if (!node) {
 				var range = this.getCurrentRange();
@@ -5928,7 +5950,7 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 					node = range.commonAncestorContainer;
 				}
 			}
-			return node && ice.dom.getNode(node, selector);
+			return node && (onlyNode ? ice.dom.is(node, selector) : ice.dom.getNode(node, selector));
 		},
 		
 		setShowChanges: function(bShow) {
@@ -6047,6 +6069,9 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 			  leftRange.setEnd(atNode, atOffset);
 			  left = leftRange.extractContents();
 			  parent.insertBefore(left, node);
+			  if (this.isInsideChange(node, true)) {
+				  this._updateNodeTooltip(node.previousSibling);
+			  }
 			  return node.previousSibling;
 		},
 		
@@ -6165,8 +6190,10 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 				}
 				var lastTimeStamp = parseInt(el.getAttribute(this.attributes.lastTime) || "");
 				if (isNaN(lastTimeStamp)) {
-					lastTimeStamp = now;
+					lastTimeStamp = timeStamp;
 				}
+				var sessionId = el.getAttribute(this.attributes.sessionId);
+			
 				var changeData = ice.dom.attr(el, this.attributes.changeData) || "";
 				var change = {
 					type: ctnType,
@@ -6174,6 +6201,7 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 					username: userName,
 					time: timeStamp,
 					lastTime: lastTimeStamp,
+					sessionId: sessionId,
 					data : changeData
 				};
 				this._changes[changeid] = change;
