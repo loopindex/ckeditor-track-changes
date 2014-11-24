@@ -38,6 +38,7 @@ CKEDITOR.editorConfig = function( config ) {
 		cssPath: "css/opentip.css",
 		delay: 500
 	};
+	lite.tooltipTemplate = "%a by %u, first edit %t, last edit %T";
 //	lite.commands = [/*LITE.Commands.TOGGLE_TRACKING, */LITE.Commands.TOGGLE_SHOW/*, LITE.Commands.ACCEPT_ALL, LITE.Commands.REJECT_ALL, LITE.Commands.ACCEPT_ONE, LITE.Commands.REJECT_ONE */];
 	config.enterMode = CKEDITOR.ENTER_BR;
 	config.autoParagraph = false;
