@@ -301,7 +301,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 </span>	 * @member LITE.configuration
 	 * @property {Object} tooltips
 	 * Configures the tooltips shown by LITE
-	 * Omit the classPath member in order to get tooltips in standard html title elements
+	 * &lt;div&gt;&lt;strong&gt;Omit the classPath member in order to get tooltips in standard html title elements&lt;/strong&gt;&lt;/div&gt;
 	 * These are the default values used by LITE:
 	 * &lt;pre&gt;
 	 * 	lite.tooltips = {
@@ -362,137 +362,139 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 	 */
 	CKEDITOR.plugins.add( 'lite',
 	{
+		
+		icons: &quot;lite_AcceptAll,lite_AcceptOne,lite_RejectAll,lite_RejectOne,lite_ToggleShow,lite_ToggleTracking&quot;,// %REMOVE_LINE_CORE%
 
-	props : {
-		deleteTag: 'span',
-		insertTag: 'span',
-		deleteClass: 'ice-del',
-		insertClass: 'ice-ins',
-		attributes: {
-				changeId: &quot;data-cid&quot;,
-				userId: &quot;data-userid&quot;,
-				userName: &quot;data-username&quot;,
-				sessionId: &quot;data-session-id&quot;,
-				changeData: &quot;data-changedata&quot;,
-				time: &quot;data-time&quot;
+		props : {
+			deleteTag: 'span',
+			insertTag: 'span',
+			deleteClass: 'ice-del',
+			insertClass: 'ice-ins',
+			attributes: {
+					changeId: &quot;data-cid&quot;,
+					userId: &quot;data-userid&quot;,
+					userName: &quot;data-username&quot;,
+					sessionId: &quot;data-session-id&quot;,
+					changeData: &quot;data-changedata&quot;,
+					time: &quot;data-time&quot;
+			},
+			stylePrefix: 'ice-cts',
+			preserveOnPaste: 'p',
+			css: 'css/lite.css'
 		},
-		stylePrefix: 'ice-cts',
-		preserveOnPaste: 'p',
-		css: 'css/lite.css'
-	},
-	
-	_scriptsLoaded : null, // not false, which means we're loading
-	
-<span id='LITE-lite-method-init'>	/**
-</span>	 * Called by CKEditor to init the plugin
-	 * Creates an instance of a {@link LITE.LITEPlugin} if one is not already associated with the given editor. 
-	 * @param ed an instance of CKEditor
-	 */
-	init: function(ed) {
-		var rec = _findPluginRec(ed);
-		if (rec) { // should not happen
-			return;
-		}
-		// (CKEDITOR.ELEMENT_MODE_INLINE == ed.elementMode) {
-		if (! this._inited) { 
-			_ieFix();
-			this._inited = true;
-		}
-		var path = this.path,
-			plugin = new LITEPlugin(this.props, path),
-			liteConfig = CKEDITOR.tools.extend({}, ed.config.lite || {}),
-			ttConfig = liteConfig.tooltips;
 		
-		if (undefined == ttConfig) {
-			ttConfig = true;
-		}
-			
-		if (ttConfig === true) {
-			ttConfig = tooltipDefaults;
-		}
-		liteConfig.tooltips = ttConfig;
+		_scriptsLoaded : null, // not false, which means we're loading
 		
-		addPlugin(ed, plugin);
-		
-		plugin.init(ed, liteConfig);
-
-	
-		ed.on(&quot;destroy&quot;, (function(editor) {
-			var ind = _findPluginIndex(editor);
-			if (ind &gt;= 0) {
-				_pluginMap.splice(ind, 1);
+<span id='LITE-lite-method-init'>		/**
+</span>		 * Called by CKEditor to init the plugin
+		 * Creates an instance of a {@link LITE.LITEPlugin} if one is not already associated with the given editor. 
+		 * @param ed an instance of CKEditor
+		 */
+		init: function(ed) {
+			var rec = _findPluginRec(ed);
+			if (rec) { // should not happen
+				return;
 			}
-		}).bind(this));
+			// (CKEDITOR.ELEMENT_MODE_INLINE == ed.elementMode) {
+			if (! this._inited) { 
+				_ieFix();
+				this._inited = true;
+			}
+			var path = this.path,
+				plugin = new LITEPlugin(this.props, path),
+				liteConfig = CKEDITOR.tools.extend({}, ed.config.lite || {}),
+				ttConfig = liteConfig.tooltips;
+			
+			if (undefined == ttConfig) {
+				ttConfig = true;
+			}
+				
+			if (ttConfig === true) {
+				ttConfig = tooltipDefaults;
+			}
+			liteConfig.tooltips = ttConfig;
+			
+			addPlugin(ed, plugin);
+			
+			plugin.init(ed, liteConfig);
+	
 		
-		if (this._scriptsLoaded) {
-			plugin._onScriptsLoaded();
-			return;
-		}
-		else if (this._scriptsLoaded === false) { // still loading, initial value was null
-			return;
-		}
-		
-		this._scriptsLoaded = false;
-		var	jQueryLoaded = (typeof(jQuery) == &quot;function&quot;),
-			self = this,
-			jQueryPath = liteConfig.jQueryPath || &quot;js/jquery.min.js&quot;,
-			scripts = (liteConfig.includeType ? liteConfig[&quot;includes_&quot; + liteConfig.includeType] : liteConfig.includes) || [&quot;lite-includes.js&quot;];
-		
-		scripts = scripts.slice(); // create a copy not referenced by the config
-		
-		for (var i = 0, len = scripts.length; i &lt; len; ++i) {
-			scripts[i] = path + scripts[i]; 
-		}
-		if (! jQueryLoaded) {
-			scripts.splice(0, 0, this.path + jQueryPath);
-		}
-		if (ttConfig.path) {
-			scripts.push(this.path + ttConfig.path);
-		}
-		
-		var load1 = function() {
-			if (scripts.length &lt; 1) {
-				self._scriptsLoaded = true;
-				if (! jQueryLoaded) {
-					jQuery.noConflict();
+			ed.on(&quot;destroy&quot;, (function(editor) {
+				var ind = _findPluginIndex(editor);
+				if (ind &gt;= 0) {
+					_pluginMap.splice(ind, 1);
 				}
-				jQuery.each(_pluginMap, (function(i, rec) {
-					rec.plugin._onScriptsLoaded();
-				}));
+			}).bind(this));
+			
+			if (this._scriptsLoaded) {
+				plugin._onScriptsLoaded();
+				return;
+			}
+			else if (this._scriptsLoaded === false) { // still loading, initial value was null
+				return;
+			}
+			
+			this._scriptsLoaded = false;
+			var	jQueryLoaded = (typeof(jQuery) == &quot;function&quot;),
+				self = this,
+				jQueryPath = liteConfig.jQueryPath || &quot;js/jquery.min.js&quot;,
+				scripts = (liteConfig.includeType ? liteConfig[&quot;includes_&quot; + liteConfig.includeType] : liteConfig.includes) || [&quot;lite-includes.js&quot;];
+			
+			scripts = scripts.slice(); // create a copy not referenced by the config
+			
+			for (var i = 0, len = scripts.length; i &lt; len; ++i) {
+				scripts[i] = path + scripts[i]; 
+			}
+			if (! jQueryLoaded) {
+				scripts.splice(0, 0, this.path + jQueryPath);
+			}
+			if (ttConfig.path) {
+				scripts.push(this.path + ttConfig.path);
+			}
+			
+			var load1 = function() {
+				if (scripts.length &lt; 1) {
+					self._scriptsLoaded = true;
+					if (! jQueryLoaded) {
+						jQuery.noConflict();
+					}
+					jQuery.each(_pluginMap, (function(i, rec) {
+						rec.plugin._onScriptsLoaded();
+					}));
+				}
+				else {
+					var script = scripts.shift();
+					CKEDITOR.scriptLoader.load(script, function() {load1();}, self);
+				}
+			};
+			
+			load1(scripts);		
+		},
+		
+<span id='LITE-lite-method-findPlugin'>		/**
+</span>		 * returns the plugin instance associated with an editor
+		 * @param editor
+		 * @returns {Object} A LITE plugin instance
+		 */
+		findPlugin : function(editor) {
+			return _findPlugin(editor);
+		},
+		
+<span id='LITE-lite-method-startNewSession'>		/**
+</span>		 * starts a new session in the plugin instance associated with an editor
+		 * @param editor
+		 */
+		startNewSession: function(editor) {
+			var plugin = _findPlugin(editor);
+			if (plugin) {
+				plugin.startNewSession();
 			}
 			else {
-				var script = scripts.shift();
-				CKEDITOR.scriptLoader.load(script, function() {load1();}, self);
+				_logError(&quot;startNewSession: plugin not found&quot;);
 			}
-		};
+		}
 		
-		load1(scripts);		
-	},
-	
-<span id='LITE-lite-method-findPlugin'>	/**
-</span>	 * returns the plugin instance associated with an editor
-	 * @param editor
-	 * @returns {Object} A LITE plugin instance
-	 */
-	findPlugin : function(editor) {
-		return _findPlugin(editor);
-	},
-	
-<span id='LITE-lite-method-startNewSession'>	/**
-</span>	 * starts a new session in the plugin instance associated with an editor
-	 * @param editor
-	 */
-	startNewSession: function(editor) {
-		var plugin = _findPlugin(editor);
-		if (plugin) {
-			plugin.startNewSession();
-		}
-		else {
-			_logError(&quot;startNewSession: plugin not found&quot;);
-		}
-	}
-	
-});
+	});
 	
 <span id='LITE-LITEPlugin'>	/**
 </span>	 * @class LITE.LITEPlugin
@@ -537,42 +539,42 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 				{ command : LITE.Commands.TOGGLE_TRACKING,
 					exec : this._onToggleTracking, 
 					title: &quot;Toggle Tracking Changes&quot;,
-					icon: &quot;track_changes_on_off.png&quot;,
+//					icon: &quot;track_changes_on_off.png&quot;,
 					trackingOnly : false
 				},
 				{
 					command: LITE.Commands.TOGGLE_SHOW, 
 					exec: this._onToggleShow, 
 					title: &quot;Toggle Tracking Changes&quot;,
-					icon: &quot;show_hide.png&quot;,
+//					icon: &quot;show_hide.png&quot;,
 					readOnly : true
 				},
 				{
 					command:LITE.Commands.ACCEPT_ALL, 
 					exec:this._onAcceptAll, 
 					title:&quot;Accept all changes&quot;,
-					icon:&quot;accept_all.png&quot;,
+//					icon:&quot;accept_all.png&quot;,
 					readOnly : allow
 				},
 				{
 					command:LITE.Commands.REJECT_ALL,
 					exec: this._onRejectAll,
 					title: &quot;Reject all changes&quot;, 
-					icon:&quot;reject_all.png&quot;,
+//					icon:&quot;reject_all.png&quot;,
 					readOnly : allow
 				},
 				{
 					command:LITE.Commands.ACCEPT_ONE,
 					exec:this._onAcceptOne,
 					title:&quot;Accept Change&quot;,
-					icon:&quot;accept_one.png&quot;,
+//					icon:&quot;accept_one.png&quot;,
 					readOnly : allow
 				},
 				{
 					command:LITE.Commands.REJECT_ONE,
 					exec:this._onRejectOne,
 					title:&quot;Reject Change&quot;,
-					icon:&quot;reject_one.png&quot;,
+//					icon:&quot;reject_one.png&quot;,
 					readOnly : allow
 				},
 				{
@@ -603,18 +605,17 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 					readOnly: rec.readOnly || false
 				});
 		
-				if (rec.icon &amp;&amp; rec.title &amp;&amp; commands.indexOf(rec.command) &gt;= 0) { // configuration doens't include this command
+				if (/*rec.icon &amp;&amp; */rec.title &amp;&amp; commands.indexOf(rec.command) &gt;= 0) { // configuration doens't include this command
 					var name = self._commandNameToUIName(rec.command);
 					ed.ui.addButton(name, {
 						label : rec.title,
 						command : rec.command,
-						icon : path + &quot;icons/&quot; + rec.icon,
+//						icon : path + &quot;icons/&quot; + rec.icon,
 						toolbar: &quot;lite&quot;
 					}); 
 					if (rec.trackingOnly !== false) {
 						self._liteCommandNames.push(rec.command);
 					}
-					
 				}
 			}
 			
@@ -1008,9 +1009,6 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			this._tracker = new ice.InlineChangeEditor(iceprops);
 			try {
 				this._tracker.startTracking();
-				if (config.useSession) {
-					this.startNewSession();
-				}
 				this.toggleTracking(this._isTracking, false);
 				this._updateTrackingState();
 				jQuery(this._tracker).on(&quot;change&quot;, this._onIceChange.bind(this)).on(&quot;textChange&quot;, this._onIceTextChanged.bind(this));

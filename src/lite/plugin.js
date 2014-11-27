@@ -284,7 +284,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 	 * @member LITE.configuration
 	 * @property {Object} tooltips
 	 * Configures the tooltips shown by LITE
-	 * Omit the classPath member in order to get tooltips in standard html title elements
+	 * <div><strong>Omit the classPath member in order to get tooltips in standard html title elements</strong></div>
 	 * These are the default values used by LITE:
 	 * <pre>
 	 * 	lite.tooltips = {
@@ -346,7 +346,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 	CKEDITOR.plugins.add( 'lite',
 	{
 		
-		icons: "lite_AcceptAll,lite_AcceptOne,lite_RejectAll,lite_RejectOne,lite_ToggleShow,lite_ToggleTooltips",// %REMOVE_LINE_CORE%
+		icons: "lite_AcceptAll,lite_AcceptOne,lite_RejectAll,lite_RejectOne,lite_ToggleShow,lite_ToggleTracking",// %REMOVE_LINE_CORE%
 
 		props : {
 			deleteTag: 'span',
@@ -992,9 +992,6 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			this._tracker = new ice.InlineChangeEditor(iceprops);
 			try {
 				this._tracker.startTracking();
-				if (config.useSession) {
-					this.startNewSession();
-				}
 				this.toggleTracking(this._isTracking, false);
 				this._updateTrackingState();
 				jQuery(this._tracker).on("change", this._onIceChange.bind(this)).on("textChange", this._onIceTextChanged.bind(this));
