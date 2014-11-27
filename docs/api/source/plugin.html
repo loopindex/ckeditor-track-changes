@@ -301,6 +301,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 </span>	 * @member LITE.configuration
 	 * @property {Object} tooltips
 	 * Configures the tooltips shown by LITE
+	 * Omit the classPath member in order to get tooltips in standard html title elements
 	 * These are the default values used by LITE:
 	 * &lt;pre&gt;
 	 * 	lite.tooltips = {
@@ -320,7 +321,39 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 	 * the path (relative to the LITE plugin.js file) to jQuery
 	 * @default js/jquery.min.js 
 	 */
+
+<span id='LITE-configuration-property-tooltipTemplate'>	/**
+</span>	 * @member LITE.configuration
+	 * @property {String} tooltipTemplate
+	 * A format string used to create the content of tooltips shown over change spans
+	 * @default &quot;%a by %u %t&quot;
+	 * &lt;h3&gt;formats&lt;/h3&gt;
+	 * (use uppercase to apply the format to the last modification date of the change span rather than the first) 
+	 * &lt;ul&gt;
+	 * &lt;li&gt;&lt;strong&gt;%a&lt;/strong&gt;  The action, &quot;added&quot; or &quot;deleted&quot; (not internationalized yet)
+	 * &lt;li&gt;&lt;strong&gt;%t&lt;/strong&gt;  Timestamp of the first edit action in this change span (e.g. &quot;now&quot;, &quot;3 minutes ago&quot;, &quot;August 15 1972&quot;)
+	 * &lt;li&gt;&lt;strong&gt;%u&lt;/strong&gt;  the name of the user who made the change
+	 * &lt;li&gt;&lt;strong&gt;%dd&lt;/strong&gt;  double digit date of change, e.g. 02
+	 * &lt;li&gt;&lt;strong&gt;%d&lt;/strong&gt;  date of change, e.g. 2
+	 * &lt;li&gt;&lt;strong&gt;%mm&lt;/strong&gt;  double digit month of change, e.g. 09
+	 * &lt;li&gt;&lt;strong&gt;%m&lt;/strong&gt;  month of change, e.g. 9
+	 * &lt;li&gt;&lt;strong&gt;%yy&lt;/strong&gt;    double digit year of change, e.g. 11
+	 * &lt;li&gt;&lt;strong&gt;%y&lt;/strong&gt;    full month of change, e.g. 2011
+	 * &lt;li&gt;&lt;strong&gt;%nn&lt;/strong&gt;    double digit minutes of change, e.g. 09
+	 * &lt;li&gt;&lt;strong&gt;%n&lt;/strong&gt;    minutes of change, e.g. 9
+	 * &lt;li&gt;&lt;strong&gt;%hh&lt;/strong&gt;    double digit hour of change, e.g. 05
+	 * &lt;li&gt;&lt;strong&gt;%h&lt;/strong&gt;  hour of change, e.g. 5
+	 * &lt;/ul&gt;
+	 * 
+	 */
 	
+<span id='LITE-configuration-property-jQueryPath'>	/**
+</span>	 * @member LITE.configuration
+	 * @property {String} jQueryPath
+	 * the path (relative to the LITE plugin.js file) to jQuery
+	 * @default js/jquery.min.js 
+	 */
+
 <span id='LITE-lite'>	/**
 </span>	 * @class LITE.lite
 	 * The plugin object created by CKEditor. Since only one plugin is created per web page which may contain multiple instances of CKEditor, this object only handles
