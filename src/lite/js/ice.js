@@ -400,6 +400,7 @@
 //					}
 				}
 				else {
+					this._cleanupSelection(range, false);
 			        if (right) {
 						// RIGHT DELETE
 						if(browser["type"] === "mozilla"){
@@ -1465,7 +1466,9 @@
 				} 
 				else {
 					nextContainer = ice.dom.getNextContentNode(commonAncestor, this.element);
-					range.setEnd(nextContainer, 0);
+					if (nextContainer) {
+						range.setEnd(nextContainer, 0);
+					}
 					range.collapse();
 					return this._deleteRight(range);
 				}
@@ -1690,8 +1693,11 @@
 			// Move range to position the cursor on the inside of any adjacent container that it is going
 			// to potentially delete into or before a stub element.	E.G.: <em>text</em>| test	->	<em>text|</em> test or
 			// text1 <img>| text2 -> text1 |<img> text2
-			range.moveStart(ice.dom.CHARACTER_UNIT, -1);
-			range.moveStart(ice.dom.CHARACTER_UNIT, 1);
+			try {
+				range.moveStart(ice.dom.CHARACTER_UNIT, -1);
+				range.moveStart(ice.dom.CHARACTER_UNIT, 1);
+			}
+			catch(ignore){}
 	
 			// Handles cases in which the caret is at the start of the block.
 			if (ice.dom.isOnBlockBoundary(range.startContainer, range.endContainer, this.element)) {
@@ -1743,12 +1749,14 @@
 				return true;
 			}
 	
-			var entireTextNode = range.startContainer,
-				deletedCharacter = entireTextNode.splitText(range.startOffset - 1);
+			var entireTextNode = range.startContainer;
+			if (entireTextNode && (entireTextNode.nodeType === ice.dom.TEXT_NODE)) {
+				var deletedCharacter = entireTextNode.splitText(range.startOffset - 1);
 				
-			deletedCharacter.splitText(1);
-	
-			return this._addDeleteTracking(deletedCharacter, {range:range, moveLeft:true, merge:true});
+				deletedCharacter.splitText(1);
+		
+				return this._addDeleteTracking(deletedCharacter, {range:range, moveLeft:true, merge:true});
+			}
 	
 		},
 		

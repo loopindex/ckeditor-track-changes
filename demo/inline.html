@@ -4,7 +4,7 @@
 	<title>Testing LITE</title>
 	<meta charset="utf-8">
 	<script src="http://code.jquery.com/jquery-1.10.1.min.js"></script>
-	<script src="ckeditor/ckeditor.js"></script>
+	<script src="ckeditor4.4/ckeditor.js"></script>
 	<style>
 		body {
 			font-family: sans-serif;
@@ -56,10 +56,10 @@
 		CKEDITOR.disableAutoInline = true;
 		$(document).ready(function() {
 			var editable1 = CKEDITOR.inline(document.getElementById( 'editable1' ), {
-				customConfig: "../ckeditor-config.js"
+				customConfig: "../ckeditor-conf.js"
 			});
 			var editable2 = CKEDITOR.inline(document.getElementById( 'editable2' ), {
-				customConfig: "../ckeditor-config.js"
+				customConfig: "../ckeditor-conf.js"
 			});
 		});
 	</script>

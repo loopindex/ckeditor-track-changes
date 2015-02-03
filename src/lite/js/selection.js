@@ -181,20 +181,32 @@
 			// Handle the case where the range conforms to (2) (noted in the comment above).
 			if (container.nodeType === ice.dom.ELEMENT_NODE) {
 				if (container.hasChildNodes()) {
-				container = container.childNodes[offset];
-	
-				container = this.getPreviousTextNode(container);
-	
-				// Get the previous text container that is not an empty text node.
-				while (container && container.nodeType == ice.dom.TEXT_NODE && container.nodeValue === "") {
-					container = this.getPreviousTextNode(container);
+					var nextContainer = container.childNodes[offset];
+					if (nextContainer) {
+						container = this.getPreviousTextNode(nextContainer); 
+					}
+					else {
+						do {
+							container = moveStart ? container.firstChild : container.lastChild;
+						} while (container && (container.nodeType !== ice.dom.TEXT_NODE));
+					}
+
+		
+					// Get the previous text container that is not an empty text node.
+					while (container && container.nodeType == ice.dom.TEXT_NODE && container.nodeValue === "") {
+						container = this.getPreviousTextNode(container);
+					}
+					if (! container) {
+						return; // can't find text
+					}
+		
+					offset = container.data.length - units;
 				}
-	
-				offset = container.data.length - units;
-				} else {
-				offset = units * -1;
+				else {// no child nodes
+					offset = units * -1;
 				}
-			} else {
+			} 
+			else {
 				offset -= units;
 			}
 	
@@ -275,9 +287,9 @@
 			}
 	
 			if (container.nodeType === ice.dom.ELEMENT_NODE) {
-				container = container.childNodes[offset];
+				container = container.childNodes[Math.min(offset, container.childNodes.length -1)];
 				if (container.nodeType !== ice.dom.TEXT_NODE) {
-				container = this.getNextTextNode(container);
+					container = this.getNextTextNode(container);
 				}
 	
 				offset = units;
