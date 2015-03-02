@@ -417,6 +417,7 @@
 //					}
 				}
 				else {
+					this._cleanupSelection(range, false);
 			        if (right) {
 						// RIGHT DELETE
 						if(browser[&quot;type&quot;] === &quot;mozilla&quot;){
@@ -686,7 +687,7 @@
 		
 			if (!node) {
 				var range = this.getCurrentRange();
-				if (!range.collapsed) {
+				if (! range || !range.collapsed) {
 					return;
 				}
 				node = range.startContainer;
@@ -709,7 +710,7 @@
 			changes.each(function(i, changeNode) {
 				self._removeNode(changeNode);
 			});
-			dom.remove(changes);
+
 			// we handle the replaced nodes after the deleted nodes because, well, the engine may b buggy, resulting in some nesting
 			changes = dom.find(this.element, replaceSel + '[' + this.attributes.changeId + '=' + changeId + ']');
 			nChanges += changes.length;
@@ -1482,7 +1483,9 @@
 				} 
 				else {
 					nextContainer = ice.dom.getNextContentNode(commonAncestor, this.element);
-					range.setEnd(nextContainer, 0);
+					if (nextContainer) {
+						range.setEnd(nextContainer, 0);
+					}
 					range.collapse();
 					return this._deleteRight(range);
 				}
@@ -1707,8 +1710,11 @@
 			// Move range to position the cursor on the inside of any adjacent container that it is going
 			// to potentially delete into or before a stub element.	E.G.: &lt;em&gt;text&lt;/em&gt;| test	-&gt;	&lt;em&gt;text|&lt;/em&gt; test or
 			// text1 &lt;img&gt;| text2 -&gt; text1 |&lt;img&gt; text2
-			range.moveStart(ice.dom.CHARACTER_UNIT, -1);
-			range.moveStart(ice.dom.CHARACTER_UNIT, 1);
+			try {
+				range.moveStart(ice.dom.CHARACTER_UNIT, -1);
+				range.moveStart(ice.dom.CHARACTER_UNIT, 1);
+			}
+			catch(ignore){}
 	
 			// Handles cases in which the caret is at the start of the block.
 			if (ice.dom.isOnBlockBoundary(range.startContainer, range.endContainer, this.element)) {
@@ -1760,12 +1766,14 @@
 				return true;
 			}
 	
-			var entireTextNode = range.startContainer,
-				deletedCharacter = entireTextNode.splitText(range.startOffset - 1);
+			var entireTextNode = range.startContainer;
+			if (entireTextNode &amp;&amp; (entireTextNode.nodeType === ice.dom.TEXT_NODE)) {
+				var deletedCharacter = entireTextNode.splitText(range.startOffset - 1);
 				
-			deletedCharacter.splitText(1);
-	
-			return this._addDeleteTracking(deletedCharacter, {range:range, moveLeft:true, merge:true});
+				deletedCharacter.splitText(1);
+		
+				return this._addDeleteTracking(deletedCharacter, {range:range, moveLeft:true, merge:true});
+			}
 	
 		},
 		

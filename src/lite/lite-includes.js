@@ -4092,6 +4092,7 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 //					}
 				}
 				else {
+					this._cleanupSelection(range, false);
 			        if (right) {
 						// RIGHT DELETE
 						if(browser["type"] === "mozilla"){
@@ -4361,7 +4362,7 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 		
 			if (!node) {
 				var range = this.getCurrentRange();
-				if (!range.collapsed) {
+				if (! range || !range.collapsed) {
 					return;
 				}
 				node = range.startContainer;
@@ -4384,7 +4385,7 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 			changes.each(function(i, changeNode) {
 				self._removeNode(changeNode);
 			});
-			dom.remove(changes);
+
 			// we handle the replaced nodes after the deleted nodes because, well, the engine may b buggy, resulting in some nesting
 			changes = dom.find(this.element, replaceSel + '[' + this.attributes.changeId + '=' + changeId + ']');
 			nChanges += changes.length;
@@ -5157,7 +5158,9 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 				} 
 				else {
 					nextContainer = ice.dom.getNextContentNode(commonAncestor, this.element);
-					range.setEnd(nextContainer, 0);
+					if (nextContainer) {
+						range.setEnd(nextContainer, 0);
+					}
 					range.collapse();
 					return this._deleteRight(range);
 				}
@@ -5382,8 +5385,11 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 			// Move range to position the cursor on the inside of any adjacent container that it is going
 			// to potentially delete into or before a stub element.	E.G.: <em>text</em>| test	->	<em>text|</em> test or
 			// text1 <img>| text2 -> text1 |<img> text2
-			range.moveStart(ice.dom.CHARACTER_UNIT, -1);
-			range.moveStart(ice.dom.CHARACTER_UNIT, 1);
+			try {
+				range.moveStart(ice.dom.CHARACTER_UNIT, -1);
+				range.moveStart(ice.dom.CHARACTER_UNIT, 1);
+			}
+			catch(ignore){}
 	
 			// Handles cases in which the caret is at the start of the block.
 			if (ice.dom.isOnBlockBoundary(range.startContainer, range.endContainer, this.element)) {
@@ -5435,12 +5441,14 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 				return true;
 			}
 	
-			var entireTextNode = range.startContainer,
-				deletedCharacter = entireTextNode.splitText(range.startOffset - 1);
+			var entireTextNode = range.startContainer;
+			if (entireTextNode && (entireTextNode.nodeType === ice.dom.TEXT_NODE)) {
+				var deletedCharacter = entireTextNode.splitText(range.startOffset - 1);
 				
-			deletedCharacter.splitText(1);
-	
-			return this._addDeleteTracking(deletedCharacter, {range:range, moveLeft:true, merge:true});
+				deletedCharacter.splitText(1);
+		
+				return this._addDeleteTracking(deletedCharacter, {range:range, moveLeft:true, merge:true});
+			}
 	
 		},
 		
@@ -7916,20 +7924,32 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 			// Handle the case where the range conforms to (2) (noted in the comment above).
 			if (container.nodeType === ice.dom.ELEMENT_NODE) {
 				if (container.hasChildNodes()) {
-				container = container.childNodes[offset];
-	
-				container = this.getPreviousTextNode(container);
-	
-				// Get the previous text container that is not an empty text node.
-				while (container && container.nodeType == ice.dom.TEXT_NODE && container.nodeValue === "") {
-					container = this.getPreviousTextNode(container);
+					var nextContainer = container.childNodes[offset];
+					if (nextContainer) {
+						container = this.getPreviousTextNode(nextContainer); 
+					}
+					else {
+						do {
+							container = moveStart ? container.firstChild : container.lastChild;
+						} while (container && (container.nodeType !== ice.dom.TEXT_NODE));
+					}
+
+		
+					// Get the previous text container that is not an empty text node.
+					while (container && container.nodeType == ice.dom.TEXT_NODE && container.nodeValue === "") {
+						container = this.getPreviousTextNode(container);
+					}
+					if (! container) {
+						return; // can't find text
+					}
+		
+					offset = container.data.length - units;
 				}
-	
-				offset = container.data.length - units;
-				} else {
-				offset = units * -1;
+				else {// no child nodes
+					offset = units * -1;
 				}
-			} else {
+			} 
+			else {
 				offset -= units;
 			}
 	
@@ -8010,9 +8030,9 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 			}
 	
 			if (container.nodeType === ice.dom.ELEMENT_NODE) {
-				container = container.childNodes[offset];
+				container = container.childNodes[Math.min(offset, container.childNodes.length -1)];
 				if (container.nodeType !== ice.dom.TEXT_NODE) {
-				container = this.getNextTextNode(container);
+					container = this.getNextTextNode(container);
 				}
 	
 				offset = units;

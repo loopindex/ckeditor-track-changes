@@ -209,7 +209,7 @@
 		}
 		this.options = options;
 		this.bound = {};
-		_ref2 = ["prepareToShow", "prepareToHide", "show", "hide", "reposition"];
+		_ref2 = ["prepareToShow", "prepareToHide", "show","hide", "reposition"];
 		for (_j = 0, _len1 = _ref2.length; _j < _len1; _j++) {
 		  methodToBind = _ref2[_j];
 		  this.bound[methodToBind] = (function(methodToBind) {
@@ -1833,13 +1833,23 @@
 			
 		},
 		
-		hideAll: function() {
+		hideAll: function(body) {
 			var opt = {
 				hideDelay: 0,
 				hideEffectDuration: 0
 			};
-			for (var i = Opentip.tips.length; i--;) {
-				Opentip.tips[i].deactivate();
+			try {
+				for (var i = Opentip.tips.length; i--;) {
+					Opentip.tips[i].deactivate();
+				}
+			}
+			catch (ignore) {}
+			// clean up any leftover tooltip elements
+			if (body && body.ownerDocument) {
+				try {
+					Opentip.adapter.wrap(body.ownerDocument.body).find("div." + Opentip.prototype["class"]["container"]).remove();
+				}
+				catch (ignore){}
 			}
 		},
 		

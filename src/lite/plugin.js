@@ -114,6 +114,13 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		return cutKeystrokes.indexOf(code) >= 0;
 	}
 	
+	function nodeToDOMNode(node) {
+		if (node && node.$ && (typeof node.getDocument === "function")) {
+			return node.$;
+		}
+		return node;
+	}
+	
 	function _findPluginIndex(editor) {
 		for (var i = _pluginMap.length; i--;) {
 			var rec = _pluginMap[i];
@@ -359,7 +366,8 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 					userName: "data-username",
 					sessionId: "data-session-id",
 					changeData: "data-changedata",
-					time: "data-time"
+					time: "data-time",
+					lastTime: "data-last-change-time"
 			},
 			stylePrefix: 'ice-cts',
 			preserveOnPaste: 'p',
@@ -766,6 +774,10 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			return ((this._tracker && this._tracker.countChanges(options)) || 0);		
 		},
 		
+		/**
+		 * Enable or disable the accept changes ui. This does not affect the availabibility of the accept/reject api
+		 * @param bEnable
+		 */
 		enableAcceptReject : function(bEnable) {
 			this._canAcceptReject  = !!bEnable;
 			this._onIceChange();
@@ -788,6 +800,10 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			return true;
 		},
 		
+		/**
+		 * Create a new session. The change tracker unifies adjacent changes from the same user id, unless they are
+		 * from different sessions
+		 */
 		startNewSession: function() {
 			var now = new Date();
 			this._sessionId = String.fromCharCode(65 + Math.round(Math.random() * 26)) + now.getDate() + now.getDay() + now.getHours() + now.getMinutes() + now.getMilliseconds();
@@ -796,6 +812,11 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			}
 		},
 		
+		/**
+		 * returns the provided html, or the html content of the editor, without change tracking markup and without deleted changes
+		 * @param {String} text optional html to clean up 
+		 * @returns {String}
+		 */
 		getCleanMarkup: function(text) {
 			if (null === text || undefined === text) {
 				text = (this._editor && this._editor.getData())  || "";
@@ -806,6 +827,10 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			return text;
 		},
 		
+		/**
+		 * Returns the text content of the editor, without deleted changes
+		 * @returns
+		 */
 		getCleanText : function() {
 			var root = this._getBody();
 			if (! root){
@@ -819,6 +844,36 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			str = str.replace(/&nbsp(;)?/ig, ' ');
 			return str;
 		},
+		
+		/**
+		 * Accept the change associated with a DOM node
+		 * @param node either a DOM node or a CKEditor DOM node
+		 */
+		acceptChange: function(node) {
+			node = nodeToDOMNode(node);
+			if (node && this._tracker) {
+				this._tracker.acceptChange(node);
+				this._cleanup();
+				this._editor.fire(LITE.Events.ACCEPT, {lite:this});
+				this._onSelectionChanged(null);
+			}
+		},
+		
+		/**
+		 * Reject the change associated with a DOM node
+		 * @param node either a DOM node or a CKEditor DOM node
+		 */
+		rejectChange: function(node) {
+			node = nodeToDOMNode(node);
+			if (node && this._tracker) {
+				this._tracker.rejectChange(node);
+				this._cleanup();
+				this._editor.fire(LITE.Events.REJECT, {lite:this});
+				this._onSelectionChanged(null);
+			}
+		},
+		
+		////////////// Implementation ///////////////
 
 		_getCleanText : function(e, textFragments, deleteClass) { // assumed never to be called with a text node
 			var cls = e.getAttribute("class");
@@ -854,6 +909,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			this._editor = dom.editor;
 			var ed = this._editor.editable();
 			ed.attachListener(ed, "keypress", this._onKeyPress, this, null, 1);
+			this._hideTooltip(); // clean up any leftover tooltip elements
 			this._onReady();
 		},
 		
@@ -862,7 +918,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			this._onReady();
 		},
 		
-		_loadCSS : function(doc) {
+		_loadCSS : function(doc, cssPath) {
 			var head = doc.getElementsByTagName("head")[0];
 			function load(path, id) {
 				var style = jQuery(head).find('#' + id);
@@ -875,7 +931,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 					head.appendChild(style);
 				}
 			}
-			load(this.path + "css/lite.css", "__lite__css__");
+			load(this.path + cssPath, "__lite__css__");
 			
 			if (this._config.tooltips.cssPath) {
 				load(this.path + this._config.tooltips.cssPath, "__lite_tt_css__");
@@ -906,7 +962,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 				config = this._config,
 				debug = (config && config.debug) || {};
 			
-			this._loadCSS(doc);
+			this._loadCSS(doc, (config && config.cssPath) || "css/lite.css");
 			
 			if (! this._eventsBounds) {
 				this._eventsBounds = true;
@@ -917,6 +973,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 					e.on("paste", paste, null, null, 1);
 				}
 				e.on("beforeGetData", this._onBeforeGetData.bind(this));
+				e.on("beoreUndoImage", this._onBeforeGetData.bind(this)); // treat before undo as before getdata
 				e.on("insertHtml", paste, null, null, 1);
 				e.on("insertText", paste, null, null, 1);
 				e.on("insertElement", paste, null, null, 1);
@@ -1022,22 +1079,12 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		
 		_onAcceptOne : function(event) {
 			var node = this._tracker.currentChangeNode();
-			if (node) {
-				this._tracker.acceptChange(node);
-				this._cleanup();
-				this._editor.fire(LITE.Events.ACCEPT, {lite:this});
-				this._onSelectionChanged(null);
-			}
+			return this.acceptChange(node);
 		},
 		
 		_onRejectOne : function(event) {
 			var node = this._tracker.currentChangeNode();
-			if (node) {
-				this._tracker.rejectChange(node);
-				this._cleanup();
-				this._editor.fire(LITE.Events.REJECT, {lite:this});
-				this._onSelectionChanged(null);
-			}
+			return this.rejectChange(node);
 		},
 		
 		_onToggleTooltips: function(event) {
@@ -1140,6 +1187,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		 * Remove tooltips from dom
 		 */
 		_onAfterSetData: function(evt) {
+			this._hideTooltip();
 			if (this._tracker/* && this._tracker.isTracking() */) {
 				this._tracker.reload();
 			}
@@ -1342,11 +1390,8 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			
 			try {
 				function makeClasses(tag) {
-					var classes = [props.deleteClass,props.insertClass];
-					for (var i = 0; i < 10;++i) {
-						classes.push(props.stylePrefix + "-" + i);
-					}
-					return /*tag + */'(' + classes.join(',') + ')';
+					var classes = [props.deleteClass,props.insertClass,props.stylePrefix+'*'];
+					return '(' + classes.join(',') + ')';
 				}
 				
 				function makeAttributes(tag) {
@@ -1460,7 +1505,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			if (config.show) {
 				var title = this._makeTooltipTitle(change);
 				if (this._tooltipsHandler) {
-					this._tooltipsHandler.hideAll();
+					this._tooltipsHandler.hideAll(this._getBody());
 					this._tooltipsHandler.showTooltip(node, title, this._editor.container.$);
 				}
 				else {
@@ -1479,7 +1524,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 					this._tooltipsHandler.hideTooltip(node);
 				}
 				else {
-					this._tooltipsHandler.hideAll();
+					this._tooltipsHandler.hideAll(this._getBody());
 				}
 			}
 			else {

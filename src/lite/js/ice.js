@@ -670,7 +670,7 @@
 		
 			if (!node) {
 				var range = this.getCurrentRange();
-				if (!range.collapsed) {
+				if (! range || !range.collapsed) {
 					return;
 				}
 				node = range.startContainer;
@@ -693,7 +693,7 @@
 			changes.each(function(i, changeNode) {
 				self._removeNode(changeNode);
 			});
-			dom.remove(changes);
+
 			// we handle the replaced nodes after the deleted nodes because, well, the engine may b buggy, resulting in some nesting
 			changes = dom.find(this.element, replaceSel + '[' + this.attributes.changeId + '=' + changeId + ']');
 			nChanges += changes.length;
@@ -1377,6 +1377,7 @@
 					if (elem.nodeType !== ice.dom.TEXT_NODE) {
 						// Browsers like to insert breaks into empty paragraphs - remove them
 						if (ice.dom.BREAK_ELEMENT == ice.dom.getTagName(elem)) {
+							this._addDeleteTracking(elem, {range:null, moveLeft:true});
 							continue;
 						}
 			
@@ -1384,7 +1385,7 @@
 							this._addDeleteTracking(elem, {range:null, moveLeft:true});
 							continue;
 						}
-						if (ice.dom.hasNoTextOrStubContent(elem)) {
+						if (this._isEmptyTextNode(elem) || ice.dom.hasNoTextOrStubContent(elem)) {
 							this._removeNode(elem);
 							continue;
 						}
