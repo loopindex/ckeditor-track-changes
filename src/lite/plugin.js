@@ -996,8 +996,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			}
 			var iceprops = {
 				element: body,
-				handleEvents : true,
-				mergeBlocks : true,
+				mergeBlocks : false,
 				currentUser: {
 					id: config.userId || "",
 					name: config.userName || ""

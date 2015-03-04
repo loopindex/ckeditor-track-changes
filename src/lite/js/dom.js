@@ -30,6 +30,22 @@
 
 	dom.STUB_ELEMENTS = dom.CONTENT_STUB_ELEMENTS.slice();
 	dom.STUB_ELEMENTS.push(dom.BREAK_ELEMENT);
+	
+	var stubElementsString = dom.CONTENT_STUB_ELEMENTS.join(', ');
+	
+	function isEmptyString(str) {
+		if (! str) {
+			return true;
+		}
+		var len = str.length - 1, ch;
+		while (len >= 0) {
+			ch = str[len--];
+			if (ch !== '\u200B' && ch !== '\uFEFF') {
+				return false;
+			}
+		}
+		return true;
+	}
 
 	dom.getKeyChar = function (e) {
 		return String.fromCharCode(e.which);
@@ -232,13 +248,29 @@
 		return jQuery(node).text();
 	};
 	dom.getNodeStubContent = function (node) {
-		return jQuery(node).find(dom.CONTENT_STUB_ELEMENTS.join(', '));
+		return jQuery(node).find(stubElementsString);
 	};
 	dom.hasNoTextOrStubContent = function (node) {
-		if (dom.getNodeTextContent(node).length > 0) return false;
-		if (jQuery(node).find(dom.CONTENT_STUB_ELEMENTS.join(', ')).length > 0) return false;
-		return true;
+		var str = dom.getNodeTextContent(node);
+		if (! isEmptyString(str)) {
+			return false;
+		}
+		if (! node.firstChild) { // no children shortcut
+			return true;
+		}
+		return jQuery(node).find(stubElementsString).length === 0;
 	};
+	
+	dom.isEmptyTextNode = function(node) {
+		if (! node || (dom.TEXT_NODE !== node.nodeType)) {
+			return false;
+		}
+		if (node.length === 0) {
+			return true;
+		}
+		return isEmptyString(node.nodeValue);
+	};
+
 	dom.getNodeCharacterLength = function (node) {
 		return dom.getNodeTextContent(node).length + jQuery(node).find(dom.STUB_ELEMENTS.join(', ')).length;
 	};

@@ -3747,11 +3747,6 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 			}
 		},
 
-		// If true, setup event listeners on `this.element` and handle events - good option for a basic
-		// setup without a text editor. Otherwise, when set to false, events need to be manually passed
-		// to _handleEvent, which is good for a text editor with an event callback handler, like tinymce.
-		handleEvents: false,
-	
 		// Sets this.element with the contentEditable element
 		contentEditable: undefined,//dfl, start with a neutral value
 	
@@ -3764,7 +3759,7 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 	
 		// Switch for whether paragraph breaks should be removed when the user is deleting over a
 		// paragraph break while changes are tracked.
-		mergeBlocks: true,
+		mergeBlocks: false,
 		
 		_isVisible : true, // state of change tracking visibility
 		
@@ -3799,6 +3794,7 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 		this._browser = ice.dom.browser();
 		this._tooltipMouseOver = this._tooltipMouseOver.bind(this);
 		this._tooltipMouseOut = this._tooltipMouseOut.bind(this);
+		this._boundEventHandler = this._handleEvent.bind(this);
 		
 		ice.dom.extend(true, this, defaults, options);
 		if (options.tooltips && (! jQuery.isFunction(options.hostMethods.showTooltip) || ! jQuery.isFunction(options.hostMethods.hideTooltip))) {
@@ -3847,12 +3843,15 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 			}
 		
 			// If we are handling events setup the delegate to handle various events on `this.element`.
-			if (this.handleEvents) {
-				var self = this;
-				ice.dom.bind(self.element, 'keyup.ice keydown.ice keypress.ice', function (e) {
-					return self._handleEvent(e);
-				});
-			}
+			var e = this.element;
+			
+/*			ice.dom.bind(self.element, 'keyup.ice keydown.ice keypress.ice', function (e) {
+				return self._handleEvent(e);
+			}); */
+			
+			e.addEventListener("keydown", this._boundEventHandler, true);
+			e.addEventListener("keypress", this._boundEventHandler, true);
+			
 			
 			this.initializeEnvironment();
 			this.initializeEditor();
@@ -3871,8 +3870,12 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 			this._isTracking = false;
 			try { // dfl added try/catch for ie
 				// If we are handling events setup the delegate to handle various events on `this.element`.
-				if (this.element) {
-					ice.dom.unbind(this.element, 'keyup.ice keydown.ice keypress.ice');
+				var e = this.element;
+				if (e) {
+					e.removeEventListener("keyup", this._boundEventHandler, true);
+					e.removeEventListener("keydown", this._boundEventHandler, true);
+					e.removeEventListener("keypress", this._boundEventHandler, true);
+//					ice.dom.unbind(this.element, 'keyup.ice keydown.ice keypress.ice');
 				}
 		
 				// dfl:reset contenteditable unless requested not to do so
@@ -4326,7 +4329,7 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 					ice.dom.replaceWith(el, content);
 					jQuery.each(content, function(i,e) {
 						var parent = e && e.parentNode;
-						this._normalizeNode(parent);
+						self._normalizeNode(parent);
 					});
 				});
 				this._changes = {}; // dfl, reset the changes table
@@ -4585,18 +4588,6 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 		
 		/**
 		 * @private
-		 * Return true if the parameter is a text node that contains nothing or a filler char 
-		 */
-		_isEmptyTextNode: function(node) {
-			if (! node || (ice.dom.TEXT_NODE !== node.nodeType)) {
-				return false;
-			}
-			var nv = node.nodeValue;
-			return "" === nv || '\u200B' === nv || '\uFEFF' === nv; 
-		},
-
-		/**
-		 * @private
 		 * If the range is collapsed, removes empty nodes around the caret
 		 */
 		_cleanupSelection: function(range, isHostRange) {
@@ -4622,7 +4613,7 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 		 */
 		_cleanupTextSelection: function(range, start, isHostRange) {
 			this._cleanupAroundNode(start);
-			if (this._isEmptyTextNode(start)) {
+			if (ice.dom.isEmptyTextNode(start)) {
 				var parent = start.parentNode, 
 					ind = ice.dom.getNodeIndex(start),
 					f = isHostRange ? this.hostMethods.makeHostElement : nativeElement;
@@ -4665,7 +4656,7 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 				return;
 			}
 			var ind = ice.dom.getNodeIndex(start) + 1;
-			if (this._isEmptyTextNode(start)) {
+			if (ice.dom.isEmptyTextNode(start)) {
 				ind = Math.max(0, ind - 1);
 				parent.removeChild(start);
 			}
@@ -4682,7 +4673,7 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 				tmp;
 			childCount = parent.childNodes.length;
 			while (anchor) {
-				if (this._isEmptyTextNode(anchor)) {
+				if (ice.dom.isEmptyTextNode(anchor)) {
 					tmp = anchor;
 					anchor = anchor.nextSibling;
 					parent.removeChild(tmp);
@@ -4693,7 +4684,7 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 			}
 			anchor = node.previousSibling;
 			while (anchor) {
-				if (this._isEmptyTextNode(anchor)) {
+				if (ice.dom.isEmptyTextNode(anchor)) {
 					tmp = anchor;
 					anchor = anchor.previousSibling;
 					parent.removeChild(tmp);
@@ -4702,7 +4693,7 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 					anchor = anchor.previousSibling;
 				}
 			}
-			if (includeNode && this._isEmptyTextNode(node)) {
+			if (includeNode && ice.dom.isEmptyTextNode(node)) {
 				parent.removeChild(node);
 			}
 		},
@@ -5085,7 +5076,7 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 					}
 				}
 				// Ignore empty space nodes
-				if (this._isEmptyTextNode(elem)) {
+				if (ice.dom.isEmptyTextNode(elem)) {
 					this._removeNode(elem);
 					continue;
 				}
@@ -5172,14 +5163,9 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 				}
 		
 				if (commonAncestor.childNodes.length > initialOffset) {
-//					var tempTextContainer = document.createTextNode(' ');
-//					commonAncestor.insertBefore(tempTextContainer, commonAncestor.childNodes[initialOffset]);
-//					range.setStart(tempTextContainer, 1);
-//					range.collapse(true);
 					range.setStart(commonAncestor.childNodes[initialOffset], 0);
 					range.collapse(true);
 					returnValue = this._deleteRight(range);
-//					this._removeNode(tempTextContainer);
 					range.refresh();
 					return returnValue;
 				}
@@ -5524,10 +5510,10 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 	
 			}
 			// Webkit likes to insert empty text nodes next to elements. We remove them here.
-			if (contentNode.previousSibling && this._isEmptyTextNode(contentNode.previousSibling)) {
+			if (contentNode.previousSibling && ice.dom.isEmptyTextNode(contentNode.previousSibling)) {
 				contentNode.parentNode.removeChild(contentNode.previousSibling);
 			}
-			if (contentNode.nextSibling && this._isEmptyTextNode(contentNode.nextSibling)) {
+			if (contentNode.nextSibling && ice.dom.isEmptyTextNode(contentNode.nextSibling)) {
 				contentNode.parentNode.removeChild(contentNode.nextSibling);
 			}
 			var prevDelNode = this._getIceNode(contentNode.previousSibling, 'deleteType'),
@@ -5710,8 +5696,6 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 					
 				// Remove a potential empty tracking container
 				if (ice.dom.hasNoTextOrStubContent(cleanNode)) {
-//					var newstart = this.env.document.createTextNode('');
-//					ice.dom.insertBefore(contentAddNode, newstart);
 					if (range) {
 						range.setStartBefore(contentAddNode);
 						range.collapse(true);
@@ -5807,6 +5791,7 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 				needsToBubble = this.keyDown(e);
 			}
 			if (!needsToBubble) {
+				e.stopImmediatePropagation();
 				e.preventDefault();
 			}
 			return needsToBubble;
@@ -5872,14 +5857,7 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 					preventDefault = false;
 					break;
 		/* END: Handling of caret movements inside hidden .ins/.del elements ***************/
-		/* ***********************************************************************************/
-// dfl deleted space handling code
-/*				case 32:
-					preventDefault = true;
-					var range = this.getCurrentRange();
-					this._moveRangeToValidTrackingPos(range, range.startContainer);
-					this.insert('\u00A0' , range);
-					break; */
+
 				default:
 					// Ignore key.
 					preventDefault = false;
@@ -5911,22 +5889,13 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 					// ESC
 					break;
 				default:
-					// If not Firefox then check if event is special arrow key etc.
-					// Firefox will handle this in keyPress event.
-//					if (! this._browser.firefox) {
-						preventDefault = !(this._handleAncillaryKey(e));
-//					}
+					preventDefault = !(this._handleAncillaryKey(e));
 					break;
 			}
 	
-			if (preventDefault) {
-				ice.dom.preventDefault(e);
-				return false;
-			}
-	
-			return true;
+			return ! preventDefault;
 		},
-	// compared OK
+
 		keyPress: function (e) {
 			if (this._preventKeyPress === true) {
 				this._preventKeyPress = false;
@@ -6002,24 +5971,13 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 						this.prepareToCopy();
 					}
 					break;
-	/*				if (e.ctrlKey === true || e.metaKey === true) {
-						ice.dom.preventDefault(e);
-						this.hostMethods.hostCopy();
-						this._deleteContents();
-						return false;
-					} */
 		
 				default:
 					// Not a special key.
 					break;
 			} //end switch
 	
-			if (preventDefault === true) {
-				ice.dom.preventDefault(e);
-				return false;
-			}
-	
-			return true;
+			return ! preventDefault;
 		},
 	
 		/**
@@ -6037,6 +5995,7 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 					return false;
 				}
 				if (range.collapsed) {
+					this._cleanupSelection(range, false);
 					node = range.startContainer;
 				}
 				else {
@@ -6734,6 +6693,22 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 
 	dom.STUB_ELEMENTS = dom.CONTENT_STUB_ELEMENTS.slice();
 	dom.STUB_ELEMENTS.push(dom.BREAK_ELEMENT);
+	
+	var stubElementsString = dom.CONTENT_STUB_ELEMENTS.join(', ');
+	
+	function isEmptyString(str) {
+		if (! str) {
+			return true;
+		}
+		var len = str.length - 1, ch;
+		while (len >= 0) {
+			ch = str[len--];
+			if (ch !== '\u200B' && ch !== '\uFEFF') {
+				return false;
+			}
+		}
+		return true;
+	}
 
 	dom.getKeyChar = function (e) {
 		return String.fromCharCode(e.which);
@@ -6936,13 +6911,29 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 		return jQuery(node).text();
 	};
 	dom.getNodeStubContent = function (node) {
-		return jQuery(node).find(dom.CONTENT_STUB_ELEMENTS.join(', '));
+		return jQuery(node).find(stubElementsString);
 	};
 	dom.hasNoTextOrStubContent = function (node) {
-		if (dom.getNodeTextContent(node).length > 0) return false;
-		if (jQuery(node).find(dom.CONTENT_STUB_ELEMENTS.join(', ')).length > 0) return false;
-		return true;
+		var str = dom.getNodeTextContent(node);
+		if (! isEmptyString(str)) {
+			return false;
+		}
+		if (! node.firstChild) { // no children shortcut
+			return true;
+		}
+		return jQuery(node).find(stubElementsString).length === 0;
 	};
+	
+	dom.isEmptyTextNode = function(node) {
+		if (! node || (dom.TEXT_NODE !== node.nodeType)) {
+			return false;
+		}
+		if (node.length === 0) {
+			return true;
+		}
+		return isEmptyString(node.nodeValue);
+	};
+
 	dom.getNodeCharacterLength = function (node) {
 		return dom.getNodeTextContent(node).length + jQuery(node).find(dom.STUB_ELEMENTS.join(', ')).length;
 	};
