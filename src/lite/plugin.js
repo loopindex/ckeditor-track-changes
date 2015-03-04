@@ -1215,7 +1215,11 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 				}
 				this._removeBindings = [];
 				if (track) {
-					this._removeBindings.push(this._editor.on("selectionChange", this._onSelectionChanged.bind(this)));
+					var handler = this._onSelectionChanged.bind(this),
+						editable = this._editor.editable();
+					this._removeBindings.push(editable.on("keyup", handler));
+					this._removeBindings.push(editable.on("click", handler));
+					this._removeBindings.push(this._editor.on("selectionChange", handler));
 				}
 			}
 		},
@@ -1317,6 +1321,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		 */
 		_onSelectionChanged : function(event) {
 			var inChange = this._isTracking && this._tracker && this._tracker.isInsideChange();
+			console.log("selection changed, inchange:", inChange);
 			var state = inChange && this._canAcceptReject ? CKEDITOR.TRISTATE_OFF : CKEDITOR.TRISTATE_DISABLED;
 			this._setCommandsState([LITE.Commands.ACCEPT_ONE, LITE.Commands.REJECT_ONE], state);
 		},
@@ -1389,12 +1394,12 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			}
 			
 			try {
-				function makeClasses(tag) {
+				function makeClasses() {
 					var classes = [props.deleteClass,props.insertClass,props.stylePrefix+'*'];
-					return '(' + classes.join(',') + ')';
+					return classes;
 				}
 				
-				function makeAttributes(tag) {
+				function makeAttributes() {
 					var attrs = ['title'];
 					for (var key in props.attributes) {
 						if (props.attributes.hasOwnProperty(key)) {
@@ -1404,28 +1409,35 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 							};
 						};
 					};
-					return /*tag + */'[' + attrs.join(',') + ']';
+					return attrs;
 				}
 				
-				var features = [];
-				
-				if (props.insertTag) {
-					features.push(makeClasses(props.insertTag));
-					features.push(makeAttributes(props.insertTag));
-					editor.filter.addFeature({
-						name: "lite1",
-						allowedContent: props.insertTag+features.join("")
+				function makeFeature(arr) {
+					var ret = {};
+					arr.forEach(function(member) {
+						ret[member] = true;
 					});
+					return ret;
 				}
+				
+				var features = [], feature, fields;
+				
+				feature = {};
+				fields = {};
+				fields.classes = makeFeature(makeClasses());
+				fields.attributes = makeFeature(makeAttributes());
+				feature[props.insertTag] = fields;
+
+				feature['br'] = CKEDITOR.tools.clone(fields);
+				feature['br'].propertiesOnly = true;
+
 				if (props.deleteTag && props.deleteTag !== props.insertTag) {
-					features.push(makeClasses(props.deleteTag));
-					features.push(makeAttributes(props.deleteTag));
-					editor.filter.addFeature({
-						name: "lite2",
-						allowedContent: props.deleteTag+features.join("")
-					});
+					feature[props.deleteTag] = CKEDITOR.tools.clone(fields);
 				}
-				
+				editor.filter.addFeature({
+					name: "lite-features",
+					allowedContent: feature
+				});				
 			}
 			catch (e){
 				_logError(e);

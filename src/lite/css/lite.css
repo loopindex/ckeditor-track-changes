@@ -8,6 +8,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 **/
 .ice-del {
 	display: none;
+	white-space:pre-wrap;
 }
 
 .ice-ins {

@@ -246,7 +246,7 @@
 		return jQuery(node).text(txt);
 	};
 	dom.getTagName = function (node) {
-		return node.tagName && node.tagName.toLowerCase() || null;
+		return node && node.tagName && node.tagName.toLowerCase() || null;
 	};
 	dom.getIframeDocument = function (iframe) {
 		var doc = null;
@@ -401,6 +401,7 @@
 		}
 		return null;
 	};
+
 	dom.getNextNode = function (node, container) {
 		if (node) {
 			while (node.parentNode) {
@@ -422,6 +423,7 @@
 		}
 		return null;
 	};
+
 	dom.getNextContentNode = function (node, container) {
 		if (node) {
 			while (node.parentNode) {
@@ -1166,14 +1168,14 @@
 		return null;
 	};
 	
-	dom.normalizeNode = function(node) {
+	dom.normalizeNode = function(node, ignoreNative) {
 		if (! node) {
 			return;
 		}
-		if ("function" == typeof node.normalize) {
+		if (ignoreNative !== true && "function" == typeof node.normalize) {
 			return node.normalize();
 		}
-		return this._myNormalizeNode(node);
+		return _myNormalizeNode(node);
 	};
 
 	function _myNormalizeNode(node) {
@@ -1185,7 +1187,7 @@
 		var child = node.firstChild;
 		while (child) {
 			if (child.nodeType == ELEMENT_NODE) {
-				this._myNormalizeNode(child);
+				_myNormalizeNode(child);
 			}
 			else if (child.nodeType == TEXT_NODE) { 
 				var next;
