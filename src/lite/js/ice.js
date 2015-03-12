@@ -7,6 +7,11 @@
 
 	var exports = this,
 		defaults, InlineChangeEditor;
+	
+	/* constants */
+	var DIV_ELEMENT = "div",
+		BREAK_ELEMENT = "br",
+		PARAGRAPH_ELEMENT = "p";
 
 	defaults = {
 	// ice node attribute names:
@@ -288,7 +293,7 @@
 		 * @param {Boolean} bTooltips if undefined, the tracking state is toggled, otherwise set to the parameter
 		 */
 		toggleTooltips: function(bTooltips) {
-			bTooltips = (undefined === bTooltips) ? ! this.tooltips : !!bTooltips;
+			bTooltips = (undefined === bTooltips) ? ! this.tooltips : Boolean(bTooltips);
 			this.tooltips = bTooltips;
 			this._updateTooltipsState();
 		},
@@ -704,7 +709,7 @@
 			nChanges += changes.length;
 		
 			dom.each(changes, function (i, node) {
-				if (isBRNode(node)) {
+				if (isNewlineNode(node)) {
 					return stripNode(node);
 				}
 				content = ice.dom.contents(node); 
@@ -879,8 +884,7 @@
 		_getVoidElement: function (node) {
 			
 			try {
-				var voidSelector = this._getVoidElSelector(),
-					voidParent = ice.dom.is(node, voidSelector) ? node : (ice.dom.parents(node, voidSelector)[0] || null);
+				var voidParent = this._getIceNode(node, "deleteType");
 				if (! voidParent) {
 					if (3 == node.nodeType && node.nodeValue == '\u200B') {
 						return node;
@@ -1004,14 +1008,6 @@
 			if (includeNode && ice.dom.isEmptyTextNode(node)) {
 				parent.removeChild(node);
 			}
-		},
-	
-		/**
-		 * Returns a css selector for delete .
-		 * @private
-		 */
-		_getVoidElSelector: function () {
-			return '.' + this._getIceNodeClass('deleteType');
 		},
 	
 		/**
@@ -1406,6 +1402,10 @@
 							this._removeNode(elem);
 							continue;
 						}
+						
+						if (isParagraphNode(elem)) {
+							this._addDeleteTrackingToBreak(elem);
+						}
 			
 						for (var j = 0; j < elem.childNodes.length; j++) {
 							var child = elem.childNodes[j];
@@ -1481,7 +1481,7 @@
 					nextContainer = ice.dom.getNextContentNode(commonAncestor, this.element);
 			
 					if (nextContainer) {
-						if (isBRNode(nextContainer)) {
+						if (isNewlineNode(nextContainer)) {
 							this._addDeleteTrackingToBreak(nextContainer, { range: range }); 
 							return true;
 						}
@@ -1514,8 +1514,8 @@
 				}
 		
 				// If the next container is <br> element find the next node
-				if (isBRNode(nextContainer)) {
-					this._addDeleteTrackingToBreak(nextContainer, { range: range, moveLeft: false}); 
+				if (isNewlineNode(nextContainer)) {
+					this._addDeleteTrackingToBreak(nextContainer, { range: range }); 
 					return true;
 //					nextContainer = ice.dom.getNextNode(nextContainer, this.element);
 				}
@@ -1650,7 +1650,7 @@
 					prevContainer = prevContainer.lastChild;
 				}
 				
-				if (isBRNode(prevContainer)) {
+				if (isNewlineNode(prevContainer)) {
 					this._addDeleteTrackingToBreak(prevContainer, { range: range, moveLeft: true });
 					return true;
 				}
@@ -1889,7 +1889,7 @@
 				}	
 			}
 			
-			if (! isBRNode(brNode)) {
+			if (! isNewlineNode(brNode)) {
 				logError("addDeleteTracking to BR: not a break element");
 				return;
 			}
@@ -2472,7 +2472,7 @@
 		},
 		
 		_updateNodeTooltip: function(node) {
-			if (this.tooltips /*&& this._isTracking */&& this._isVisible) {
+			if (this.tooltips && this._isVisible) {
 				this._addTooltip(node);
 			}
 		},
@@ -2629,7 +2629,7 @@
 		
 		_updateTooltipsState: function() {
 			// show tooltips if they are enabled and change tracking is on
-			if (this.tooltips /*&& this._isTracking */ && this._isVisible) {
+			if (this.tooltips && this._isVisible) {
 				if (! this._showingTips) {
 					this._showingTips = true;
 					var $nodes = this.getIceNodes(),
@@ -2666,6 +2666,7 @@
 						$node.removeData("_tooltip_t");
 						self.hostMethods.showTooltip(node, {
 							userName: change.username,
+							changeId: cid,
 							userId: change.userid,
 							time: change.time,
 							lastTime: change.lastTime,
@@ -2791,7 +2792,16 @@
 	}
 	
 	function isBRNode(node) {
-		return ice.dom.BREAK_ELEMENT == ice.dom.getTagName(node);
+		return BREAK_ELEMENT == ice.dom.getTagName(node);
+	}
+
+	function isNewlineNode(node) {
+		var tag = ice.dom.getTagName(node);
+		return BREAK_ELEMENT === tag || PARAGRAPH_ELEMENT === tag || DIV_ELEMENT === tag;
+	}
+
+	function isParagraphNode(node) {
+		return ice.dom.getTagName(node) === PARAGRAPH_ELEMENT;
 	}
 
 

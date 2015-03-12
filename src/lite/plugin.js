@@ -75,7 +75,31 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			 * <ul><li><code>lite</code>The LITE instance with which this event is associated
 			 * </ul>
 			 */
-			CHANGE : "lite:change"
+			CHANGE : "lite:change",
+
+			/**
+			 * @member LITE.Events
+			 * @event HOVER_IN
+			 * string value: "lite:hover-in"
+			 * @param {Object} An object with the fields 
+			 * <ul><li><code>lite</code>The LITE instance with which this event is associated
+			 * <li><code>node</code>The DOM node hovered
+			 * <li><code>changeId</code>The relevant change id
+			 * </ul>
+			 */
+			HOVER_IN: "lite:hover-in",
+
+			/**
+			 * @member LITE.Events
+			 * @event HOVER_OUT
+			 * string value: "lite:hover-out"
+			 * @param {Object} An object with the fields 
+			 * <ul><li><code>lite</code>The LITE instance with which this event is associated
+			 * <li><code>node</code>The DOM node hovered
+			 * <li><code>changeId</code>The relevant change id
+			 * </ul>
+			 */
+			HOVER_OUT: "lite:hover-out"
 		},
 		
 		Commands : {
@@ -1513,6 +1537,12 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		 */
 		_showTooltip: function(node, change) {
 			var config = this._config.tooltips;
+			if (config.events) {
+				return this._editor && this._editor.fire(LITE.Events.HOVER_IN, {
+					lite:this,
+					node: node,
+					changeId: change.changeId});
+			}
 			if (config.show) {
 				var title = this._makeTooltipTitle(change);
 				if (this._tooltipsHandler) {
@@ -1530,6 +1560,13 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		 * @param node
 		 */
 		_hideTooltip: function(node) {
+			var config = this._config.tooltips;
+			if (config.events) {
+				return this._editor && this._editor.fire(LITE.Events.HOVER_OUT, {
+					lite:this,
+					node: node
+				});
+			}
 			if (this._tooltipsHandler) {
 				if (node) {
 					this._tooltipsHandler.hideTooltip(node);
