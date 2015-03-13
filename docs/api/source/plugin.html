@@ -92,7 +92,31 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			 * &lt;ul&gt;&lt;li&gt;&lt;code&gt;lite&lt;/code&gt;The LITE instance with which this event is associated
 			 * &lt;/ul&gt;
 			 */
-			CHANGE : &quot;lite:change&quot;
+			CHANGE : &quot;lite:change&quot;,
+
+<span id='LITE-Events-event-HOVER_IN'>			/**
+</span>			 * @member LITE.Events
+			 * @event HOVER_IN
+			 * string value: &quot;lite:hover-in&quot;
+			 * @param {Object} An object with the fields 
+			 * &lt;ul&gt;&lt;li&gt;&lt;code&gt;lite&lt;/code&gt;The LITE instance with which this event is associated
+			 * &lt;li&gt;&lt;code&gt;node&lt;/code&gt;The DOM node hovered
+			 * &lt;li&gt;&lt;code&gt;changeId&lt;/code&gt;The relevant change id
+			 * &lt;/ul&gt;
+			 */
+			HOVER_IN: &quot;lite:hover-in&quot;,
+
+<span id='LITE-Events-event-HOVER_OUT'>			/**
+</span>			 * @member LITE.Events
+			 * @event HOVER_OUT
+			 * string value: &quot;lite:hover-out&quot;
+			 * @param {Object} An object with the fields 
+			 * &lt;ul&gt;&lt;li&gt;&lt;code&gt;lite&lt;/code&gt;The LITE instance with which this event is associated
+			 * &lt;li&gt;&lt;code&gt;node&lt;/code&gt;The DOM node hovered
+			 * &lt;li&gt;&lt;code&gt;changeId&lt;/code&gt;The relevant change id
+			 * &lt;/ul&gt;
+			 */
+			HOVER_OUT: &quot;lite:hover-out&quot;
 		},
 		
 		Commands : {
@@ -373,8 +397,8 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		icons: &quot;lite_AcceptAll,lite_AcceptOne,lite_RejectAll,lite_RejectOne,lite_ToggleShow,lite_ToggleTracking&quot;,// %REMOVE_LINE_CORE%
 
 		props : {
-			deleteTag: 'span',
-			insertTag: 'span',
+			deleteTag: 'del',
+			insertTag: 'ins',
 			deleteClass: 'ice-del',
 			insertClass: 'ice-ins',
 			attributes: {
@@ -1337,7 +1361,6 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		 */
 		_onSelectionChanged : function(event) {
 			var inChange = this._isTracking &amp;&amp; this._tracker &amp;&amp; this._tracker.isInsideChange();
-			console.log(&quot;selection changed, inchange:&quot;, inChange);
 			var state = inChange &amp;&amp; this._canAcceptReject ? CKEDITOR.TRISTATE_OFF : CKEDITOR.TRISTATE_DISABLED;
 			this._setCommandsState([LITE.Commands.ACCEPT_ONE, LITE.Commands.REJECT_ONE], state);
 		},
@@ -1530,6 +1553,12 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		 */
 		_showTooltip: function(node, change) {
 			var config = this._config.tooltips;
+			if (config.events) {
+				return this._editor &amp;&amp; this._editor.fire(LITE.Events.HOVER_IN, {
+					lite:this,
+					node: node,
+					changeId: change.changeId});
+			}
 			if (config.show) {
 				var title = this._makeTooltipTitle(change);
 				if (this._tooltipsHandler) {
@@ -1547,6 +1576,13 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		 * @param node
 		 */
 		_hideTooltip: function(node) {
+			var config = this._config.tooltips;
+			if (config.events) {
+				return this._editor &amp;&amp; this._editor.fire(LITE.Events.HOVER_OUT, {
+					lite:this,
+					node: node
+				});
+			}
 			if (this._tooltipsHandler) {
 				if (node) {
 					this._tooltipsHandler.hideTooltip(node);

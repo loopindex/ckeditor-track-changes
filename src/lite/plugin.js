@@ -380,8 +380,8 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		icons: "lite_AcceptAll,lite_AcceptOne,lite_RejectAll,lite_RejectOne,lite_ToggleShow,lite_ToggleTracking",// %REMOVE_LINE_CORE%
 
 		props : {
-			deleteTag: 'span',
-			insertTag: 'span',
+			deleteTag: 'del',
+			insertTag: 'ins',
 			deleteClass: 'ice-del',
 			insertClass: 'ice-ins',
 			attributes: {
@@ -1344,7 +1344,6 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		 */
 		_onSelectionChanged : function(event) {
 			var inChange = this._isTracking && this._tracker && this._tracker.isInsideChange();
-			console.log("selection changed, inchange:", inChange);
 			var state = inChange && this._canAcceptReject ? CKEDITOR.TRISTATE_OFF : CKEDITOR.TRISTATE_DISABLED;
 			this._setCommandsState([LITE.Commands.ACCEPT_ONE, LITE.Commands.REJECT_ONE], state);
 		},

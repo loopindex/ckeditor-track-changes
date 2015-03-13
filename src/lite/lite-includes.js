@@ -3699,6 +3699,11 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 
 	var exports = this,
 		defaults, InlineChangeEditor;
+	
+	/* constants */
+	var DIV_ELEMENT = "div",
+		BREAK_ELEMENT = "br",
+		PARAGRAPH_ELEMENT = "p";
 
 	defaults = {
 	// ice node attribute names:
@@ -3980,7 +3985,7 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 		 * @param {Boolean} bTooltips if undefined, the tracking state is toggled, otherwise set to the parameter
 		 */
 		toggleTooltips: function(bTooltips) {
-			bTooltips = (undefined === bTooltips) ? ! this.tooltips : !!bTooltips;
+			bTooltips = (undefined === bTooltips) ? ! this.tooltips : Boolean(bTooltips);
 			this.tooltips = bTooltips;
 			this._updateTooltipsState();
 		},
@@ -4396,7 +4401,7 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 			nChanges += changes.length;
 		
 			dom.each(changes, function (i, node) {
-				if (isBRNode(node)) {
+				if (isNewlineNode(node)) {
 					return stripNode(node);
 				}
 				content = ice.dom.contents(node); 
@@ -4571,8 +4576,7 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 		_getVoidElement: function (node) {
 			
 			try {
-				var voidSelector = this._getVoidElSelector(),
-					voidParent = ice.dom.is(node, voidSelector) ? node : (ice.dom.parents(node, voidSelector)[0] || null);
+				var voidParent = this._getIceNode(node, "deleteType");
 				if (! voidParent) {
 					if (3 == node.nodeType && node.nodeValue == '\u200B') {
 						return node;
@@ -4696,14 +4700,6 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 			if (includeNode && ice.dom.isEmptyTextNode(node)) {
 				parent.removeChild(node);
 			}
-		},
-	
-		/**
-		 * Returns a css selector for delete .
-		 * @private
-		 */
-		_getVoidElSelector: function () {
-			return '.' + this._getIceNodeClass('deleteType');
 		},
 	
 		/**
@@ -5098,6 +5094,10 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 							this._removeNode(elem);
 							continue;
 						}
+						
+						if (isParagraphNode(elem)) {
+							this._addDeleteTrackingToBreak(elem);
+						}
 			
 						for (var j = 0; j < elem.childNodes.length; j++) {
 							var child = elem.childNodes[j];
@@ -5173,7 +5173,7 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 					nextContainer = ice.dom.getNextContentNode(commonAncestor, this.element);
 			
 					if (nextContainer) {
-						if (isBRNode(nextContainer)) {
+						if (isNewlineNode(nextContainer)) {
 							this._addDeleteTrackingToBreak(nextContainer, { range: range }); 
 							return true;
 						}
@@ -5206,8 +5206,8 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 				}
 		
 				// If the next container is <br> element find the next node
-				if (isBRNode(nextContainer)) {
-					this._addDeleteTrackingToBreak(nextContainer, { range: range, moveLeft: false}); 
+				if (isNewlineNode(nextContainer)) {
+					this._addDeleteTrackingToBreak(nextContainer, { range: range }); 
 					return true;
 //					nextContainer = ice.dom.getNextNode(nextContainer, this.element);
 				}
@@ -5342,7 +5342,7 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 					prevContainer = prevContainer.lastChild;
 				}
 				
-				if (isBRNode(prevContainer)) {
+				if (isNewlineNode(prevContainer)) {
 					this._addDeleteTrackingToBreak(prevContainer, { range: range, moveLeft: true });
 					return true;
 				}
@@ -5581,7 +5581,7 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 				}	
 			}
 			
-			if (! isBRNode(brNode)) {
+			if (! isNewlineNode(brNode)) {
 				logError("addDeleteTracking to BR: not a break element");
 				return;
 			}
@@ -6164,7 +6164,7 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 		},
 		
 		_updateNodeTooltip: function(node) {
-			if (this.tooltips /*&& this._isTracking */&& this._isVisible) {
+			if (this.tooltips && this._isVisible) {
 				this._addTooltip(node);
 			}
 		},
@@ -6321,7 +6321,7 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 		
 		_updateTooltipsState: function() {
 			// show tooltips if they are enabled and change tracking is on
-			if (this.tooltips /*&& this._isTracking */ && this._isVisible) {
+			if (this.tooltips && this._isVisible) {
 				if (! this._showingTips) {
 					this._showingTips = true;
 					var $nodes = this.getIceNodes(),
@@ -6358,6 +6358,7 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 						$node.removeData("_tooltip_t");
 						self.hostMethods.showTooltip(node, {
 							userName: change.username,
+							changeId: cid,
 							userId: change.userid,
 							time: change.time,
 							lastTime: change.lastTime,
@@ -6483,7 +6484,16 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 	}
 	
 	function isBRNode(node) {
-		return ice.dom.BREAK_ELEMENT == ice.dom.getTagName(node);
+		return BREAK_ELEMENT == ice.dom.getTagName(node);
+	}
+
+	function isNewlineNode(node) {
+		var tag = ice.dom.getTagName(node);
+		return BREAK_ELEMENT === tag || PARAGRAPH_ELEMENT === tag || DIV_ELEMENT === tag;
+	}
+
+	function isParagraphNode(node) {
+		return ice.dom.getTagName(node) === PARAGRAPH_ELEMENT;
 	}
 
 
@@ -6687,9 +6697,10 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 	dom.CHARACTER_UNIT = 'character';
 	dom.WORD_UNIT = 'word';
 	dom.BREAK_ELEMENT = 'br';
+	dom.PARAGRAPH_ELEMENT = 'p';
 	dom.CONTENT_STUB_ELEMENTS = ['img', 'hr', 'iframe', 'param', 'link', 'meta', 'input', 'frame', 'col', 'base', 'area'];
 	dom.BLOCK_ELEMENTS = ['body', 'p', 'div', 'pre', 'ul', 'ol', 'li', 'table', 'tbody', 'td', 'th', 'fieldset', 'form', 'blockquote', 'dl', 'dt', 'dd', 'dir', 'center', 'address', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'];
-	dom.TEXT_CONTAINER_ELEMENTS = ['body','p', 'div', 'pre', 'span', 'b', 'strong', 'i', 'li', 'td', 'th', 'blockquote', 'dt', 'dd', 'center', 'address', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'];
+	dom.TEXT_CONTAINER_ELEMENTS = ['body','p', 'div', 'pre', 'span', 'b', 'strong', 'i', 'li', 'td', 'th', 'blockquote', 'dt', 'dd', 'center', 'address', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ins', 'del'];
 
 	dom.STUB_ELEMENTS = dom.CONTENT_STUB_ELEMENTS.slice();
 	dom.STUB_ELEMENTS.push(dom.BREAK_ELEMENT);
@@ -8603,7 +8614,7 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 	exports.Bookmark = Bookmark;
 
 }).call(this.ice);/**
-Copyright 2013 LoopIndex, This file is part of the Track Changes plugin for CKEditor.
+Copyright 2015 LoopIndex, This file is part of the Track Changes plugin for CKEditor.
 
 The track changes plugin is free software; you can redistribute it and/or modify it under the terms of the GNU Lesser General Public License, version 2, as published by the Free Software Foundation.
 This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
@@ -8620,7 +8631,9 @@ var LITE = {
 		REJECT : "lite:reject",
 		SHOW_HIDE : "lite:showHide",
 		TRACKING : "lite:tracking",
-		CHANGE: "lite:change"
+		CHANGE: "lite:change",
+		HOVER_IN: "lite:hover-in",
+		HOVER_OUT: "lite:hover-out"
 	},
 	
 	Commands : {
