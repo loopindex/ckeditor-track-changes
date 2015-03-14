@@ -42,17 +42,21 @@
 	 * position 0 will be the only allocation filled.
 	 */
 	getRangeAt: function (pos) {
-		var ret = null;
 		try {
 			this._selection.refresh();
-			ret =this._selection.getRangeAt(pos);
+			return this._selection.getRangeAt(pos);
 		} 
 		catch (e) {
 			this._selection = null;
-			ret = this._getSelection().getRangeAt(0);
+			try {
+				return this._getSelection().getRangeAt(0);
+			}
+			catch(ignore) {
+				// ignore
+			}
 		}
 
-		return ret;
+		return null;
 	},
 
 	/**

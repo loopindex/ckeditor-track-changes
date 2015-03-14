@@ -516,13 +516,8 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 	 * The LITEPlugin is created per instance of a CKEditor. This object handles all the events and commands associated with change tracking in a specific editor.
 	 */
 	LITEPlugin = function(props, path) {
-		this.props = {};
+		this.props = CKEDITOR.tools.clone(props);
 		this.path = path;
-		for (var key in props) {
-			if (props.hasOwnProperty(key)) {
-				this.props[key] = props[key];
-			}
-		}
 	};
 
 	LITEPlugin.prototype = {
@@ -1211,6 +1206,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		 */
 		_onAfterSetData: function(evt) {
 			this._hideTooltip();
+			this._processContent();
 			if (this._tracker/* && this._tracker.isTracking() */) {
 				this._tracker.reload();
 			}
@@ -1398,6 +1394,45 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		
 		/**
 		 * @ignore
+		 */
+		_processContent: function() {
+			var body = this._getBody(),
+				$ = window.jQuery,
+				insTag = this.props.insertTag,
+				delTag = this.props.deleteTag,
+				nodes, doc;
+			if (! body) {
+				return;
+			}
+			doc = body.ownerDocument;
+			function replaceNode(node, tag) {
+				var parent = node.parentNode,
+					newNode = doc.createElement(tag);
+				$.each( node.attributes, function( index, attr ) {
+	                newNode.setAttribute(attr.name, attr.value);
+	            });
+				newNode.className = node.className || "";
+				$(node).contents().appendTo(newNode);
+				parent.insertBefore(newNode, node);
+				parent.removeChild(node);
+			}
+			
+			if (insTag !== "span") {
+				nodes = $(body).find("span." + this.props.insertClass);
+				nodes.each(function(i, node) {
+					replaceNode(node, insTag);
+				});
+			}
+			if (delTag !== "span") {
+				nodes = $(body).find("span." + this.props.deleteClass);
+				nodes.each(function(i, node) {
+					replaceNode(node, delTag);
+				});
+			}
+		},
+		
+		/**
+		 * @ignore
 		 * @param command
 		 * @returns
 		 */
@@ -1426,7 +1461,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 					for (var key in props.attributes) {
 						if (props.attributes.hasOwnProperty(key)) {
 							var value = props.attributes[key];
-							if ((typeof value == "string") && value.indexOf("data-") == 0) {
+							if ((typeof value === "string") && value.indexOf("data-") === 0) {
 								attrs.push(value);
 							};
 						};
@@ -1449,13 +1484,14 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 				fields.classes = makeFeature(makeClasses());
 				fields.attributes = makeFeature(makeAttributes());
 				feature[props.insertTag] = fields;
+				feature[props.deleteTag] = CKEDITOR.tools.clone(fields);
 
 				feature['br'] = CKEDITOR.tools.clone(fields);
 				feature['br'].propertiesOnly = true;
 
-				if (props.deleteTag && props.deleteTag !== props.insertTag) {
-					feature[props.deleteTag] = CKEDITOR.tools.clone(fields);
-				}
+				// prepare to clean up legacy data
+				feature.span = CKEDITOR.tools.clone(fields);
+
 				editor.filter.addFeature({
 					name: "lite-features",
 					allowedContent: feature
