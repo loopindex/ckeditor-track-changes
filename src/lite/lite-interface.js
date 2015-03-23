@@ -22,12 +22,12 @@ var LITE = {
 	},
 	
 	Commands : {
-		TOGGLE_TRACKING : "lite.ToggleTracking",
-		TOGGLE_SHOW : "lite.ToggleShow",
-		ACCEPT_ALL : "lite.AcceptAll",
-		REJECT_ALL : "lite.RejectAll",
-		ACCEPT_ONE : "lite.AcceptOne",
-		REJECT_ONE : "lite.RejectOne",
-		TOGGLE_TOOLTIPS: "lite.ToggleTooltips"
+		TOGGLE_TRACKING : "lite-toggletracking",
+		TOGGLE_SHOW : "lite-toggleshow",
+		ACCEPT_ALL : "lite-acceptall",
+		REJECT_ALL : "lite-rejectall",
+		ACCEPT_ONE : "lite-acceptone",
+		REJECT_ONE : "lite-rejectone",
+		TOGGLE_TOOLTIPS: "lite-toggletooltips"
 	}
 };

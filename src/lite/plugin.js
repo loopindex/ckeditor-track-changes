@@ -103,13 +103,13 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		},
 		
 		Commands : {
-			TOGGLE_TRACKING : "lite.ToggleTracking",
-			TOGGLE_SHOW : "lite.ToggleShow",
-			ACCEPT_ALL : "lite.AcceptAll",
-			REJECT_ALL : "lite.RejectAll",
-			ACCEPT_ONE : "lite.AcceptOne",
-			REJECT_ONE : "lite.RejectOne",
-			TOGGLE_TOOLTIPS: "lite.ToggleTooltips"
+			TOGGLE_TRACKING : "lite-toggletracking",
+			TOGGLE_SHOW : "lite-toggleshow",
+			ACCEPT_ALL : "lite-acceptall",
+			REJECT_ALL : "lite-rejectall",
+			ACCEPT_ONE : "lite-acceptone",
+			REJECT_ONE : "lite-rejectone",
+			TOGGLE_TOOLTIPS: "lite-toggletooltips"
 		}
 	},
 	
@@ -377,7 +377,8 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 	CKEDITOR.plugins.add( 'lite',
 	{
 		
-		icons: "lite_AcceptAll,lite_AcceptOne,lite_RejectAll,lite_RejectOne,lite_ToggleShow,lite_ToggleTracking",// %REMOVE_LINE_CORE%
+		icons: "lite-acceptall,lite-acceptone,lite-rejectall,lite-rejectone,lite-toggleshow,lite-toggletracking",// %REMOVE_LINE_CORE%
+		hidpi: true,
 
 		props : {
 			deleteTag: 'del',
@@ -546,7 +547,8 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			
 			var allow = config.acceptRejectInReadOnly === true;
 			var commandsMap = 	[	
-				{ command : LITE.Commands.TOGGLE_TRACKING,
+				{
+					command : LITE.Commands.TOGGLE_TRACKING,
 					exec : this._onToggleTracking, 
 					title: "Toggle Tracking Changes",
 //					icon: "track_changes_on_off.png",
