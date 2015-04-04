@@ -120,13 +120,13 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		},
 		
 		Commands : {
-			TOGGLE_TRACKING : &quot;lite.ToggleTracking&quot;,
-			TOGGLE_SHOW : &quot;lite.ToggleShow&quot;,
-			ACCEPT_ALL : &quot;lite.AcceptAll&quot;,
-			REJECT_ALL : &quot;lite.RejectAll&quot;,
-			ACCEPT_ONE : &quot;lite.AcceptOne&quot;,
-			REJECT_ONE : &quot;lite.RejectOne&quot;,
-			TOGGLE_TOOLTIPS: &quot;lite.ToggleTooltips&quot;
+			TOGGLE_TRACKING : &quot;lite-toggletracking&quot;,
+			TOGGLE_SHOW : &quot;lite-toggleshow&quot;,
+			ACCEPT_ALL : &quot;lite-acceptall&quot;,
+			REJECT_ALL : &quot;lite-rejectall&quot;,
+			ACCEPT_ONE : &quot;lite-acceptone&quot;,
+			REJECT_ONE : &quot;lite-rejectone&quot;,
+			TOGGLE_TOOLTIPS: &quot;lite-toggletooltips&quot;
 		}
 	},
 	
@@ -394,7 +394,8 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 	CKEDITOR.plugins.add( 'lite',
 	{
 		
-		icons: &quot;lite_AcceptAll,lite_AcceptOne,lite_RejectAll,lite_RejectOne,lite_ToggleShow,lite_ToggleTracking&quot;,// %REMOVE_LINE_CORE%
+		icons: &quot;lite-acceptall,lite-acceptone,lite-rejectall,lite-rejectone,lite-toggleshow,lite-toggletracking&quot;,// %REMOVE_LINE_CORE%
+		hidpi: true,
 
 		props : {
 			deleteTag: 'del',
@@ -533,13 +534,8 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 	 * The LITEPlugin is created per instance of a CKEditor. This object handles all the events and commands associated with change tracking in a specific editor.
 	 */
 	LITEPlugin = function(props, path) {
-		this.props = {};
+		this.props = CKEDITOR.tools.clone(props);
 		this.path = path;
-		for (var key in props) {
-			if (props.hasOwnProperty(key)) {
-				this.props[key] = props[key];
-			}
-		}
 	};
 
 	LITEPlugin.prototype = {
@@ -568,7 +564,8 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			
 			var allow = config.acceptRejectInReadOnly === true;
 			var commandsMap = 	[	
-				{ command : LITE.Commands.TOGGLE_TRACKING,
+				{
+					command : LITE.Commands.TOGGLE_TRACKING,
 					exec : this._onToggleTracking, 
 					title: &quot;Toggle Tracking Changes&quot;,
 //					icon: &quot;track_changes_on_off.png&quot;,
@@ -1228,6 +1225,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		 */
 		_onAfterSetData: function(evt) {
 			this._hideTooltip();
+			this._processContent();
 			if (this._tracker/* &amp;&amp; this._tracker.isTracking() */) {
 				this._tracker.reload();
 			}
@@ -1413,6 +1411,45 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			this._editor.fire('change',{lite:this});
 		},
 		
+<span id='global-method-_processContent'>		/**
+</span>		 * @ignore
+		 */
+		_processContent: function() {
+			var body = this._getBody(),
+				$ = window.jQuery,
+				insTag = this.props.insertTag,
+				delTag = this.props.deleteTag,
+				nodes, doc;
+			if (! body) {
+				return;
+			}
+			doc = body.ownerDocument;
+			function replaceNode(node, tag) {
+				var parent = node.parentNode,
+					newNode = doc.createElement(tag);
+				$.each( node.attributes, function( index, attr ) {
+	                newNode.setAttribute(attr.name, attr.value);
+	            });
+				newNode.className = node.className || &quot;&quot;;
+				$(node).contents().appendTo(newNode);
+				parent.insertBefore(newNode, node);
+				parent.removeChild(node);
+			}
+			
+			if (insTag !== &quot;span&quot;) {
+				nodes = $(body).find(&quot;span.&quot; + this.props.insertClass);
+				nodes.each(function(i, node) {
+					replaceNode(node, insTag);
+				});
+			}
+			if (delTag !== &quot;span&quot;) {
+				nodes = $(body).find(&quot;span.&quot; + this.props.deleteClass);
+				nodes.each(function(i, node) {
+					replaceNode(node, delTag);
+				});
+			}
+		},
+		
 <span id='global-method-_commandNameToUIName'>		/**
 </span>		 * @ignore
 		 * @param command
@@ -1443,7 +1480,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 					for (var key in props.attributes) {
 						if (props.attributes.hasOwnProperty(key)) {
 							var value = props.attributes[key];
-							if ((typeof value == &quot;string&quot;) &amp;&amp; value.indexOf(&quot;data-&quot;) == 0) {
+							if ((typeof value === &quot;string&quot;) &amp;&amp; value.indexOf(&quot;data-&quot;) === 0) {
 								attrs.push(value);
 							};
 						};
@@ -1466,13 +1503,14 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 				fields.classes = makeFeature(makeClasses());
 				fields.attributes = makeFeature(makeAttributes());
 				feature[props.insertTag] = fields;
+				feature[props.deleteTag] = CKEDITOR.tools.clone(fields);
 
 				feature['br'] = CKEDITOR.tools.clone(fields);
 				feature['br'].propertiesOnly = true;
 
-				if (props.deleteTag &amp;&amp; props.deleteTag !== props.insertTag) {
-					feature[props.deleteTag] = CKEDITOR.tools.clone(fields);
-				}
+				// prepare to clean up legacy data
+				feature.span = CKEDITOR.tools.clone(fields);
+
 				editor.filter.addFeature({
 					name: &quot;lite-features&quot;,
 					allowedContent: feature
