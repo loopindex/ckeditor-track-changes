@@ -9,6 +9,8 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 */
 (function() {
 
+	"use strict";
+
 	/**
 	 * @class LITE
 	 * @singleton
@@ -516,7 +518,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 	 * @class LITE.LITEPlugin
 	 * The LITEPlugin is created per instance of a CKEditor. This object handles all the events and commands associated with change tracking in a specific editor.
 	 */
-	LITEPlugin = function(props, path) {
+	var LITEPlugin = function(props, path) {
 		this.props = CKEDITOR.tools.clone(props);
 		this.path = path;
 	};
@@ -1116,8 +1118,8 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		 * @private
 		 */
 		_cleanup : function() {
-			var body = this._getBody();
-			empty = jQuery(body).find(self.insertSelector + ':empty,' + self.deleteSelector + ':empty');
+			var body = this._getBody(),
+				empty = jQuery(body).find(self.insertSelector + ':empty,' + self.deleteSelector + ':empty');
 			empty.remove();
 			this._onSelectionChanged(null);
 		},
@@ -1747,7 +1749,6 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 	function _ieFix () {
 		/* Begin fixes for IE */
 			Function.prototype.bind = Function.prototype.bind || function () {
-				"use strict";
 				var fn = this, args = Array.prototype.slice.call(arguments),
 				object = args.shift();
 				return function () {
@@ -1758,7 +1759,6 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 
 			/* Mozilla fix for MSIE indexOf */
 			Array.prototype.indexOf = Array.prototype.indexOf || function (searchElement /*, fromIndex */) {
-				"use strict";
 				if (this == null) {
 					throw new TypeError();
 				}
@@ -1789,7 +1789,6 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			};
 
 			Array.prototype.lastIndexOf = Array.prototype.indexOf || function (searchElement) {
-				"use strict";
 				if (this == null) {
 					throw new TypeError();
 				}

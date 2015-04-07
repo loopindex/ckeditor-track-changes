@@ -4,6 +4,7 @@
 	 * 1. Each time an ice node is removed, refresh change set
 	 */
 
+	"use strict";
 
 	var exports = this,
 		defaults, InlineChangeEditor;
@@ -70,10 +71,6 @@
 		
 		tooltipsDelay: 1,
 	
-		// Switch for whether paragraph breaks should be removed when the user is deleting over a
-		// paragraph break while changes are tracked.
-		mergeBlocks: false,
-		
 		_isVisible : true, // state of change tracking visibility
 		
 		_changeData : null, // a string you can associate with the current change set, e.g. version
@@ -157,10 +154,6 @@
 		
 			// If we are handling events setup the delegate to handle various events on `this.element`.
 			var e = this.element;
-			
-/*			ice.dom.bind(self.element, 'keyup.ice keydown.ice keypress.ice', function (e) {
-				return self._handleEvent(e);
-			}); */
 			
 			e.addEventListener("keydown", this._boundEventHandler, true);
 			e.addEventListener("keypress", this._boundEventHandler, true);
@@ -336,7 +329,9 @@
 				hostRange = range ? null : this.hostMethods.getHostRange(),
 				changeid = this._startBatchChange(),
 				hadSelection = !!(range && !range.collapsed),
-				ret = true;
+				ret = false;
+			
+			options = options || {};
 			
 			
 		// If we have any nodes selected, then we want to delete them before inserting the new text.
@@ -347,7 +342,7 @@
 					range = this.getCurrentRange();
 				}
 				if (range || hostRange) {
-					var nodes = options && options.nodes;
+					var nodes = options.nodes;
 					if (nodes && ! jQuery.isArray(nodes)) {
 						nodes = [nodes];
 					}
@@ -355,7 +350,7 @@
 					// If we are in a non-tracking/void element, move the range to the end/outside.
 					this._moveRangeToValidTrackingPos(range, hostRange);
 			
-					ret = ! this._insertNodes(range, hostRange, {nodes: nodes, text: options && options.text});
+					ret = this._insertNodes(range, hostRange, {nodes: nodes, text: options.text, insertStubText: options.insertStubText !== false});
 				}
 			}
 			catch(e) {
@@ -408,7 +403,7 @@
 //					}
 				}
 				else {
-					this._cleanupSelection(range, false);
+					this._cleanupSelection(range, false, true);
 			        if (right) {
 						// RIGHT DELETE
 						if(browser["type"] === "mozilla"){
@@ -901,8 +896,11 @@
 		/**
 		 * @private
 		 * If the range is collapsed, removes empty nodes around the caret
+		 * @param range the range to clean up
+		 * @param isHostRange if true, the range is a ckeditor range
+		 * @param changeSelection if true, the selected node can also be cleaned up
 		 */
-		_cleanupSelection: function(range, isHostRange) {
+		_cleanupSelection: function(range, isHostRange, changeSelection) {
 			var start;
 			if (! range || ! range.collapsed || ! (start = range.startContainer)) {
 				return;
@@ -912,7 +910,7 @@
 			}
 			var nt = start.nodeType;
 			if (ice.dom.TEXT_NODE == nt) {
-				return this._cleanupTextSelection(range, start, isHostRange);
+				return this._cleanupTextSelection(range, start, isHostRange, changeSelection);
 			}
 			else {
 				return this._cleanupElementSelection(range, isHostRange);
@@ -923,14 +921,14 @@
 		 * @private
 		 * assumes range is valid for this operation
 		 */
-		_cleanupTextSelection: function(range, start, isHostRange) {
+		_cleanupTextSelection: function(range, start, isHostRange, changeSelection) {
 			this._cleanupAroundNode(start);
-			if (ice.dom.isEmptyTextNode(start)) {
+			if (changeSelection && ice.dom.isEmptyTextNode(start)) {
 				var parent = start.parentNode, 
 					ind = ice.dom.getNodeIndex(start),
 					f = isHostRange ? this.hostMethods.makeHostElement : nativeElement;
 				parent.removeChild(start);
-				ind = Math.max(0, ind - 1);
+				ind = Math.max(0, ind);
 				range.setStart(f(parent), ind);
 				range.setEnd(f(parent), ind);
 			}
@@ -982,8 +980,8 @@
 		_cleanupAroundNode: function(node, includeNode) {
 			var parent = node.parentNode,
 				anchor = node.nextSibling,
-				tmp;
-			childCount = parent.childNodes.length;
+				tmp,
+				childCount = parent.childNodes.length;
 			while (anchor) {
 				if (ice.dom.isEmptyTextNode(anchor)) {
 					tmp = anchor;
@@ -1212,19 +1210,22 @@
 			}
 		},
 	
-		_insertNodes: function (_range, hostRange, data) {
+		_insertNodes: function (_range, hostRange, _data) {
 			var range = hostRange || _range,
+				data = _data || {},
 				_start = range.startContainer,
 				start = (_start && _start.$) || _start,
 				f = hostRange ? this.hostMethods.makeHostElement : nativeElement,
-				nodes = data && data.nodes,
-				text = data && data.text,
+				nodes = data.nodes,
+				insertStubText = data.insertStubText !== false,
+				text = data.text,
 				doc= this.env.document,
 				inserted = false;
-			
+				
 			var ctNode = this._getIceNode(start, 'insertType'),
 				inCurrentUserInsert = this._isCurrentUserIceNode(ctNode);
 	
+			this._cleanupSelection(range, Boolean(hostRange), true);
 			if (inCurrentUserInsert) {
 				var head = nodes && nodes[0],
 					changeId = ctNode.getAttribute(this.attributes.changeId);
@@ -1258,6 +1259,9 @@
 						this.selection.addRange(range);
 					}
 				}
+				else {
+					prepareSelectionForInsert(null, range, doc, insertStubText);
+				}
 				// even if there was no data to insert, we are probably setting up for a char insertion
 				this._updateChangeTime(changeId);
 			}
@@ -1289,7 +1293,6 @@
 				}
 
 				
-				this._cleanupSelection(range, !! hostRange);
 				range.insertNode(f(node));
 				var len = (nodes && nodes.length) || 0;
 				if (len) {
@@ -1308,12 +1311,7 @@
 					range.collapse();
 				}
 				else {
-					// create empty node and select it, to be replaced with the typed char
-					var tn = doc.createTextNode('\uFEFF');
-					node.appendChild(tn);
-					tn = f(tn);
-					range.setStart(tn, 0);
-					range.setEnd(tn, 1);
+					prepareSelectionForInsert(node, range, doc, insertStubText);
 				}
 				if (hostRange) {
 					this.hostMethods.setHostRange(hostRange);
@@ -1403,9 +1401,9 @@
 							continue;
 						}
 						
-						if (isParagraphNode(elem)) {
-							this._addDeleteTrackingToBreak(elem);
-						}
+//						if (isParagraphNode(elem)) {
+//							this._addDeleteTrackingToBreak(elem);
+//						}
 			
 						for (var j = 0; j < elem.childNodes.length; j++) {
 							var child = elem.childNodes[j];
@@ -1419,15 +1417,6 @@
 						ice.dom.remove(parentBlock);
 					}
 				}
-			}
-	
-			if (this.mergeBlocks && b1 !== b2) {
-				while (betweenBlocks.length) {
-					ice.dom.mergeContainers(betweenBlocks.shift(), b1);
-				}
-//				ice.dom.removeBRFromChild(b2);
-//				ice.dom.removeBRFromChild(b1);
-				ice.dom.mergeContainers(b2, b1);
 			}
 	
 			bookmark.selectBookmark();
@@ -1450,7 +1439,7 @@
 				initialContainer = range.endContainer,
 				initialOffset = range.endOffset,
 				commonAncestor = range.commonAncestorContainer,
-				nextContainer, returnValue;
+				nextContainer, returnValue = false;
 	
 	
 			// If the current block is empty then let the browser handle the delete/event.
@@ -1676,7 +1665,8 @@
 		
 				// If the caret was placed directly after a stub element, enclose the element with a delete ice node.
 				if (ice.dom.isStubElement(prevContainer) && ice.dom.isChildOf(prevContainer, parentBlock) || !prevContainer.isContentEditable) {
-					 return this._addDeleteTracking(prevContainer, {range:range, moveLeft:true, merge:true});
+					 this._addDeleteTracking(prevContainer, {range:range, moveLeft:true, merge:true});
+					 return true;
 				}
 		
 				// If the previous container is a stub element between blocks
@@ -1735,25 +1725,6 @@
 					return true;
 				}
 		
-				// Merge blocks: If mergeBlocks is enabled, merge the previous and current block.
-				if (this.mergeBlocks && ice.dom.is(ice.dom.getBlockParent(prevContainer, this.element), this.blockEl)) {
-					// Since the range is moved by character, it may have passed through empty blocks.
-					// <p>text {RANGE.START}</p><p></p><p>{RANGE.END} text</p>
-					if (prevBlock !== ice.dom.getBlockParent(range.startContainer, this.element)) {
-						range.setStart(prevBlock, prevBlock.childNodes.length);
-					}
-					// The browsers like to auto-insert breaks into empty paragraphs - remove them.
-					var elements = ice.dom.getElementsBetween(range.startContainer, range.endContainer);
-					for (var i = 0; i < elements.length; i++) {
-						ice.dom.remove(elements[i]);
-					}
-					var startContainer = range.startContainer;
-					var endContainer = range.endContainer;
-//					ice.dom.remove(ice.dom.find(startContainer, 'br'));
-//					ice.dom.remove(ice.dom.find(endContainer, 'br'));
-					return ice.dom.mergeBlockWithSibling(range, ice.dom.getBlockParent(range.endContainer, this.element) || parentBlock);
-				}
-		
 				// If the previous Block ends with a stub element, set the caret behind it.
 				if (prevBlock && prevBlock.lastChild && ice.dom.isStubElement(prevBlock.lastChild)) {
 					range.setStartAfter(prevBlock.lastChild);
@@ -1778,9 +1749,11 @@
 			var entireTextNode = range.startContainer;
 			if (entireTextNode && (entireTextNode.nodeType === ice.dom.TEXT_NODE)) {
 				var deletedCharacter = splitTextAt(entireTextNode, range.startOffset - 1, 1);
-		
-				return this._addDeleteTracking(deletedCharacter, {range:range, moveLeft:true, merge:true});
+				this._addDeleteTracking(deletedCharacter, {range:range, moveLeft:true, merge:true});
+				return true;
 			}
+			
+			return false;
 	
 		},
 		
@@ -2083,7 +2056,7 @@
 	
 		/**
 		 * If tracking is on, handles event e when it is one of the following types:
-		 * mouseup, mousedown, keypress, keydown, and keyup. Prevents default handling if the event
+		 * mouseup, mousedown, keypress, keydown. Prevents default handling if the event
 		 * was fully handled.
 		 * @private
 		 */
@@ -2091,31 +2064,30 @@
 			if (!this._isTracking) {
 				return true;
 			}
-			var needsToBubble = true;
+			var preventEvent = false;
 			if ('keypress' == e.type) {
-				needsToBubble = this.keyPress(e);
+				preventEvent = this.keyPress(e);
 			} 
 			else if ('keydown' == e.type) {
-				needsToBubble = this.keyDown(e);
+				preventEvent = this.onKeyDown(e);
 			}
-			if (!needsToBubble) {
+			if (preventEvent) {
 				e.stopImmediatePropagation();
 				e.preventDefault();
 			}
-			return needsToBubble;
+			return ! preventEvent;
 		},
 
 		/**
-		 * Handles arrow, delete key events, and others.
-		 *
-		 * @param {JQuery Event} e The event object.
-		 * return {void|boolean} Returns false if default event needs to be blocked.
 		 * @private
+		 * Handles arrow, delete key events, and others.
+		 * @param {JQuery Event} e The event object.
+		 * return {void|boolean} Returns true if default event needs to be blocked.
 		 */
 		_handleAncillaryKey: function (e) {
 			var key = e.keyCode ? e.keyCode : e.which,
 	    		browser = this._browser,
-				preventDefault = true,
+				preventDefault = false,
 				self = this,
 				range = self.getCurrentRange();
 			switch (key) {
@@ -2162,46 +2134,29 @@
 							}
 						}
 					}
-					preventDefault = false;
 					break;
 		/* END: Handling of caret movements inside hidden .ins/.del elements ***************/
 
 				default:
 					// Ignore key.
-					preventDefault = false;
 					break;
 			} //end switch
 	
-			if (preventDefault === true) {
-				ice.dom.preventDefault(e);
-				return false;
-			}
-			return true;
+			return preventDefault;
 	
 		},
 	
-		// compared OK
-		keyDown: function (e) {
-			var preventDefault = false;
-	
-			if (this._handleSpecialKey(e) === false) {
-				if (ice.dom.isBrowser('msie') !== true) {
-					this._preventKeyPress = true;
-				}
-		
+		/**
+		 * @private
+		 * @param e event
+		 * returns true if the event needs to be prevented
+		 */
+		onKeyDown: function (e) {
+			if (this._handleSpecialKey(e)) {
 				return false;
 			} 
 	
-			switch (e.keyCode) {
-				case 27:
-					// ESC
-					break;
-				default:
-					preventDefault = !(this._handleAncillaryKey(e));
-					break;
-			}
-	
-			return ! preventDefault;
+			return this._handleAncillaryKey(e);
 		},
 
 		keyPress: function (e) {
@@ -2239,25 +2194,30 @@
 					// Handle delete key for Firefox.
 						return this._handleAncillaryKey(e);
 					case ice.dom.DOM_VK_ENTER:
-						return this._handleEnter();
+						this._handleEnter();
+						return false;
 					default:
 						// If we are in a deletion, move the range to the end/outside.
-						return this.insert({text: c});
+						return this.insert(/*{text: c}*/);
 				}
 			}
 	
 			return this._handleAncillaryKey(e);
 		},
 	
-		// compared OK
+
 		_handleEnter: function () {
 			var range = this.getCurrentRange();
 			if (range && !range.collapsed) {
 				this._deleteContents();
 			}
-			return true;
 		},
-	// compared OK
+
+		/**
+		 * @private
+		 * returns true if the keytcombination was handled. This does not mean that the event should
+		 * be preventDefault()ed, just that we don't need further processing
+		 */
 		_handleSpecialKey: function (e) {
 			var keyCode = e.which;
 			if (keyCode === null) {
@@ -2265,27 +2225,25 @@
 				keyCode = e.keyCode;
 			}
 	
-			var preventDefault = false;
 			switch (keyCode) {
 				case 120:
 				case 88:
 					if (true === e.ctrlKey || true === e.metaKey) {
 						this.prepareToCut();
 					}
-					break;
+					return true;
 				case 67:
 				case 99:
 					if (true === e.ctrlKey || true === e.metaKey) {
 						this.prepareToCopy();
 					}
-					break;
+					return true;
 		
 				default:
 					// Not a special key.
 					break;
 			} //end switch
-	
-			return ! preventDefault;
+			return false;
 		},
 	
 		/**
@@ -2303,7 +2261,7 @@
 					return false;
 				}
 				if (range.collapsed) {
-					this._cleanupSelection(range, false);
+					this._cleanupSelection(range, false, false);
 					node = range.startContainer;
 				}
 				else {
@@ -2329,11 +2287,15 @@
 						nextNode = ice.dom.getPrevNode(end, this.element);
 					}
 					else if (end.childNodes.length > endOffset) {
-						nextNode = ice.dom.getNextNode(end.childNodes[endOffset - 1]);
+						end = end.childNodes[endOffset - 1];
+						if (ice.dom.is(end, selector)) {
+							return end;
+						}
+						nextNode = ice.dom.getNextNode(end);
 					}
 				}
 				if (nextNode) {
-					ret = ice.dom.is(nextNode, selector) && nextNode;
+					ret = ice.dom.is(nextNode, selector);
 				}
 			}
 			return ret;
@@ -2888,7 +2850,24 @@
 		return splitText;		
 	}
 	
-	function printRange(range, message) {
+	function prepareSelectionForInsert(node, range, doc, insertStub) {
+		if (insertStub) {
+		// create empty node and select it, to be replaced with the typed char
+			var tn = doc.createTextNode('\uFEFF');
+			if (node) {
+				node.appendChild(tn);
+			}
+			else {
+				range.insertNode(tn);
+			}
+			range.selectNode(tn);
+		}
+		else if (node) {
+			range.selectNodeContents(node);
+		}
+	}
+	
+	function printRangeOld(range, message) {
 		if (! range || ! range.startContainer || ! range.endContainer) {
 			return;
 		}
@@ -2939,6 +2918,88 @@
 				if (start > 0) {
 					parts.push("(..." + start + " nodes)");
 				}
+				for (i = start; i < offset1; ++i) {
+					addNode(children[i]);
+				}
+				parts.push("|");
+				if (offset2 > offset1) {
+					for (i = offset1; i < offset2; ++i) {
+						addNode(children[i]);
+					}
+					parts.push('|');
+				}
+				if (offset2 > 0 && offset2 < children.length){
+					var child = children[offset2];
+					while (child) {
+						addNode(child);
+						child = child.nextSibling;
+					}
+				}
+
+			}
+		}
+		if (range.startContainer === range.endContainer) {
+			printNode(range.startContainer, range.startOffset, range.endOffset);
+		}
+		else {
+			printNode(range.startContainer, range.startOffset);
+			printNode(range.endContainer, range.endOffset);
+		}
+		var ret = parts.join(' ');
+		if (message) {
+			console.log(message + ":" + ret);
+		}
+		return ret;
+	}
+
+	function printRange(range, message) {
+		if (! range || ! range.startContainer || ! range.endContainer) {
+			return;
+		}
+		var parts = [];
+		function printText(txt) {
+			if (! txt) {
+				return "";
+			}
+			txt = txt.replace('/\n/g', "\\n").replace('/\r/g', "").replace('\u200B', "{filler}").replace('\uFEFF', "{filler}")
+			if (txt.length <= 15) {
+				return txt;
+			}
+			return txt.substring(0, 5)+ "..." + txt.substring(txt.length - 5);
+		}
+		function addNode(node) {
+			var str;
+			if (node.nodeType === 3) {
+				str = "Text:" + printText(node.nodeValue); 
+			}
+			else {
+				var txt = node.innerText;
+				str = node.nodeName + (txt ? "(" + printText(txt) + ")" :'');
+			}
+			parts.push("<" + str + " />");
+		}
+		function printNode(node, offset1, offset2) {
+			if ("number" != typeof offset2) {
+				offset2 = -1;
+			}
+			if (3 == node.nodeType) { // text
+				var txt = node.nodeValue;
+				parts.push(printText(txt.substring(0, offset1)));
+				parts.push("|");
+				if (offset2 > offset1) {
+					parts.push(printText(txt.substring(offset1, offset2)));
+					parts.push("|");
+					parts.push(printText(txt.substring(offset2)));
+				}
+				else {
+					parts.push(printText(txt.substring(offset1)));
+				}
+			}
+			else if (1 == node.nodeType) {
+				var i = 0,
+					children = node.childNodes,
+					start = 0;
+				addNode(node);
 				for (i = start; i < offset1; ++i) {
 					addNode(children[i]);
 				}
