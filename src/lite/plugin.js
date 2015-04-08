@@ -1450,37 +1450,37 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		 * @param props
 		 */
 		_setPluginFeatures : function(editor, props) {
+			function makeClasses() {
+				var classes = [props.deleteClass,props.insertClass,props.stylePrefix+'*'];
+				return classes;
+			}
+			
+			function makeAttributes() {
+				var attrs = ['title'];
+				for (var key in props.attributes) {
+					if (props.attributes.hasOwnProperty(key)) {
+						var value = props.attributes[key];
+						if ((typeof value === "string") && value.indexOf("data-") === 0) {
+							attrs.push(value);
+						};
+					};
+				};
+				return attrs;
+			}
+			
+			function makeFeature(arr) {
+				var ret = {};
+				arr.forEach(function(member) {
+					ret[member] = true;
+				});
+				return ret;
+			}
+
 			if (! editor || ! editor.filter || ! editor.filter.addFeature) {
 				return;
 			}
 			
-			try {
-				function makeClasses() {
-					var classes = [props.deleteClass,props.insertClass,props.stylePrefix+'*'];
-					return classes;
-				}
-				
-				function makeAttributes() {
-					var attrs = ['title'];
-					for (var key in props.attributes) {
-						if (props.attributes.hasOwnProperty(key)) {
-							var value = props.attributes[key];
-							if ((typeof value === "string") && value.indexOf("data-") === 0) {
-								attrs.push(value);
-							};
-						};
-					};
-					return attrs;
-				}
-				
-				function makeFeature(arr) {
-					var ret = {};
-					arr.forEach(function(member) {
-						ret[member] = true;
-					});
-					return ret;
-				}
-				
+			try {	
 				var features = [], feature, fields;
 				
 				feature = {};
