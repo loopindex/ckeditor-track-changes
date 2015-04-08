@@ -16,7 +16,7 @@
 </head>
 <body onload="prettyPrint(); highlight();">
   <pre class="prettyprint lang-js">/*
-Copyright 2013 LoopIndex, This file is part of the Track Changes plugin for CKEditor.
+Copyright 2015 LoopIndex, This file is part of the Track Changes plugin for CKEditor.
 
 The track changes plugin is free software; you can redistribute it and/or modify it under the terms of the GNU Lesser General Public License, version 2, as published by the Free Software Foundation.
 This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
@@ -1467,37 +1467,37 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		 * @param props
 		 */
 		_setPluginFeatures : function(editor, props) {
+			function makeClasses() {
+				var classes = [props.deleteClass,props.insertClass,props.stylePrefix+'*'];
+				return classes;
+			}
+			
+			function makeAttributes() {
+				var attrs = ['title'];
+				for (var key in props.attributes) {
+					if (props.attributes.hasOwnProperty(key)) {
+						var value = props.attributes[key];
+						if ((typeof value === &quot;string&quot;) &amp;&amp; value.indexOf(&quot;data-&quot;) === 0) {
+							attrs.push(value);
+						};
+					};
+				};
+				return attrs;
+			}
+			
+			function makeFeature(arr) {
+				var ret = {};
+				arr.forEach(function(member) {
+					ret[member] = true;
+				});
+				return ret;
+			}
+
 			if (! editor || ! editor.filter || ! editor.filter.addFeature) {
 				return;
 			}
 			
-			try {
-				function makeClasses() {
-					var classes = [props.deleteClass,props.insertClass,props.stylePrefix+'*'];
-					return classes;
-				}
-				
-				function makeAttributes() {
-					var attrs = ['title'];
-					for (var key in props.attributes) {
-						if (props.attributes.hasOwnProperty(key)) {
-							var value = props.attributes[key];
-							if ((typeof value === &quot;string&quot;) &amp;&amp; value.indexOf(&quot;data-&quot;) === 0) {
-								attrs.push(value);
-							};
-						};
-					};
-					return attrs;
-				}
-				
-				function makeFeature(arr) {
-					var ret = {};
-					arr.forEach(function(member) {
-						ret[member] = true;
-					});
-					return ret;
-				}
-				
+			try {	
 				var features = [], feature, fields;
 				
 				feature = {};
