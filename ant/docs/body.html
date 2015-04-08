@@ -1,0 +1,82 @@
+<body>
+<style type="text/css">
+body {
+	font-family: verdana,arial,sans-serif;
+}
+
+#content {
+	margin-left: 15px;
+	max-width: 960px;;
+}
+h1 { font-size: 2em;}
+h2 { font-size: 1.8em;}
+h3 { font-size: 1.6em;}
+h4 { font-size: 1.4em;}
+li {
+	margin:auto;
+	padding:auto;
+}
+h3, h4 {
+	margin-bottom: 3px;
+}
+h4 {
+	margin-top: .5em;
+}
+#myfooter {
+	margin-top: 50px;
+	padding: 5px;
+	border-top: 1px solid #ccc;
+	border-bottom: 1px solid #ccc;
+	text-align:left;
+}
+
+</style>
+<h1>Track Changes Plugin for CKEditor</h1>
+<h3>based on <a href="https://github.com/NYTimes/ice" target="_blank">ICE</a> (NYTimes track changes for <code>contentEditable</code> elements).</h3>
+<h2>Main Features</h2>
+
+<ul>
+<li>Tracks changes from common input sources (keyboard, paste, plugins that modify the document via standard ckeditor api)
+<li>Name, Id and time stamp associated with each change
+<li>Customizable styles per user
+</ul>
+
+<h2>Demo</h2>
+<a href="http://www.loopindex.com/lite/demo">Demo Page</a>
+<h2>Site</h2>
+<a href="http://www.loopindex.com/lite">LoopIndex</a>
+
+<h2>Getting Started</h2>
+<ol><li>Add the LITE plugin to ckeditor. The simplest way to do this is by adding the following line to ckeditor's <code>config.js</code>:
+<code>config.extraPlugins = 'lite';</code>
+<li>Optionally include <code>lite-interface.js</code> in your source, so you can use the various constants defined in it rather than hard coded strings.
+<li>Configure the plugin, either in the ckeditor configuration file, or in code
+</ol>
+<h2>Configuration</h2>
+The LITE plugin is automatically activated after you install it and add it to ckeditor as described above.
+
+<h2>Known Issues</h2>
+<ul>
+<li>Changes not applied through keyboard events or the ckeditor api are not tracked 
+<li>Some deletion scenarios yield surprising results
+</ul>
+<h2>Browser Compatibility</h2>
+LITE has been tested on Firefox 15+, Chrome 13+ and MSIE 9+. Support for MSIE 8 is not guaranteed.
+
+<h2>License</h2>
+
+Copyright (c) LoopIndex.
+
+<h4>LGPL</h4>
+
+This program is free software; you can redistribute it and/or modify it under the terms of the GNU Lesser General Public License as published by the Free Software Foundation.
+
+This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public License along with this program as the file lgpl.txt. If not, see <http://www.gnu.org/licenses/lgpl.txt>
+
+<h4>MPL</h4>
+
+This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0. If a copy of the MPL was not distributed with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+</body>
