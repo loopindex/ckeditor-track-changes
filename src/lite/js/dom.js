@@ -110,7 +110,11 @@
 		jQuery(before).before(elem);
 	};
 	dom.insertAfter = function (after, elem) {
-		jQuery(after).after(elem);
+		if (after && elem) {
+			var sibling = after.nextSibling,
+				parent = after.parentNode;
+			return sibling ? parent.insertBefore(elem, sibling) : parent.appendChild(elem);
+		}
 	};
 	dom.getHtml = function (element) {
 		return jQuery(element).html();

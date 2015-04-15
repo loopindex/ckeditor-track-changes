@@ -1448,6 +1448,11 @@
 			}
 	
 			// Some bugs in Firefox and Webkit make the caret disappear out of text nodes, so we try to put them back in.
+			if (isNewlineNode(commonAncestor)) {
+				this._addDeleteTrackingToBreak(commonAncestor, {range: range});
+				return true;
+			}
+			
 			if (commonAncestor.nodeType !== ice.dom.TEXT_NODE) {
 				// If placed at the beginning of a container that cannot contain text, such as an ul element, place the caret at the beginning of the first item.
 				if (initialOffset === 0 && ice.dom.isBlockElement(commonAncestor) && (!ice.dom.canContainTextElement(commonAncestor))) {
@@ -1460,6 +1465,11 @@
 				}
 		
 				if (commonAncestor.childNodes.length > initialOffset) {
+					var next = commonAncestor.childNodes[initialOffset];
+					if (isNewlineNode(next)) {
+						this._addDeleteTrackingToBreak(next, {range: range});
+						return true;
+					}
 					range.setStart(commonAncestor.childNodes[initialOffset], 0);
 					range.collapse(true);
 					returnValue = this._deleteRight(range);
@@ -1596,7 +1606,12 @@
 			if (isEmptyBlock) {
 				return false;
 			}
-	
+
+			if (isNewlineNode(commonAncestor)) {
+				this._addDeleteTrackingToBreak(commonAncestor, {range: range, moveLeft: true});
+				return true;
+			}
+			
 			// Handle cases of the caret is at the start of a container or outside a text node
 			if (initialOffset === 0 || commonAncestor.nodeType !== ice.dom.TEXT_NODE) {
 			// If placed at the end of a container that cannot contain text, such as an ul element, place the caret at the end of the last item.
@@ -1761,7 +1776,7 @@
 			var parent = node && node.parentNode;
 			if (parent) {
 				parent.removeChild(node);
-				if (ice.dom.hasNoTextOrStubContent(parent)) {
+				if (parent != this.element && ice.dom.hasNoTextOrStubContent(parent)) {
 					this._removeNode(parent);
 				}
 			}
@@ -1851,14 +1866,21 @@
 			function move() {
 				var range = options && options.range;
 				if (range) {
-					range.selectNodeContents(brNode);
-
-					if (moveLeft) {
-						range.collapse(true);
-					} 
-					else {
-						range.collapse();
+					if (isBRNode(brNode) || ice.dom.hasNoTextOrStubContent(brNode) || moveLeft) {
+						if (moveLeft) {
+							range.setStartBefore(brNode);
+							range.setEndBefore(brNode);
+						}
+						else {
+							range.setStartAfter(brNode);
+							range.setEndAfter(brNode);
+						}
 					}
+					else if (brNode.firstChild) {
+						range.setStartBefore(brNode.firstChild);
+						range.setEndBefore(brNode.firstChild);
+					}
+					range.collapse();
 				}	
 			}
 			
@@ -1993,7 +2015,7 @@
 				ctNode = this._createIceNode('deleteType');
 				ctNode.appendChild(contentNode);
 				if (cInd > 0 && cInd >= (nChildren - 1)) {
-					contentAddNode.parentNode.appendChild(ctNode);
+					ice.dom.insertAfter(contentAddNode, ctNode);
 				}
 				else {
 					if (cInd > 0) {
@@ -2075,7 +2097,7 @@
 				e.stopImmediatePropagation();
 				e.preventDefault();
 			}
-			return ! preventEvent;
+			return preventEvent;
 		},
 
 		/**
@@ -2162,7 +2184,7 @@
 		keyPress: function (e) {
 			if (this._preventKeyPress === true) {
 				this._preventKeyPress = false;
-				return;
+				return false;
 			}
 			var c = null;
 			if (e.which == null) {
@@ -2174,7 +2196,7 @@
 			}
 	
 			if (e.ctrlKey || e.metaKey) {
-				return true;
+				return false;
 			}
 	
 			// Inside a br - most likely in a placeholder of a new block - delete before handling.
@@ -2186,7 +2208,7 @@
 			}
 	
 			// Ice will ignore the keyPress event if CMD or CTRL key is also pressed
-			if (c !== null && e.ctrlKey !== true && e.metaKey !== true) {
+			if (c !== null) {
 				var key = e.keyCode ? e.keyCode : e.which;
     		    switch (key) {
 					case ice.dom.DOM_VK_DELETE:
@@ -2230,15 +2252,16 @@
 				case 88:
 					if (true === e.ctrlKey || true === e.metaKey) {
 						this.prepareToCut();
+						return true;
 					}
-					return true;
+					break;
 				case 67:
 				case 99:
 					if (true === e.ctrlKey || true === e.metaKey) {
 						this.prepareToCopy();
+						return true;
 					}
-					return true;
-		
+					break;		
 				default:
 					// Not a special key.
 					break;
@@ -2657,6 +2680,7 @@
 		 * Finds all the tracking nodes involved in the range and removes their tracking classes.
 		 * A timeout is set to restore the tracking classes immediately.
 		 * This allows the editor to copy tracked text without its style
+		 * @private
 		 */
 		_removeTrackingInRange: function (range) {
 			var insClass = this._getIceNodeClass('insertType'), 
@@ -2681,7 +2705,7 @@
 					if (iceNode = ($iceNode && $iceNode[0])) {
 						var cls = iceNode.className;
 						iceNode.setAttribute(clsAttr, cls);
-						iceNode.setAttribute("class", "");
+						iceNode.setAttribute("class", "ice-no-decoration");
 						return true;
 					}
 					return false;
@@ -2689,10 +2713,7 @@
 			range.getNodes(null, filter);
 			var el = this.element;
 			setTimeout(function() {
-				var /*altIns = insClass + suffix,
-					altDel = delClass + suffix,
-					classList = '.' + altIns + ", ." + altDel, */
-					nodes = jQuery(el).find('['+ clsAttr + ']');
+				var nodes = jQuery(el).find('['+ clsAttr + ']');
 				nodes.each(function(i, node) {
 					var cls = node.getAttribute(clsAttr);
 					if (cls) {
@@ -2701,7 +2722,7 @@
 					}
 				});
 				
-			}, 1);
+			}, 10);
 		},
 		
 		getAdjacentChangeId: function(node, left) {
@@ -2759,7 +2780,7 @@
 
 	function isNewlineNode(node) {
 		var tag = ice.dom.getTagName(node);
-		return BREAK_ELEMENT === tag || PARAGRAPH_ELEMENT === tag || DIV_ELEMENT === tag;
+		return BREAK_ELEMENT === tag || PARAGRAPH_ELEMENT === tag;
 	}
 
 	function isParagraphNode(node) {

@@ -15,6 +15,10 @@ ins.ice-ins {
 	white-space:pre-wrap;
 }
 
+ins.ice-no-decoration, del.ice-no-decoration {
+	text-decoration: none !important;
+}
+
 .ICE-Tracking ins.ice-ins,
 .ICE-Tracking del.ice-del {
 	-webkit-border-radius: 3px;
