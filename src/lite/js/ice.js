@@ -155,7 +155,7 @@
 			// If we are handling events setup the delegate to handle various events on `this.element`.
 			var e = this.element;
 			
-			e.addEventListener("keydown", this._boundEventHandler, true);
+//			e.addEventListener("keydown", this._boundEventHandler, true);
 			e.addEventListener("keypress", this._boundEventHandler, true);
 			
 			
@@ -739,10 +739,11 @@
 		 * node; otherwise, false.
 		 * @param node The node to test or null to test the selection
 		 * @param onlyNode if true, test only the node
+		 * @param cleanupDOM - if false, don't mess with the selection, just test
 		 */
-		isInsideChange: function (node, onlyNode) {
+		isInsideChange: function (node, onlyNode, cleanupDOM) {
 			try {
-				return !! this.currentChangeNode(node, onlyNode); // refactored by dfl
+				return !! this.currentChangeNode(node, onlyNode, cleanupDOM); // refactored by dfl
 			}
 			catch (e) {
 				logError(e, "While testing if isInsideChange");
@@ -2097,7 +2098,7 @@
 				e.stopImmediatePropagation();
 				e.preventDefault();
 			}
-			return preventEvent;
+			return ! preventEvent;
 		},
 
 		/**
@@ -2275,7 +2276,7 @@
 		 * @param onlyNode if true, check only the node, not its parents
 		 * null if not in a track changes hierarchy
 		 */
-		currentChangeNode: function (node, onlyNode) {
+		currentChangeNode: function (node, onlyNode, cleanup) {
 			var selector = '.' + this._getIceNodeClass('insertType') + ', .' + this._getIceNodeClass('deleteType'),
 				range = null;
 			if (!node) {
@@ -2283,7 +2284,7 @@
 				if (! range) {
 					return false;
 				}
-				if (range.collapsed) {
+				if (cleanup !== false && range.collapsed) {
 					this._cleanupSelection(range, false, false);
 					node = range.startContainer;
 				}

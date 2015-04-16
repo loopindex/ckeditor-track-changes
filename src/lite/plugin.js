@@ -1240,7 +1240,15 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 				if (track) {
 					var handler = this._onSelectionChanged.bind(this),
 						editable = this._editor.editable();
-					this._removeBindings.push(editable.on("keyup", handler));
+					this._removeBindings.push(this._editor.on("key", function(e) {
+						if (this._tracker) {
+							var event = e.data.domEvent && e.data.domEvent.$;
+							// onkeydown returns true to prevent, so return false it it returns true
+							return event ? ! this._tracker.onKeyDown(event) : true;
+						}
+						return true;
+					}.bind(this)));
+					this._removeBindings.push(editable.on("keyup", this._onSelectionChanged.bind(this, null, false)));
 					this._removeBindings.push(editable.on("click", handler));
 					this._removeBindings.push(this._editor.on("selectionChange", handler));
 				}
@@ -1342,8 +1350,8 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		 * @param event
 		 * @private
 		 */
-		_onSelectionChanged : function(event) {
-			var inChange = this._isTracking && this._tracker && this._tracker.isInsideChange();
+		_onSelectionChanged : function(event, cleanupDOM) {
+			var inChange = this._isTracking && this._tracker && this._tracker.isInsideChange(null, null, cleanupDOM);
 			var state = inChange && this._canAcceptReject ? CKEDITOR.TRISTATE_OFF : CKEDITOR.TRISTATE_DISABLED;
 			this._setCommandsState([LITE.Commands.ACCEPT_ONE, LITE.Commands.REJECT_ONE], state);
 		},
