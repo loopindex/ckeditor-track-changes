@@ -136,6 +136,45 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 	                 CKEDITOR.CTRL + 120,
 	                 CKEDITOR.SHIFT + 46];
 	
+	function cleanNode(node) {
+		var ret, name, parent,
+			i, len, child;
+		if (node.nodeType === ice.dom.ELEMENT_NODE) {
+			var children = node.childNodes;
+			for (i = 0; i < children.length; ++i) {
+				child = children[i];
+				cleanNode(child);
+				name = child.nodeName.toLowerCase();
+				if (name === 'ins' || name === 'del') {
+					while (child.firstChild) {
+						node.insertBefore(child.firstChild, child);
+					}
+					node.removeChild(child);
+				}
+			}
+		}
+		name = node.nodeName.toLowerCase();
+		if (name === 'ins' || name === 'del') {
+			ret = jQuery.makeArray(node.childNodes);
+		}
+		else {
+			ret = [node];
+		}
+		return ret;
+	}
+	
+	function cleanClipboard(nodes) {
+		if (! nodes ||! nodes.length) {
+			return [];
+		}
+		var ret = [];
+		nodes.forEach(function(node) {
+			ret = ret.concat(cleanNode(node));
+		});
+		
+		return ret;
+	}
+	
 	function isCutKeystroke(code) {
 		return cutKeystrokes.indexOf(code) >= 0;
 	}
@@ -383,8 +422,8 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		hidpi: true,
 
 		props : {
-			deleteTag: 'del',
-			insertTag: 'ins',
+			deleteTag: 'span',
+			insertTag: 'span',
 			deleteClass: 'ice-del',
 			insertClass: 'ice-ins',
 			attributes: {
@@ -1263,7 +1302,8 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			if (! this._tracker || ! this._isTracking || ! evt) {
 				return true;
 			}
-			var data = evt.data || {},
+			var data = //"<ins><div>man</div><p><del><div><ins>who is this guy</ins><del>this is deleted</del></div><div><del><span>text1</span><ins><div>calling all nature</div><del>inner del</del></ins></del></div><span>going again</span><h2>the thing</h2></del></p></ins>",
+				evt.data || {},
 				ignore = false,
 				toInsert = null,
 				node = (evt.name == "insertElement") && data.$;
@@ -1307,12 +1347,13 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 				}
 			}
 			else if (node) {
-				toInsert = node;
+				toInsert = [node];
 			}
 			else {
 				return true;
 			}
 			if (toInsert) {
+				toInsert = cleanClipboard(toInsert);
 				var focused = this._editor.focusManager.hasFocus;
 				this._beforeInsert();
 				this._tracker.insert({nodes: toInsert});

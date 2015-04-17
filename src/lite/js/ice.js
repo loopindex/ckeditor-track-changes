@@ -99,7 +99,8 @@
 		//	[userId] => styleId; where style is "this.stylePrefix" + "this.uniqueStyleIndex"
 		this._userStyles = {};
 		this._styles = {}; // dfl, moved from prototype
-		this._refreshInterval = null; // dfl
+		this._refreshInterval = null; 
+		this._savedNodesMap = {};
 		this.$this = jQuery(this);
 		this._browser = ice.dom.browser();
 		this._tooltipMouseOver = this._tooltipMouseOver.bind(this);
@@ -586,7 +587,6 @@
 					el.parentNode.insertBefore(el.firstChild, el);
 				}
 				el.parentNode.removeChild(el);
-//				ice.dom.replaceWith(this, ice.dom.contents(this));
 			});
 			var deletes = ice.dom.find(body, '.' + this._getIceNodeClass('deleteType'));
 			ice.dom.remove(deletes);
@@ -2683,7 +2683,7 @@
 		 * This allows the editor to copy tracked text without its style
 		 * @private
 		 */
-		_removeTrackingInRange: function (range) {
+		_removeTrackingInRangeOld: function (range) {
 			var insClass = this._getIceNodeClass('insertType'), 
 				delClass = this._getIceNodeClass('deleteType'),
 				clsSelector = '.' + insClass+",."+delClass,
@@ -2725,6 +2725,75 @@
 				
 			}, 10);
 		},
+		/**
+		 * Finds all the tracking nodes involved in the range and removes their tracking classes.
+		 * A timeout is set to restore the tracking classes immediately.
+		 * This allows the editor to copy tracked text without its style
+		 * @private
+		 */
+		_removeTrackingInRange: function (range) {
+			var insClass = this._getIceNodeClass('insertType'), 
+				delClass = this._getIceNodeClass('deleteType'),
+				clsSelector = '.' + insClass+",."+delClass,
+				doc= this.env.document,
+				saveMap = this._savedNodesMap,
+				clsAttr = "data-ice-class",
+				base = Date.now() % 1000000,
+				filter = function(node) {
+					var iceNode = null, 
+						$node,
+						$iceNode = null;
+					if (node.nodeType == ice.dom.TEXT_NODE) {
+						$iceNode = jQuery(node).parents(clsSelector);
+					}
+					else {
+						$node = jQuery(node);
+						if ($node.is(clsSelector)) {
+							$iceNode = $node; 
+						}
+						else {
+							$iceNode = $node.parents(clsSelector);
+						}
+					}
+					if (iceNode = ($iceNode && $iceNode[0])) {
+						var attrs = getNodeAttributes(iceNode),
+							cls = iceNode.className,
+							nodeData = {
+								attributes: attrs,
+								className: cls
+							},
+							dataId = String(base++);
+						
+						saveMap[dataId] = nodeData;
+						removeAllAttributes(iceNode);
+						iceNode.setAttribute(clsAttr, dataId);
+						iceNode.setAttribute("class", "ice-no-decoration");
+						return true;
+					}
+					return false;
+				};
+			range.getNodes(null, filter);
+			var el = this.element;
+			setTimeout(function() {
+				var nodes = jQuery(el).find('['+ clsAttr + ']');
+				nodes.each(function(i, node) {
+					var dataId = node.getAttribute(clsAttr),
+						nodeData = saveMap[dataId];
+					if (dataId) {
+						delete saveMap[dataId];
+						Object.keys(nodeData.attributes).forEach(function(key) {
+							node.setAttribute(key, nodeData.attributes[key]);
+						});
+						node.setAttribute("class", nodeData.className);
+						node.removeAttribute(clsAttr);
+					}
+					else {
+						logError("missing save data for node");
+					}
+				});
+				
+			}, 10);
+		},
 		
 		getAdjacentChangeId: function(node, left) {
 			var next = left ? ice.dom.getNextNode(node) : ice.dom.getPrevNode(node),
@@ -2755,6 +2824,35 @@
 	} ;
 	
 	/** Utility functions **/
+	
+	function getNodeAttributes(node) {
+		var attrs = node.attributes,
+			attr,
+			len = attrs && attrs.length,
+			ret = {};
+		for (var i = 0; i < len; ++i) {
+			attr = attrs[i];
+			ret[attr.name] = attr.value;
+		}
+		return ret;
+	}
+	
+	function removeAllAttributes(node) {
+		var last = null,
+			next;
+		try {
+			while (node.attributes.length > 0) {
+				next = node.attributes[0];
+				if (next === last) {
+					return;
+				}
+				last = next;
+				node.removeAttribute(next.name);
+			}
+		}
+		catch(ignore){}
+	}
+
 	function nativeElement(e) {
 		return e;
 	}
