@@ -10,8 +10,7 @@
 		defaults, InlineChangeEditor;
 	
 	/* constants */
-	var DIV_ELEMENT = "div",
-		BREAK_ELEMENT = "br",
+	var BREAK_ELEMENT = "br",
 		PARAGRAPH_ELEMENT = "p";
 
 	defaults = {
@@ -23,7 +22,7 @@
 			sessionId: "data-session-id",
 			time: "data-time",
 			lastTime: "data-last-change-time",
-			changeData: "data-changedata", // arbitrary data to associate with the node, e.g. version
+			changeData: "data-changedata" // arbitrary data to associate with the node, e.g. version
 		},
 		// Prepended to `changeType.alias` for classname uniqueness, if needed
 		attrValuePrefix: '',
@@ -99,7 +98,6 @@
 		//	[userId] => styleId; where style is "this.stylePrefix" + "this.uniqueStyleIndex"
 		this._userStyles = {};
 		this._styles = {}; // dfl, moved from prototype
-		this._refreshInterval = null; // dfl
 		this.$this = jQuery(this);
 		this._browser = ice.dom.browser();
 		this._tooltipMouseOver = this._tooltipMouseOver.bind(this);
@@ -506,15 +504,15 @@
 		 * Returns an array with the user ids who made the changes
 		 */
 		getChangeUserids: function () {
-			var result = [];
-			var keys = Object.keys(this._changes);
-	
-			for (var key in keys) {
-				result.push(this._changes[keys[key]].userid);
-			}
-	
+			var self = this,
+				keys = Object.keys(this._changes),
+				result = keys.map(function(key) {
+					return self._changes[keys[key]].userid
+				});
+
+			// probably makes the list unique
 			return result.sort().filter(function (el, i, a) {
-				if (i == a.indexOf(el)) return 1;
+				if (i === a.indexOf(el)) return 1;
 				return 0;
 			});
 		},
@@ -756,8 +754,8 @@
 		getIceNodes : function() {
 			var classList = [];
 			var self = this;
-			ice.dom.each(this.changeTypes, 
-				function (type, i) {
+			ice.dom.each(this.changeTypes, // iterate over type map
+				function (type) {
 					classList.push('.' + self._getIceNodeClass(type));
 				});
 			classList = classList.join(',');
@@ -980,8 +978,7 @@
 		_cleanupAroundNode: function(node, includeNode) {
 			var parent = node.parentNode,
 				anchor = node.nextSibling,
-				tmp,
-				childCount = parent.childNodes.length;
+				tmp;
 			while (anchor) {
 				if (ice.dom.isEmptyTextNode(anchor)) {
 					tmp = anchor;
@@ -1051,7 +1048,7 @@
 		_getUserStyle: function (userid) {
 			if (userid === null || userid === "" || "undefined" == typeof userid) {
 				return this.stylePrefix;
-			};
+			}
 			var styleIndex = null;
 			if (this._userStyles[userid]) {
 				styleIndex = this._userStyles[userid];
@@ -1218,7 +1215,7 @@
 				f = hostRange ? this.hostMethods.makeHostElement : nativeElement,
 				nodes = data.nodes,
 				insertStubText = data.insertStubText !== false,
-				text = data.text,
+				text = data.text, i, len,
 				doc= this.env.document,
 				inserted = false;
 				
@@ -1233,9 +1230,10 @@
 					inserted = true;
 					range.insertNode(f(head));
 					var parent = head.parentNode,
-						sibling = head.nextSibling,
-						len = nodes.length;
-					for (var i = 1; i < len; ++i) {
+						sibling = head.nextSibling;
+
+					len = nodes.length;
+					for (i = 1; i < len; ++i) {
 						if (sibling) {
 							parent.insertBefore(nodes[i], sibling);
 						}
@@ -1294,10 +1292,10 @@
 
 				
 				range.insertNode(f(node));
-				var len = (nodes && nodes.length) || 0;
+				len = (nodes && nodes.length) || 0;
 				if (len) {
 					inserted = true;
-					for (var i = 0; i < len; ++i) {
+					for (i = 0; i < len; ++i) {
 						node.appendChild(nodes[i]);
 					}
 					range.setEndAfter(f(node.lastChild));
@@ -1358,9 +1356,7 @@
 			// Bookmark the range and get elements between.
 			var bookmark = new ice.Bookmark(this.env, range),
 				elements = ice.dom.getElementsBetween(bookmark.start, bookmark.end),
-				b1 = ice.dom.parents(range.startContainer, this.blockEls.join(', '))[0],
-				b2 = ice.dom.parents(range.endContainer, this.blockEls.join(', '))[0],
-				betweenBlocks = new Array(); 
+				betweenBlocks = [];
 	// elements length may change during the loop so don't optimize
 			for (var i = 0; i < elements.length; i++) {
 				var elem = elements[i];
@@ -1437,7 +1433,7 @@
 				nextBlock = parentBlock && ice.dom.getNextContentNode(parentBlock, this.element),
 				nextBlockIsEmpty = nextBlock ? (ice.dom.hasNoTextOrStubContent(nextBlock)) : false,
 				initialContainer = range.endContainer,
-				initialOffset = range.endOffset,
+				initialOffset = range.endOffset, i,
 				commonAncestor = range.commonAncestorContainer,
 				nextContainer, returnValue = false;
 	
@@ -1558,15 +1554,12 @@
 					}
 					// The browsers like to auto-insert breaks into empty paragraphs - remove them.
 					var elements = ice.dom.getElementsBetween(range.startContainer, range.endContainer);
-					for (var i = 0; i < elements.length; i++) {
+					for (i = 0; i < elements.length; i++) {
 						ice.dom.remove(elements[i]);
 					}
-					var startContainer = range.startContainer,
-						endContainer = range.endContainer;
-//					ice.dom.remove(ice.dom.find(startContainer, 'br'));
-//					ice.dom.remove(ice.dom.find(endContainer, 'br'));
 					return ice.dom.mergeBlockWithSibling(range, ice.dom.getBlockParent(range.endContainer, this.element) || parentBlock);
-				} else {
+				}
+				else {
 					// If the next block is empty, remove the next block.
 					if (nextBlockIsEmpty) {
 						ice.dom.remove(nextBlock);
@@ -1967,7 +1960,7 @@
  * Adds delete tracking markup around a content node
  * @param contentNode the content to be marked as deleted
  * @param contentAddNode the insert node surrounding the content
- * @options may contain range, moveLeft, merge
+ * @param options may contain range, moveLeft, merge
  */
 		_addDeletionInInsertNode: function(contentNode, contentAddNode, options) {
 			var range = options && options.range,
@@ -2104,7 +2097,7 @@
 		 * @private
 		 * Handles arrow, delete key events, and others.
 		 * @param {JQuery Event} e The event object.
-		 * return {void|boolean} Returns true if default event needs to be blocked.
+		 * @return {void|boolean} Returns true if default event needs to be blocked.
 		 */
 		_handleAncillaryKey: function (e) {
 			var key = e.keyCode ? e.keyCode : e.which,
@@ -2478,7 +2471,7 @@
 		
 		/**
 		 * Filters the current change set based on options
-		 * @param options may contain one of:<ul>
+		 * @param _options may contain one of:<ul>
 		 * <li>exclude: an array of user ids to exclude<li>include: an array of user ids to include
 		 * <li>filter: a filter function of the form function({userid, time, data}):boolean
 		 * <li>verify: a boolean indicating whether or not to verify that there are matching dom nodes for each matching change
@@ -2488,6 +2481,7 @@
 		 */
 		_filterChanges: function(_options) {
 			var count = 0, changes = {},
+				change,
 				options = _options || {},
 				filter = options.filter,
 				exclude = options.exclude ? jQuery.map(options.exclude, function(e) { return String(e); }) : null,
@@ -2495,7 +2489,7 @@
 				verify = options.verify,
 				elements = null;
 			for (var key in this._changes) {
-				var change = this._changes[key];
+				change = this._changes[key];
 				if (change && change.type) {	
 					var skip = (filter && ! filter({userid: change.userid, time: change.time, data:change.data})) || 
 						(exclude && exclude.indexOf(change.userid) >= 0) ||
@@ -2529,12 +2523,12 @@
 			}
 	
 			var nodes = this.getIceNodes();
-			function f(i, el) {
-				var styleIndex = 0;
-				var ctnType = '';
-				var classList = el.className.split(' ');
+			var f = function(i, el) {
+				var styleIndex = 0,
+					 ctnType = '', i,
+					classList = el.className.split(' ');
 				//TODO optimize this - create a map of regexp
-				for (var i = 0; i < classList.length; i++) {
+				for (i = 0; i < classList.length; i++) {
 					var styleReg = new RegExp(this.stylePrefix + '-(\\d+)').exec(classList[i]);
 					if (styleReg) styleIndex = styleReg[1];
 					var ctnReg = new RegExp('(' + changeTypeClasses.join('|') + ')').exec(classList[i]);
@@ -2577,8 +2571,8 @@
 				};
 				this._changes[changeid] = change;
 				this._updateNodeTooltip(el);
-			}
-			nodes.each(f.bind(this));
+			}.bind(this);
+			nodes.each(f);
 			this._triggerChange();
 		},
 		
@@ -2613,12 +2607,13 @@
 		},
 		
 		_updateTooltipsState: function() {
+			var $nodes,
+				self = this;
 			// show tooltips if they are enabled and change tracking is on
 			if (this.tooltips && this._isVisible) {
 				if (! this._showingTips) {
 					this._showingTips = true;
-					var $nodes = this.getIceNodes(),
-						self = this;
+					$nodes = this.getIceNodes();
 					$nodes.each(function(i, node) {
 						self._addTooltip(node);
 					});					
@@ -2626,7 +2621,7 @@
 			}
 			else if (this._showingTips) {
 				this._showingTips = false;
-				var $nodes = this.getIceNodes();
+				$nodes = this.getIceNodes();
 				$nodes.each(function(i, node) {
 					jQuery(node).unbind("mouseover").unbind("mouseout");
 				});					
@@ -2782,11 +2777,6 @@
 		var tag = ice.dom.getTagName(node);
 		return BREAK_ELEMENT === tag || PARAGRAPH_ELEMENT === tag;
 	}
-
-	function isParagraphNode(node) {
-		return ice.dom.getTagName(node) === PARAGRAPH_ELEMENT;
-	}
-
 
 	function isOnRightEdge(el, offset) {
 		if (! el) {

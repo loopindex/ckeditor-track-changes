@@ -1,5 +1,7 @@
 (function () {
 
+	"use strict";
+
 	var exports = this,
 		Selection;
 
@@ -67,7 +69,6 @@
 		this._selection || (this._selection = this._getSelection());
 		this._selection.setSingleRange(range);
 		this._selection.ranges = [range];
-		return;
 	},
 
 	/**
