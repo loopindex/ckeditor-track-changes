@@ -1,4 +1,7 @@
 (function () {
+
+	"use strict"
+
 	var exports = this,
 		dom = {},
 		_browser = null;

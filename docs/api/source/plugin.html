@@ -24,7 +24,7 @@ You should have received a copy of the GNU Lesser General Public License along w
 
 Written by (David *)Frenkiel - https://github.com/imdfl
 */
-(function() {
+(function(CKEDITOR) {
 
 	&quot;use strict&quot;;
 
@@ -153,6 +153,45 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 	                 CKEDITOR.CTRL + 120,
 	                 CKEDITOR.SHIFT + 46];
 	
+	function cleanNode(node) {
+		var ret, name, parent,
+			i, len, child;
+		if (node.nodeType === ice.dom.ELEMENT_NODE) {
+			var children = node.childNodes;
+			for (i = 0; i &lt; children.length; ++i) {
+				child = children[i];
+				cleanNode(child);
+				name = child.nodeName.toLowerCase();
+				if (name === 'ins' || name === 'del') {
+					while (child.firstChild) {
+						node.insertBefore(child.firstChild, child);
+					}
+					node.removeChild(child);
+				}
+			}
+		}
+		name = node.nodeName.toLowerCase();
+		if (name === 'ins' || name === 'del') {
+			ret = jQuery.makeArray(node.childNodes);
+		}
+		else {
+			ret = [node];
+		}
+		return ret;
+	}
+	
+	function cleanClipboard(nodes) {
+		if (! nodes ||! nodes.length) {
+			return [];
+		}
+		var ret = [];
+		nodes.forEach(function(node) {
+			ret = ret.concat(cleanNode(node));
+		});
+		
+		return ret;
+	}
+	
 	function isCutKeystroke(code) {
 		return cutKeystrokes.indexOf(code) &gt;= 0;
 	}
@@ -202,7 +241,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		var padLength = padWith.length;
 		for (var i = s.length; i &lt; length; i += padLength) {
 			if (bSuffix) {
-				s += padWidth;
+				s += padWith;
 			}
 			else {
 				s = padWith + s;
@@ -215,33 +254,12 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		return padString(s, length, '0');
 	}
 	
-<span id='LITE-Events-method-testIECommand'>	/**
-</span>	 * Copied from CKEditor
-	 */
-	function testIECommand(editor, command ) {
-		var doc = editor.document,
-			body = doc.getBody(),
-			enabled = false,
-			onExec = function() {
-				enabled = true;
-			};
-
-		body.on( command, onExec );
-
-		// IE7: document.execCommand has problem to paste into positioned element.
-		( CKEDITOR.env.version &gt; 7 ? doc.$ : doc.$.selection.createRange() )[ 'execCommand' ]( command );
-
-		body.removeListener( command, onExec );
-
-		return enabled;
-	}
-
-
 	function relativeDateFormat(date) {
-		var now = new Date();
-		var today = now.getDate();
-		var month = now.getMonth();
-		var year = now.getFullYear();
+		var now = new Date(),
+			today = now.getDate(),
+			month = now.getMonth(),
+			year = now.getFullYear(),
+			minutes, hours;
 		
 		var t = typeof(date);
 		if (t == &quot;string&quot; || t == &quot;number&quot;) {
@@ -251,7 +269,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		var months = [&quot;Jan&quot;, &quot;Feb&quot;, &quot;Mar&quot;, &quot;Apr&quot;, &quot;May&quot;, &quot;Jun&quot;, &quot;Jul&quot;, &quot;Aug&quot;, &quot;Sep&quot;, &quot;Oct&quot;, &quot;Nov&quot;, &quot;Dec&quot;];
 		
 		if (today == date.getDate() &amp;&amp; month == date.getMonth() &amp;&amp; year == date.getFullYear()) {
-			var minutes = Math.floor((now.getTime() - date.getTime()) / 60000);
+			minutes = Math.floor((now.getTime() - date.getTime()) / 60000);
 			if (minutes &lt; 1) {
 				return &quot;now&quot;;
 			}
@@ -262,8 +280,8 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 				return (minutes + &quot; minutes ago&quot;);
 			}
 			else {
-				var hours = date.getHours();
-				var minutes = date.getMinutes();
+				hours = date.getHours();
+				minutes = date.getMinutes();
 				return &quot;on &quot; + padNumber(hours, 2) + &quot;:&quot; + padNumber(minutes, 2, &quot;0&quot;);
 			}
 		} 
@@ -678,7 +696,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			}
 
 			if ( ed.contextMenu ) {
-				ed.contextMenu.addListener( (function( element, selection ) {
+				ed.contextMenu.addListener( (function( element /*, selection */ ) {
 					 if (element &amp;&amp; this._tracker &amp;&amp; this._tracker.currentChangeNode(element)) {
 						 var ret = {};
 						 ret[LITE.Commands.ACCEPT_ONE] = CKEDITOR.TRISTATE_OFF;
@@ -710,7 +728,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			var tracking = (undefined === track) ? ! this._isTracking : track,
 				e = this._editor,
 				force = options &amp;&amp; options.force;
-			if (! tracking &amp;&amp; this._isTracking) {
+			if (! tracking &amp;&amp; this._isTracking &amp;&amp; ! force) {
 				var nChanges = this._tracker.countChanges({verify: true});
 				if (nChanges) {
 					return window.alert(&quot;Your document containssome pending changes.\nPlease resolve them before turning off change tracking.&quot;);
@@ -876,7 +894,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			if (! root){
 				return &quot;&quot;;
 			}
-			var textFragments = new Array();
+			var textFragments = [];
 			textFragments.push(&quot;&quot;);
 			var deleteClass = this._tracker.getDeleteClass();
 			this._getCleanText(root, textFragments, deleteClass);
@@ -953,7 +971,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			this._onReady();
 		},
 		
-		_onScriptsLoaded : function(completed, failed) {
+		_onScriptsLoaded : function(/*completed, failed */) {
 			this._scriptsLoaded = true;
 			this._onReady();
 		},
@@ -1100,33 +1118,33 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			}
 		},
 		
-		_onToggleShow : function(event) {
+		_onToggleShow : function(/*event */) {
 			this.toggleShow();
 		},
 		
-		_onToggleTracking : function(event) {
+		_onToggleTracking : function(/*event */) {
 			this.toggleTracking();
 		},
 		
-		_onRejectAll : function(event)  {
+		_onRejectAll : function(/*event */)  {
 			this.rejectAll();
 		},
 		
-		_onAcceptAll : function(event) {
+		_onAcceptAll : function(/*event */) {
 			this.acceptAll();
 		},
 		
-		_onAcceptOne : function(event) {
+		_onAcceptOne : function(/*event */) {
 			var node = this._tracker.currentChangeNode();
 			return this.acceptChange(node);
 		},
 		
-		_onRejectOne : function(event) {
+		_onRejectOne : function(/*event */) {
 			var node = this._tracker.currentChangeNode();
 			return this.rejectChange(node);
 		},
 		
-		_onToggleTooltips: function(event) {
+		_onToggleTooltips: function(/*event */) {
 			this._tracker &amp;&amp; this._tracker.toggleTooltips();
 		},
 		
@@ -1181,9 +1199,9 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 <span id='LITE-LITEPlugin-method-_onModeChange'>		/**
 </span>		 * Called after the mode of the editor (wysiwyg/source) changes
 		 * @private
-		 * @param evt
+		 * @param ignore The event
 		 */
-		_onModeChange: function(evt){
+		_onModeChange: function(ignore){
 			this._updateTrackingState();
 			setTimeout(this._onIceChange.bind(this), 0);
 		},
@@ -1217,7 +1235,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 </span>		 * Callback for the editor's beforeGetData event
 		 * Remove tooltips from dom
 		 */
-		_onBeforeGetData: function(evt) {
+		_onBeforeGetData: function(/*evt*/) {
 			this._hideTooltip();
 		},
 		
@@ -1225,7 +1243,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 </span>		 * Callback for the editor's afterSetData event
 		 * Remove tooltips from dom
 		 */
-		_onAfterSetData: function(evt) {
+		_onAfterSetData: function(/*evt*/) {
 			this._hideTooltip();
 			this._processContent();
 			if (this._tracker/* &amp;&amp; this._tracker.isTracking() */) {
@@ -1236,9 +1254,8 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 <span id='LITE-LITEPlugin-method-_onReadOnly'>		/**
 </span>		 * Called after the readonly state of the editor changes
 		 * @private
-		 * @param evt
 		 */
-		_onReadOnly: function(evt){
+		_onReadOnly: function(/*evt*/){
 			this._updateTrackingState();			
 		},
 		
@@ -1257,7 +1274,15 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 				if (track) {
 					var handler = this._onSelectionChanged.bind(this),
 						editable = this._editor.editable();
-					this._removeBindings.push(editable.on(&quot;keyup&quot;, handler));
+					this._removeBindings.push(this._editor.on(&quot;key&quot;, function(e) {
+						if (this._tracker) {
+							var event = e.data.domEvent &amp;&amp; e.data.domEvent.$;
+							// onkeydown returns true to prevent, so return false it it returns true
+							return event ? ! this._tracker.onKeyDown(event) : true;
+						}
+						return true;
+					}.bind(this)));
+					this._removeBindings.push(editable.on(&quot;keyup&quot;, this._onSelectionChanged.bind(this, null, false)));
 					this._removeBindings.push(editable.on(&quot;click&quot;, handler));
 					this._removeBindings.push(this._editor.on(&quot;selectionChange&quot;, handler));
 				}
@@ -1272,7 +1297,8 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			if (! this._tracker || ! this._isTracking || ! evt) {
 				return true;
 			}
-			var data = evt.data || {},
+			var data = //&quot;&lt;ins&gt;&lt;div&gt;man&lt;/div&gt;&lt;p&gt;&lt;del&gt;&lt;div&gt;&lt;ins&gt;who is this guy&lt;/ins&gt;&lt;del&gt;this is deleted&lt;/del&gt;&lt;/div&gt;&lt;div&gt;&lt;del&gt;&lt;span&gt;text1&lt;/span&gt;&lt;ins&gt;&lt;div&gt;calling all nature&lt;/div&gt;&lt;del&gt;inner del&lt;/del&gt;&lt;/ins&gt;&lt;/del&gt;&lt;/div&gt;&lt;span&gt;going again&lt;/span&gt;&lt;h2&gt;the thing&lt;/h2&gt;&lt;/del&gt;&lt;/p&gt;&lt;/ins&gt;&quot;,
+				evt.data || {},
 				ignore = false,
 				toInsert = null,
 				node = (evt.name == &quot;insertElement&quot;) &amp;&amp; data.$;
@@ -1316,12 +1342,13 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 				}
 			}
 			else if (node) {
-				toInsert = node;
+				toInsert = [node];
 			}
 			else {
 				return true;
 			}
 			if (toInsert) {
+				toInsert = cleanClipboard(toInsert);
 				var focused = this._editor.focusManager.hasFocus;
 				this._beforeInsert();
 				this._tracker.insert({nodes: toInsert});
@@ -1340,6 +1367,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 <span id='LITE-LITEPlugin-method-_setCommandsState'>		/**
 </span>		 * Set the state of multiple commands
 		 * @param commands An array of command names or a comma separated string
+		 * @param state CKEDITOR command state
 		 * @private
 		 */
 		_setCommandsState: function(commands, state) {
@@ -1356,12 +1384,12 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		
 <span id='LITE-LITEPlugin-method-_onSelectionChanged'>		/**
 </span>		 * Handler for selection change events (caret moved or text marked/unmarked)
-		 * @param event
+		 * @param ignore
 		 * @private
 		 */
-		_onSelectionChanged : function(event) {
-			var inChange = this._isTracking &amp;&amp; this._tracker &amp;&amp; this._tracker.isInsideChange();
-			var state = inChange &amp;&amp; this._canAcceptReject ? CKEDITOR.TRISTATE_OFF : CKEDITOR.TRISTATE_DISABLED;
+		_onSelectionChanged : function(event, cleanupDOM) {
+			var inChange = this._isTracking &amp;&amp; this._tracker &amp;&amp; this._tracker.isInsideChange(null, null, cleanupDOM),
+				state = inChange &amp;&amp; this._canAcceptReject ? CKEDITOR.TRISTATE_OFF : CKEDITOR.TRISTATE_DISABLED;
 			this._setCommandsState([LITE.Commands.ACCEPT_ONE, LITE.Commands.REJECT_ONE], state);
 		},
 		
@@ -1382,9 +1410,9 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		
 <span id='global-method-_onIceTextChanged'>		/**
 </span>		 * @ignore
-		 * @param e
+		 * @param ignore event
 		 */
-		_onIceTextChanged : function(e) {
+		_onIceTextChanged : function(ignore) {
 			this._triggerChange();
 		},
 		
@@ -1468,8 +1496,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		 */
 		_setPluginFeatures : function(editor, props) {
 			function makeClasses() {
-				var classes = [props.deleteClass,props.insertClass,props.stylePrefix+'*'];
-				return classes;
+				return [props.deleteClass,props.insertClass,props.stylePrefix+'*'];
 			}
 			
 			function makeAttributes() {
@@ -1479,9 +1506,9 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 						var value = props.attributes[key];
 						if ((typeof value === &quot;string&quot;) &amp;&amp; value.indexOf(&quot;data-&quot;) === 0) {
 							attrs.push(value);
-						};
-					};
-				};
+						}
+					}
+				}
 				return attrs;
 			}
 			
@@ -1732,18 +1759,19 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			return false;
 		}
 	}
-	
+
 <span id='LITE-LITEPlugin-method-testIECommand'>	/**
 </span>	 * Tries to execute any of the paste, cut or copy commands in IE. Returns a
 	 * boolean indicating that the operation succeeded.
 	 * Copied from ckeditor
+	 * @param editor instance of CKEditor
 	 * @param {String} command *LOWER CASED* name of command ('paste', 'cut', 'copy').
 	 * */
 	function testIECommand( editor, command ) {
 		var doc = editor.document,
 			body = doc.getBody(),
 			enabled = false,
-			success = false,
+			success,
 			onExec = function() {
 				enabled = true;
 			};
@@ -1773,52 +1801,8 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 				args.concat(Array.prototype.slice.call(arguments)));
 				};
 			};
-
-			/* Mozilla fix for MSIE indexOf */
-			Array.prototype.indexOf = Array.prototype.indexOf || function (searchElement /*, fromIndex */) {
-				if (this == null) {
-					throw new TypeError();
-				}
-				var t = Object(this);
-				var len = t.length &gt;&gt;&gt; 0;
-				if (len === 0) {
-					return -1;
-				}
-				var n = 0;
-				if (arguments.length &gt; 1) {
-					n = Number(arguments[1]);
-					if (n != n) { // shortcut for verifying if it's NaN
-						n = 0;
-					} else if (n != 0 &amp;&amp; n != Infinity &amp;&amp; n != -Infinity) {
-						n = (n &gt; 0 || -1) * Math.floo1r(Math.abs(n));
-					}
-				}
-				if (n &gt;= len) {
-					return -1;
-				}
-				var k = n &gt;= 0 ? n : Math.max(len - Math.abs(n), 0);
-				for (; k &lt; len; k++) {
-					if (k in t &amp;&amp; t[k] === searchElement) {
-						return k;
-					}
-				}
-				return -1;
-			};
-
-			Array.prototype.lastIndexOf = Array.prototype.indexOf || function (searchElement) {
-				if (this == null) {
-					throw new TypeError();
-				}
-				var t = Object(this);
-				var len = t.length &gt;&gt;&gt; 0;
-				while(--len &gt;= 0) {
-					if (len in t &amp;&amp; t[len] === searchElement) {
-						return len;
-					}
-				}
-				return -1;
-			};
 	}
-})();</pre>
+})(window.CKEDITOR);
+</pre>
 </body>
 </html>

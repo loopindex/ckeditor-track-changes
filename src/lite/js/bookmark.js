@@ -18,7 +18,6 @@
 			range = currRange.cloneRange(),
 			startContainer = range.startContainer,
 			startOffset = range.startOffset,
-			endOffset = range.endOffset,
 			tmp;
 
 		// Collapse to the end of range.

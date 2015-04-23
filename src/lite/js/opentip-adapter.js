@@ -97,8 +97,6 @@
 		this.loaded = false;
 		this.loading = false;
 		this.visible = false;
-		this.waitingToShow = false;
-		this.waitingToHide = false;
 		this.currentPosition = {
 		  left: 0,
 		  top: 0
