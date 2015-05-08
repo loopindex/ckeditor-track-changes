@@ -1,6 +1,6 @@
-(function () {
+(function ($) {
 
-	"use strict"
+	"use strict";
 
 	var exports = this,
 		dom = {},
@@ -62,7 +62,7 @@
 		if (tagName) {
 			className = tagName + className;
 		}
-		return jQuery.makeArray(jQuery(startElement).find(className));
+		return $.makeArray($(startElement).find(className));
 	};
 	dom.getId = function (id, startElement) {
 		if (!startElement) {
@@ -75,7 +75,7 @@
 		if (!startElement) {
 			startElement = document;
 		}
-		return jQuery.makeArray(jQuery(startElement).find(tagName));
+		return $.makeArray($(startElement).find(tagName));
 	};
 	dom.getElementWidth = function (element) {
 		return element.offsetWidth;
@@ -91,26 +91,26 @@
 		return result;
 	};
 	dom.trim = function (string) {
-		return jQuery.trim(string);
+		return $.trim(string);
 	};
 	dom.empty = function (element) {
 		if (element) {
-			return jQuery(element).empty();
+			return $(element).empty();
 		}
 	};
 	dom.remove = function (element) {
 		if (element) {
-			return jQuery(element).remove();
+			return $(element).remove();
 		}
 	};
 	dom.prepend = function (parent, elem) {
-		jQuery(parent).prepend(elem);
+		$(parent).prepend(elem);
 	};
 	dom.append = function (parent, elem) {
-		jQuery(parent).append(elem);
+		$(parent).append(elem);
 	};
 	dom.insertBefore = function (before, elem) {
-		jQuery(before).before(elem);
+		$(before).before(elem);
 	};
 	dom.insertAfter = function (after, elem) {
 		if (after && elem) {
@@ -120,11 +120,11 @@
 		}
 	};
 	dom.getHtml = function (element) {
-		return jQuery(element).html();
+		return $(element).html();
 	};
 	dom.setHtml = function (element, content) {
 		if (element) {
-			jQuery(element).html(content);
+			$(element).html(content);
 		}
 	};
 	// Remove whitespace/newlines between nested block elements
@@ -134,7 +134,7 @@
 	// Will be converted to the following:
 	//	 <div><p> para </p><ul><li> hi </li></ul></div>
 	dom.removeWhitespace = function(element) {
-		jQuery(element).contents().filter(function() {
+		$(element).contents().filter(function() {
 			// Ice supports UL and OL, so recurse in these blocks to
 			// make sure that spaces don't exist between inner LI.
 			if (this.nodeType != ice.dom.TEXT_NODE && this.nodeName == 'UL' || this.nodeName == 'OL') {
@@ -148,7 +148,7 @@
 		}).remove();
 	};
 	dom.contents = function (el) {
-		return jQuery.makeArray(jQuery(el).contents());
+		return $.makeArray($(el).contents());
 	};
 	/**
 	 * Returns the inner contents of `el` as a DocumentFragment.
@@ -176,7 +176,7 @@
 	},
 
 	dom.getParents = function (elements, filter, stopEl) {
-		var res = jQuery(elements).parents(filter);
+		var res = $(elements).parents(filter);
 		var ln = res.length;
 		var ar = [];
 		for (var i = 0; i < ln; i++) {
@@ -199,18 +199,18 @@
 		return false;
 	};
 	dom.removeTag = function (element, selector) {
-		jQuery(element).find(selector).replaceWith(function () {
-			return jQuery(this).contents();
+		$(element).find(selector).replaceWith(function () {
+			return $(this).contents();
 		});
 		return element;
 	};
 	dom.stripEnclosingTags = function (content, allowedTags) {
-		var c = jQuery(content);
+		var c = $(content);
 		c.find('*').not(allowedTags).replaceWith(function () {
-			var ret = jQuery();
+			var ret = $();
 			var $this;
 			try{
-				$this = jQuery(this);
+				$this = $(this);
 				ret = $this.contents();
 			} catch(e){}
 
@@ -226,9 +226,9 @@
 	dom.getSiblings = function (element, dir, elementNodesOnly, stopElem) {
 		if (elementNodesOnly === true) {
 			if (dir === 'prev') {
-				return jQuery(element).prevAll();
+				return $(element).prevAll();
 			} else {
-				return jQuery(element).nextAll();
+				return $(element).nextAll();
 			}
 		} else {
 			var elems = [];
@@ -253,10 +253,10 @@
 		}
 	};
 	dom.getNodeTextContent = function (node) {
-		return jQuery(node).text();
+		return $(node).text();
 	};
 	dom.getNodeStubContent = function (node) {
-		return jQuery(node).find(stubElementsString);
+		return $(node).find(stubElementsString);
 	};
 	dom.hasNoTextOrStubContent = function (node) {
 		var str = dom.getNodeTextContent(node);
@@ -266,7 +266,7 @@
 		if (! node.firstChild) { // no children shortcut
 			return true;
 		}
-		return jQuery(node).find(stubElementsString).length === 0;
+		return $(node).find(stubElementsString).length === 0;
 	};
 	
 	dom.isEmptyTextNode = function(node) {
@@ -280,10 +280,10 @@
 	};
 
 	dom.getNodeCharacterLength = function (node) {
-		return dom.getNodeTextContent(node).length + jQuery(node).find(dom.STUB_ELEMENTS.join(', ')).length;
+		return dom.getNodeTextContent(node).length + $(node).find(dom.STUB_ELEMENTS.join(', ')).length;
 	};
 	dom.setNodeTextContent = function (node, txt) {
-		return jQuery(node).text(txt);
+		return $(node).text(txt);
 	};
 	dom.getTagName = function (node) {
 		return node && node.tagName && node.tagName.toLowerCase() || null;
@@ -359,7 +359,7 @@
 	dom.isChildOfClassName = function (el, name) {
 		try {
 			while (el && el.parentNode) {
-				if (jQuery(el.parentNode).hasClass(name)) return el.parentNode;
+				if ($(el.parentNode).hasClass(name)) return el.parentNode;
 				el = el.parentNode;
 			}
 		} catch (e) {}
@@ -369,26 +369,26 @@
 		if (cloneEvents === undefined) {
 			cloneEvents = true;
 		}
-		return jQuery(elems).clone(cloneEvents);
+		return $(elems).clone(cloneEvents);
 	};
 
 	dom.bind = function (element, event, callback) {
-		return jQuery(element).bind(event, callback);
+		return $(element).bind(event, callback);
 	};
 
 	dom.unbind = function (element, event, callback) {
-		return jQuery(element).unbind(event, callback);
+		return $(element).unbind(event, callback);
 	};
 
 	dom.attr = function (elements, key, val) {
-		if (val) return jQuery(elements).attr(key, val);
-		else return jQuery(elements).attr(key);
+		if (val) return $(elements).attr(key, val);
+		else return $(elements).attr(key);
 	};
 	dom.replaceWith = function (node, replacement) {
-		return jQuery(node).replaceWith(replacement);
+		return $(node).replaceWith(replacement);
 	};
 	dom.removeAttr = function (elements, name) {
-		jQuery(elements).removeAttr(name);
+		$(elements).removeAttr(name);
 	};
 	dom.getElementsBetween = function (fromElem, toElem) {
 		var elements = [];
@@ -688,7 +688,7 @@
 		return node;
 	};
 	dom.removeEmptyNodes = function (parent, callback) {
-		var elems = jQuery(parent).find(':empty');
+		var elems = $(parent).find(':empty');
 		var i = elems.length;
 		while (i > 0) {
 			i--;
@@ -700,25 +700,25 @@
 		}
 	};
 	dom.create = function (html) {
-		return jQuery(html)[0];
+		return $(html)[0];
 	};
 	dom.find = function (parent, exp) {
-		return jQuery(parent).find(exp);
+		return $(parent).find(exp);
 	};
 	dom.children = function (parent, exp) {
-		return jQuery(parent).children(exp);
+		return $(parent).children(exp);
 	};
 	dom.parent = function (child, exp) {
-		return jQuery(child).parent(exp)[0];
+		return $(child).parent(exp)[0];
 	};
 	dom.parents = function (child, exp) {
-		return jQuery(child).parents(exp);
+		return $(child).parents(exp);
 	};
 	dom.is = function (node, exp) {
-		return jQuery(node).is(exp);
+		return $(node).is(exp);
 	};
 	dom.extend = function (deep, target, object1, object2) {
-		return jQuery.extend.apply(this, arguments);
+		return $.extend.apply(this, arguments);
 	};
 	dom.walk = function (elem, callback, lvl) {
 		if (!elem) {
@@ -757,20 +757,20 @@
 	};
 	dom.setStyle = function (element, property, value) {
 		if (element) {
-			jQuery(element).css(property, value);
+			$(element).css(property, value);
 		}
 	};
 	dom.getStyle = function (element, property) {
-		return jQuery(element).css(property);
+		return $(element).css(property);
 	};
 	dom.hasClass = function (element, className) {
-		return jQuery(element).hasClass(className);
+		return $(element).hasClass(className);
 	};
 	dom.addClass = function (element, classNames) {
-		jQuery(element).addClass(classNames);
+		$(element).addClass(classNames);
 	};
 	dom.removeClass = function (element, classNames) {
-		jQuery(element).removeClass(classNames);
+		$(element).removeClass(classNames);
 	};
 	dom.preventDefault = function (e) {
 		e.preventDefault();
@@ -803,7 +803,7 @@
 	};
 
 	dom.each = function (val, callback) {
-		jQuery.each(val, function (i, el) {
+		$.each(val, function (i, el) {
 			callback.call(this, i, el);
 		});
 	};
@@ -853,7 +853,7 @@
 		return false;
 	};
 	dom.isArray = function (v) {
-		return jQuery.isArray(v);
+		return $.isArray(v);
 	};
 	dom.isNumeric = function (str) {
 		var result = str.match(/^\d+$/);
@@ -908,7 +908,7 @@
 	 */
 	dom.stripTags = function (content, allowedTags) {
 		if (typeof allowedTags === "string") {
-			var c = jQuery('<div>' + content + '</div>');
+			var c = $('<div>' + content + '</div>');
 			c.find('*').not(allowedTags).remove();
 			return c.html();
 		} else {
@@ -926,7 +926,7 @@
 	
 	dom.browser = function () {
 		if (_browser) {
-			return jQuery.extend({}, _browser);
+			return $.extend({}, _browser);
 		}
 		
 		_browser = (function() {
@@ -977,7 +977,7 @@
 			return browser;
 		})();
 		
-		return jQuery.extend({}, _browser);
+		return $.extend({}, _browser);
 	};
 
 	dom.getBrowserType = function () {
@@ -1074,7 +1074,7 @@
 	};
 
 	dom.mergeBlockWithSibling = function (range, block, next) {
-		var siblingBlock = next ? jQuery(block).next().get(0) : jQuery(block).prev().get(0); // block['nextSibling'] : block['previousSibling'];
+		var siblingBlock = next ? $(block).next().get(0) : $(block).prev().get(0); // block['nextSibling'] : block['previousSibling'];
 		if (next) dom.mergeContainers(siblingBlock, block);
 		else dom.mergeContainers(block, siblingBlock);
 		range.collapse(true);
@@ -1246,4 +1246,4 @@
 
 	exports.dom = dom;
 
-}).call(this.ice);
+}).call(this.ice, window.jQuery);

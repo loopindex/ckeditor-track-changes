@@ -99,14 +99,14 @@
 		this._userStyles = {};
 		this._styles = {}; // dfl, moved from prototype
 		this._savedNodesMap = {};
-		this.$this = jQuery(this);
+		this.$this = $(this);
 		this._browser = ice.dom.browser();
 		this._tooltipMouseOver = this._tooltipMouseOver.bind(this);
 		this._tooltipMouseOut = this._tooltipMouseOut.bind(this);
 		this._boundEventHandler = this._handleEvent.bind(this);
 		
 		ice.dom.extend(true, this, defaults, options);
-		if (options.tooltips && (! jQuery.isFunction(options.hostMethods.showTooltip) || ! jQuery.isFunction(options.hostMethods.hideTooltip))) {
+		if (options.tooltips && (! $.isFunction(options.hostMethods.showTooltip) || ! $.isFunction(options.hostMethods.hideTooltip))) {
 			throw new Error("hostMethods.showTooltip and hostMethods.hideTooltip must be defined if tooltips is true");
 		}
 		var us = options.userStyles || {}; // dfl, moved from prototype, allow preconfig
@@ -342,7 +342,7 @@
 				}
 				if (range || hostRange) {
 					var nodes = options.nodes;
-					if (nodes && ! jQuery.isArray(nodes)) {
+					if (nodes && ! $.isArray(nodes)) {
 						nodes = [nodes];
 					}
 			
@@ -633,7 +633,7 @@
 				ice.dom.each(ice.dom.find(this.element, delSel), function (i, el) {
 					content = ice.dom.contents(el);
 					ice.dom.replaceWith(el, content);
-					jQuery.each(content, function(i,e) {
+					$.each(content, function(i,e) {
 						var parent = e && e.parentNode;
 						self._normalizeNode(parent);
 					});
@@ -669,7 +669,11 @@
 		acceptRejectChange: function (node, isAccept) {
 			var delSel, insSel, selector, removeSel, replaceSel, 
 				trackNode, changes, dom = ice.dom, nChanges,
-				self = this, changeId, content;
+				self = this, changeId, content, userStyle,
+				userStyles = this._userStyles,
+				changeRecord,userId, $node, userAttr = this.attributes.userId,
+				delClass = this._getIceNodeClass('deleteType'), 
+				insClass = this._getIceNodeClass('insertType');
 		
 			if (!node) {
 				var range = this.getCurrentRange();
@@ -679,8 +683,8 @@
 				node = range.startContainer;
 			}
 		
-			delSel = removeSel = '.' + this._getIceNodeClass('deleteType');
-			insSel = replaceSel = '.' + this._getIceNodeClass('insertType');
+			delSel = removeSel = '.' + delClass;
+			insSel = replaceSel = '.' + insClass;
 			if (!isAccept) {
 				removeSel = insSel;
 				replaceSel = delSel;
@@ -693,6 +697,7 @@
 				// nodes with the same `changeIdAttribute` batch number.
 			changes = dom.find(this.element, removeSel + '[' + this.attributes.changeId + '=' + changeId + ']');
 			nChanges = changes.length;
+			changeRecord = this._changes[changeId];
 			changes.each(function(i, changeNode) {
 				self._removeNode(changeNode);
 			});
@@ -705,9 +710,14 @@
 				if (isNewlineNode(node)) {
 					return stripNode(node);
 				}
+				userId = node.getAttribute(userAttr);
+				userStyle = userId !== null ? userStyles[userId] || "" :"";
+				
 				content = ice.dom.contents(node); 
+				// work around a situation where the browser extracts the node style and applies it to the content
+				$(node).removeClass(insClass + ' ' + delClass + ' ' + userStyle);
 				dom.replaceWith(node, content);
-				jQuery.each(content, function(i,e) {
+				$.each(content, function(i,e) {
 					var txt = ice.dom.TEXT_NODE == e.nodeType && e.nodeValue;
 					if (txt) {
 						var found = false;
@@ -760,7 +770,7 @@
 					classList.push('.' + self._getIceNodeClass(type));
 				});
 			classList = classList.join(',');
-			return jQuery(this.element).find(classList);
+			return $(this.element).find(classList);
 		},
 		
 		/**
@@ -1147,10 +1157,10 @@
 				ctNode.setAttribute(this.attributes.sessionId, change.sessionId);
 			}
 			
-			var style = this._getUserStyle(change.userid);
-			if (!ice.dom.hasClass(ctNode, style)) {
-				ice.dom.addClass(ctNode, style);
+			if (! change.style) {
+				change.style = this._getUserStyle(change.userid);
 			}
+			ice.dom.addClass(ctNode, change.style);
 			/* Added by dfl */
 			this._updateNodeTooltip(ctNode);
 		},
@@ -1445,7 +1455,7 @@
 			}
 	
 			// Some bugs in Firefox and Webkit make the caret disappear out of text nodes, so we try to put them back in.
-			if (isNewlineNode(commonAncestor)) {
+			if (isBRNode(commonAncestor)) {
 				this._addDeleteTrackingToBreak(commonAncestor, {range: range});
 				return true;
 			}
@@ -1463,7 +1473,7 @@
 		
 				if (commonAncestor.childNodes.length > initialOffset) {
 					var next = commonAncestor.childNodes[initialOffset];
-					if (isNewlineNode(next)) {
+					if (isBRNode(next)) {
 						this._addDeleteTrackingToBreak(next, {range: range});
 						return true;
 					}
@@ -1477,7 +1487,7 @@
 					nextContainer = ice.dom.getNextContentNode(commonAncestor, this.element);
 			
 					if (nextContainer) {
-						if (isNewlineNode(nextContainer)) {
+						if (isBRNode(nextContainer)) {
 							this._addDeleteTrackingToBreak(nextContainer, { range: range }); 
 							return true;
 						}
@@ -1510,7 +1520,7 @@
 				}
 		
 				// If the next container is <br> element find the next node
-				if (isNewlineNode(nextContainer)) {
+				if (isBRNode(nextContainer)) {
 					this._addDeleteTrackingToBreak(nextContainer, { range: range }); 
 					return true;
 //					nextContainer = ice.dom.getNextNode(nextContainer, this.element);
@@ -1601,7 +1611,7 @@
 				return false;
 			}
 
-			if (isNewlineNode(commonAncestor)) {
+			if (isBRNode(commonAncestor)) {
 				this._addDeleteTrackingToBreak(commonAncestor, {range: range, moveLeft: true});
 				return true;
 			}
@@ -1648,7 +1658,7 @@
 					prevContainer = prevContainer.lastChild;
 				}
 				
-				if (isNewlineNode(prevContainer)) {
+				if (isBRNode(prevContainer)) {
 					this._addDeleteTrackingToBreak(prevContainer, { range: range, moveLeft: true });
 					return true;
 				}
@@ -1878,7 +1888,7 @@
 				}	
 			}
 			
-			if (! isNewlineNode(brNode)) {
+			if (! isBRNode(brNode)) {
 				logError("addDeleteTracking to BR: not a break element");
 				return;
 			}
@@ -2321,7 +2331,7 @@
 		setShowChanges: function(bShow) {
 			bShow = !! bShow;
 			this._isVisible = bShow;
-			var $body = jQuery(this.element);
+			var $body = $(this.element);
 			$body.toggleClass("ICE-Tracking", bShow);
 			this._showTitles(bShow);
 			this._updateTooltipsState();
@@ -2485,8 +2495,8 @@
 				change,
 				options = _options || {},
 				filter = options.filter,
-				exclude = options.exclude ? jQuery.map(options.exclude, function(e) { return String(e); }) : null,
-				include = options.include ? jQuery.map(options.include, function(e) { return String(e); }) : null,
+				exclude = options.exclude ? $.map(options.exclude, function(e) { return String(e); }) : null,
+				include = options.include ? $.map(options.include, function(e) { return String(e); }) : null,
 				verify = options.verify,
 				elements = null;
 			for (var key in this._changes) {
@@ -2517,6 +2527,8 @@
 			var myUserId = this.currentUser && this.currentUser.id,
 				myUserName = (this.currentUser && this.currentUser.name) || "",
 				now = (new Date()).getTime(),
+				styleMatch,
+				styleRegex = new RegExp(this.stylePrefix + '-(\\d+)'),
 			// Grab class for each changeType
 				changeTypeClasses = [];
 			for (var changeType in this.changeTypes) {
@@ -2526,14 +2538,20 @@
 			var nodes = this.getIceNodes();
 			var f = function(i, el) {
 				var styleIndex = 0,
-					 ctnType = '', i,
+					styleName,
+					ctnType = '', i,
 					classList = el.className.split(' ');
 				//TODO optimize this - create a map of regexp
 				for (i = 0; i < classList.length; i++) {
-					var styleReg = new RegExp(this.stylePrefix + '-(\\d+)').exec(classList[i]);
-					if (styleReg) styleIndex = styleReg[1];
+					styleMatch = styleRegex.exec(classList[i]);
+					if (styleMatch) {
+						styleName = styleMatch[0];
+						styleIndex = styleMatch[1];
+					}
 					var ctnReg = new RegExp('(' + changeTypeClasses.join('|') + ')').exec(classList[i]);
-					if (ctnReg) ctnType = this._getChangeTypeFromAlias(ctnReg[1]);
+					if (ctnReg) {
+						ctnType = this._getChangeTypeFromAlias(ctnReg[1]);
+					}
 				}
 				var userid = ice.dom.attr(el, this.attributes.userId);
 				var userName;
@@ -2563,6 +2581,7 @@
 				var changeData = ice.dom.attr(el, this.attributes.changeData) || "";
 				var change = {
 					type: ctnType,
+					style: styleName,
 					userid: String(userid),// dfl: must stringify for consistency - when we read the props from dom attrs they are strings
 					username: userName,
 					time: timeStamp,
@@ -2598,12 +2617,12 @@
 		_showTitles : function(bShow) {
 			var nodes = this.getIceNodes();
 			if (bShow) {
-				jQuery(nodes).each((function(i, node) {
+				$(nodes).each((function(i, node) {
 					this._updateNodeTooltip(node);
 				}).bind(this));
 			}
 			else {
-				jQuery(nodes).removeAttr("title");
+				$(nodes).removeAttr("title");
 			}
 		},
 		
@@ -2624,18 +2643,18 @@
 				this._showingTips = false;
 				$nodes = this.getIceNodes();
 				$nodes.each(function(i, node) {
-					jQuery(node).unbind("mouseover").unbind("mouseout");
+					$(node).unbind("mouseover").unbind("mouseout");
 				});					
 			}
 		},
 		
 		_addTooltip: function(node) {
-			jQuery(node).unbind("mouseover").unbind("mouseout").mouseover(this._tooltipMouseOver).mouseout(this._tooltipMouseOut);
+			$(node).unbind("mouseover").unbind("mouseout").mouseover(this._tooltipMouseOver).mouseout(this._tooltipMouseOut);
 		},
 		
 		_tooltipMouseOver: function(event) {
 			var node = event.currentTarget,
-				$node = jQuery(node),
+				$node = $(node),
 				self = this;
 			if (! $node.data("_tooltip_t")) {
 				var to = setTimeout(function() {
@@ -2661,7 +2680,7 @@
 		
 		_tooltipMouseOut: function(event) {
 			var node = event.currentTarget,
-				$node = jQuery(node),
+				$node = $(node),
 				to = $node.data("_tooltip_t");
 			$node.removeData("_tooltip_t");
 			if (to) {
@@ -2687,10 +2706,10 @@
 					var iceNode = null, 
 						$iceNode = null;
 					if (node.nodeType == ice.dom.TEXT_NODE) {
-						$iceNode = jQuery(node).parents(clsSelector);
+						$iceNode = $(node).parents(clsSelector);
 					}
 					else {
-						var $node = jQuery(node);
+						var $node = $(node);
 						if ($node.is(clsSelector)) {
 							$iceNode = $node; 
 						}
@@ -2709,7 +2728,7 @@
 			range.getNodes(null, filter);
 			var el = this.element;
 			setTimeout(function() {
-				var nodes = jQuery(el).find('['+ clsAttr + ']');
+				var nodes = $(el).find('['+ clsAttr + ']');
 				nodes.each(function(i, node) {
 					var cls = node.getAttribute(clsAttr);
 					if (cls) {
@@ -2739,10 +2758,10 @@
 						$node,
 						$iceNode = null;
 					if (node.nodeType == ice.dom.TEXT_NODE) {
-						$iceNode = jQuery(node).parents(clsSelector);
+						$iceNode = $(node).parents(clsSelector);
 					}
 					else {
-						$node = jQuery(node);
+						$node = $(node);
 						if ($node.is(clsSelector)) {
 							$iceNode = $node; 
 						}
@@ -2770,7 +2789,7 @@
 			range.getNodes(null, filter);
 			var el = this.element;
 			setTimeout(function() {
-				var nodes = jQuery(el).find('['+ clsAttr + ']');
+				var nodes = $(el).find('['+ clsAttr + ']');
 				nodes.each(function(i, node) {
 					var dataId = node.getAttribute(clsAttr),
 						nodeData = saveMap[dataId];
