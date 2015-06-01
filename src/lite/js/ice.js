@@ -180,7 +180,6 @@
 					e.removeEventListener("keyup", this._boundEventHandler, true);
 					e.removeEventListener("keydown", this._boundEventHandler, true);
 					e.removeEventListener("keypress", this._boundEventHandler, true);
-//					ice.dom.unbind(this.element, 'keyup.ice keydown.ice keypress.ice');
 				}
 		
 				// dfl:reset contenteditable unless requested not to do so
@@ -212,16 +211,6 @@
 		 * Initializes the internal range object and sets focus to the editing element.
 		 */
 		initializeRange: function () {
-/*			var range = this.selection.createRange();
-			range.setStart(ice.dom.find(this.element, this.blockEls.join(', '))[0], 0);
-			range.collapse(true);
-			this.selection.addRange(range);
-			if (this.env.frame) {
-				this.env.frame.contentWindow.focus();
-			}
-			else {
-				this.element.focus();
-			} */
 		},
 	
 		/**
@@ -303,7 +292,7 @@
 		 */
 		_createIceNode: function (changeType, childNode, changeId) {
 			var node = this.env.document.createElement(this.changeTypes[changeType].tag);
-			ice.dom.addClass(node, this._getIceNodeClass(changeType));
+			node.setAttribute("class", this._getIceNodeClass(changeType));
 	
 			if (childNode) {
 				node.appendChild(childNode);
@@ -671,7 +660,7 @@
 				trackNode, changes, dom = ice.dom, nChanges,
 				self = this, changeId, content, userStyle,
 				userStyles = this._userStyles,
-				changeRecord,userId, $node, userAttr = this.attributes.userId,
+				userId, userAttr = this.attributes.userId,
 				delClass = this._getIceNodeClass('deleteType'), 
 				insClass = this._getIceNodeClass('insertType');
 		
@@ -692,12 +681,11 @@
 	
 			selector = delSel + ',' + insSel;
 			trackNode = dom.getNode(node, selector);
-			changeId = dom.attr(trackNode, this.attributes.changeId); //dfl
+			changeId = dom.attr(trackNode, this.attributes.changeId);
 				// Some changes are done in batches so there may be other tracking
 				// nodes with the same `changeIdAttribute` batch number.
 			changes = dom.find(this.element, removeSel + '[' + this.attributes.changeId + '=' + changeId + ']');
 			nChanges = changes.length;
-			changeRecord = this._changes[changeId];
 			changes.each(function(i, changeNode) {
 				self._removeNode(changeNode);
 			});
@@ -1125,42 +1113,44 @@
 		 * @private
 		 */
 		_addNodeToChange: function (changeid, ctNode) {
-			var change = this.getChange(changeid);
+			var change = this.getChange(changeid),
+				attributes = {};
 			
 			if (!ctNode.getAttribute(this.attributes.changeId)) {
-				ctNode.setAttribute(this.attributes.changeId, changeid);
+				attributes[this.attributes.changeId] = changeid;
 			}
 // handle missing userid, try to set username according to userid
 			var userId = ctNode.getAttribute(this.attributes.userId); 
 			if (! userId) {
-				ctNode.setAttribute(this.attributes.userId, userId = change.userid);
+				userId = change.userid;
+				attributes[this.attributes.userId] = userId;
 			}
 			if (userId == change.userid) {
-				ctNode.setAttribute(this.attributes.userName, change.username);
+				attributes[this.attributes.userName] = change.username;
 			}
 			
 // add change data
 			var changeData = ctNode.getAttribute(this.attributes.changeData);
-			if (null == changeData) {
-				ctNode.setAttribute(this.attributes.changeData, this._changeData || "");
+			if (null === changeData) {
+				attributes[this.attributes.changeData] = this._changeData || "";
 			}
 			
 			if (!ctNode.getAttribute(this.attributes.time)) {
-				ctNode.setAttribute(this.attributes.time, change.time);
+				attributes[this.attributes.time] = change.time;
 			}
 			
 			if (!ctNode.getAttribute(this.attributes.lastTime)) {
-				ctNode.setAttribute(this.attributes.lastTime, change.lastTime);
+				attributes[this.attributes.lastTime] = change.lastTime;
 			}
 			
 			if (change.sessionId && ! ctNode.getAttribute(this.attributes.sessionId)) {
-				ctNode.setAttribute(this.attributes.sessionId, change.sessionId);
+				attributes[this.attributes.sessionId] = change.sessionId;
 			}
 			
 			if (! change.style) {
 				change.style = this._getUserStyle(change.userid);
 			}
-			ice.dom.addClass(ctNode, change.style);
+			$(ctNode).attr(attributes).addClass(change.style);
 			/* Added by dfl */
 			this._updateNodeTooltip(ctNode);
 		},
@@ -2107,7 +2097,7 @@
 		/**
 		 * @private
 		 * Handles arrow, delete key events, and others.
-		 * @param {JQuery Event} e The event object.
+		 * @param {Event} e Event object.
 		 * @return {void|boolean} Returns true if default event needs to be blocked.
 		 */
 		_handleAncillaryKey: function (e) {
@@ -2208,13 +2198,14 @@
 				br = range && ice.dom.parents(range.startContainer, 'br')[0] || null;
 			if (br) {
 				range.moveToNextEl(br);
-//				br.parentNode.removeChild(br);
 			}
 	
 			// Ice will ignore the keyPress event if CMD or CTRL key is also pressed
 			if (c !== null) {
 				var key = e.keyCode ? e.keyCode : e.which;
     		    switch (key) {
+    		    	case 32: //ckeditor does funny stuff with spaces, so insert it ourselves
+    		    		return this.insert({ text: c });
 					case ice.dom.DOM_VK_DELETE:
 //					case 32: // space
 					// Handle delete key for Firefox.
@@ -2277,6 +2268,7 @@
 		 * Returns the first ice node in the hierarchy of the given node, or the current collapsed range.
 		 * @param node if null, check the current selection
 		 * @param onlyNode if true, check only the node, not its parents
+		 * @param cleanup if false, don't clean up empty nodes around selection
 		 * null if not in a track changes hierarchy
 		 */
 		currentChangeNode: function (node, onlyNode, cleanup) {
@@ -2487,7 +2479,7 @@
 		 * <li>filter: a filter function of the form function({userid, time, data}):boolean
 		 * <li>verify: a boolean indicating whether or not to verify that there are matching dom nodes for each matching change
 		 * </ul>
-		 *	 @return an object with two members: count, changes (map of id:changeObject)
+		 *	@return {Object} an object with two members: count, changes (map of id:changeObject)
 		 * @private
 		 */
 		_filterChanges: function(_options) {
@@ -2579,7 +2571,7 @@
 				var sessionId = el.getAttribute(this.attributes.sessionId);
 			
 				var changeData = ice.dom.attr(el, this.attributes.changeData) || "";
-				var change = {
+				this._changes[changeid] = {
 					type: ctnType,
 					style: styleName,
 					userid: String(userid),// dfl: must stringify for consistency - when we read the props from dom attrs they are strings
@@ -2589,7 +2581,6 @@
 					sessionId: sessionId,
 					data : changeData
 				};
-				this._changes[changeid] = change;
 				this._updateNodeTooltip(el);
 			}.bind(this);
 			nodes.each(f);
@@ -2703,7 +2694,7 @@
 				clsSelector = '.' + insClass+",."+delClass,
 				clsAttr = "data-ice-class",
 				filter = function(node) {
-					var iceNode = null, 
+					var iceNode,
 						$iceNode = null;
 					if (node.nodeType == ice.dom.TEXT_NODE) {
 						$iceNode = $(node).parents(clsSelector);
@@ -2717,7 +2708,8 @@
 							$iceNode = $node.parents(clsSelector);
 						}
 					}
-					if (iceNode = ($iceNode && $iceNode[0])) {
+					iceNode = ($iceNode && $iceNode[0]);
+					if (iceNode) {
 						var cls = iceNode.className;
 						iceNode.setAttribute(clsAttr, cls);
 						iceNode.setAttribute("class", "ice-no-decoration");
@@ -2749,13 +2741,11 @@
 			var insClass = this._getIceNodeClass('insertType'), 
 				delClass = this._getIceNodeClass('deleteType'),
 				clsSelector = '.' + insClass+",."+delClass,
-				doc= this.env.document,
 				saveMap = this._savedNodesMap,
 				clsAttr = "data-ice-class",
 				base = Date.now() % 1000000,
 				filter = function(node) {
-					var iceNode = null, 
-						$node,
+					var $node,iceNode,
 						$iceNode = null;
 					if (node.nodeType == ice.dom.TEXT_NODE) {
 						$iceNode = $(node).parents(clsSelector);
@@ -2772,13 +2762,12 @@
 					if (iceNode = ($iceNode && $iceNode[0])) {
 						var attrs = getNodeAttributes(iceNode),
 							cls = iceNode.className,
-							nodeData = {
-								attributes: attrs,
-								className: cls
-							},
 							dataId = String(base++);
 						
-						saveMap[dataId] = nodeData;
+						saveMap[dataId] = {
+							attributes: attrs,
+							className: cls
+						};
 						removeAllAttributes(iceNode);
 						iceNode.setAttribute(clsAttr, dataId);
 						iceNode.setAttribute("class", "ice-no-decoration");
@@ -2962,7 +2951,7 @@
 	
 	function splitTextAt(textNode, at, count) {
 		var textLength = textNode.length,
-			splitText = null;
+			splitText;
 		if (at < 0 || at >= textLength) {
 			return textNode;
 		}
@@ -2996,91 +2985,6 @@
 		}
 	}
 	
-	function printRangeOld(range, message) {
-		if (! range || ! range.startContainer || ! range.endContainer) {
-			return;
-		}
-		var parts = [];
-		function printText(txt) {
-			if (! txt) {
-				return "";
-			}
-			txt = txt.replace('/\n/g', "\\n").replace('/\r/g', "").replace('\u200B', "{filler}").replace('\uFEFF', "{filler}")
-			if (txt.length <= 15) {
-				return txt;
-			}
-			return txt.substring(0, 5)+ "..." + txt.substring(txt.length - 5);
-		}
-		function addNode(node) {
-			var str;
-			if (node.nodeType === 3) {
-				str = "Text:" + printText(node.nodeValue); 
-			}
-			else {
-				var txt = node.innerText;
-				str = node.nodeName + (txt ? "(" + printText(txt) + ")" :'');
-			}
-			parts.push("<" + str + " />");
-		}
-		function printNode(node, offset1, offset2) {
-			if ("number" != typeof offset2) {
-				offset2 = -1;
-			}
-			if (3 == node.nodeType) { // text
-				var txt = node.nodeValue;
-				parts.push(printText(txt.substring(0, offset1)));
-				parts.push("|");
-				if (offset2 > offset1) {
-					parts.push(printText(txt.substring(offset1, offset2)));
-					parts.push("|");
-					parts.push(printText(txt.substring(offset2)));
-				}
-				else {
-					parts.push(printText(txt.substring(offset1)));
-				}
-			}
-			else if (1 == node.nodeType) {
-				var i = 0,
-					children = node.childNodes;
-					start = (i > 6 ? i - 5 : 0);
-				addNode(node);
-				if (start > 0) {
-					parts.push("(..." + start + " nodes)");
-				}
-				for (i = start; i < offset1; ++i) {
-					addNode(children[i]);
-				}
-				parts.push("|");
-				if (offset2 > offset1) {
-					for (i = offset1; i < offset2; ++i) {
-						addNode(children[i]);
-					}
-					parts.push('|');
-				}
-				if (offset2 > 0 && offset2 < children.length){
-					var child = children[offset2];
-					while (child) {
-						addNode(child);
-						child = child.nextSibling;
-					}
-				}
-
-			}
-		}
-		if (range.startContainer === range.endContainer) {
-			printNode(range.startContainer, range.startOffset, range.endOffset);
-		}
-		else {
-			printNode(range.startContainer, range.startOffset);
-			printNode(range.endContainer, range.endOffset);
-		}
-		var ret = parts.join(' ');
-		if (message) {
-			console.log(message + ":" + ret);
-		}
-		return ret;
-	}
-
 	function printRange(range, message) {
 		if (! range || ! range.startContainer || ! range.endContainer) {
 			return;
@@ -3090,7 +2994,7 @@
 			if (! txt) {
 				return "";
 			}
-			txt = txt.replace('/\n/g', "\\n").replace('/\r/g', "").replace('\u200B', "{filler}").replace('\uFEFF', "{filler}")
+			txt = txt.replace('/\n/g', "\\n").replace('/\r/g', "").replace('\u200B', "{filler}").replace('\uFEFF', "{filler}");
 			if (txt.length <= 15) {
 				return txt;
 			}

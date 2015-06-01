@@ -4,7 +4,9 @@
 
 	var exports = this,
 		dom = {},
-		_browser = null;
+		_browser = null,
+		wsrgx = /^\s*$/,
+		numrgx = /^\d+$/;
 
 	dom.DOM_VK_DELETE = 8;
 	dom.DOM_VK_LEFT = 37;
@@ -84,14 +86,10 @@
 		return element.offsetHeight;
 	};
 	dom.getElementDimensions = function (element) {
-		var result = {
+		return {
 			'width': dom.getElementWidth(element),
 			'height': dom.getElementHeight(element)
 		};
-		return result;
-	};
-	dom.trim = function (string) {
-		return $.trim(string);
 	};
 	dom.empty = function (element) {
 		if (element) {
@@ -173,7 +171,7 @@
 		return (node.nodeType != dom.TEXT_NODE && dom.is(node, selector)) ? 
 				node 
 				: dom.parents(node, selector)[0] || null;
-	},
+	};
 
 	dom.getParents = function (elements, filter, stopEl) {
 		var res = $(elements).parents(filter);
@@ -538,13 +536,6 @@
 	
 	/* Begin dfl */
 	
-	function _findPrevIndex(node, origin) {
-		if (dom.TEXT_NODE == node.nodeType) {
-			return node.length;
-		}
-		
-	}
-	
 	function _findNextTextContainer(node, container){
 		while (node) {
 			if (dom.TEXT_NODE == node.nodeType) {
@@ -596,7 +587,7 @@
 				node: node.parentNode,
 				offset: dom.getNodeIndex(node)
 			};
-		};
+		}
 		while (node.previousSibling) {
 			var ret = _findPrevTextContainer(node.previousSibling);
 			if (ret) {
@@ -604,9 +595,9 @@
 					node: ret,
 					offset: dom.getNodeLength(ret)
 				};
-			};
+			}
 			node = node.previousSibling;
-		};
+		}
 		
 		return dom.findPrevTextContainer(node.parentNode && node.parentNode.previousSibling, container);
 	};
@@ -623,7 +614,7 @@
 				node: node.parentNode,
 				offset: dom.getNodeIndex(node) + 1
 			};
-		};
+		}
 		while (node.nextSibling) {
 			var ret = _findNextTextContainer(node.nextSibling);
 			if (ret) {
@@ -631,9 +622,9 @@
 					node: ret,
 					offset: 0
 				};
-			};
+			}
 			node = node.previousSibling;
-		};
+		}
 		
 		return dom.findNextTextContainer(node.parentNode && node.parentNode.nextSibling, container);
 	};
@@ -779,28 +770,6 @@
 	dom.stopPropagation = function (e) {
 		e.stopPropagation();
 	};
-	dom.noInclusionInherits = function (child, parent) {
-		if (parent instanceof String || typeof parent === 'string') {
-			parent = window[parent];
-		}
-		if (child instanceof String || typeof child === 'string') {
-			child = window[child];
-		}
-		var above = function () {};
-		if (dom.isset(parent) === true) {
-			for (value in parent.prototype) {
-				if (child.prototype[value]) {
-					above.prototype[value] = parent.prototype[value];
-					continue;
-				}
-				child.prototype[value] = parent.prototype[value];
-			}
-		}
-		if (child.prototype) {
-			above.prototype.constructor = parent;
-			child.prototype['super'] = new above();
-		}
-	};
 
 	dom.each = function (val, callback) {
 		$.each(val, function (i, el) {
@@ -809,10 +778,11 @@
 	};
 
 	dom.foreach = function (value, cb) {
+		var res, len;
 		if (value instanceof Array || value instanceof NodeList || typeof value.length != 'undefined' && typeof value.item != 'undefined') {
-			var len = value.length;
+			len = value.length;
 			for (var i = 0; i < len; i++) {
-				var res = cb.call(this, i, value[i]);
+				res = cb.call(this, i, value[i]);
 				if (res === false) {
 					break;
 				}
@@ -820,7 +790,7 @@
 		} else {
 			for (var id in value) {
 				if (value.hasOwnProperty(id) === true) {
-					var res = cb.call(this, id);
+					res = cb.call(this, id);
 					if (res === false) {
 						break;
 					}
@@ -829,39 +799,25 @@
 		}
 	};
 	dom.isBlank = function (value) {
-		if (!value || /^\s*$/.test(value)) {
-			return true;
-		}
-		return false;
+		return (!value || wsrgx.test(value));
 	};
 	dom.isFn = function (f) {
-		if (typeof f === 'function') {
-			return true;
-		}
-		return false;
+		return (typeof f === 'function') ;
 	};
 	dom.isObj = function (v) {
-		if (v !== null && typeof v === 'object') {
-			return true;
-		}
-		return false;
+		return (v !== null && typeof v === 'object');
 	};
 	dom.isset = function (v) {
-		if (typeof v !== 'undefined' && v !== null) {
-			return true;
-		}
-		return false;
+		return (typeof v !== 'undefined' && v !== null);
 	};
 	dom.isArray = function (v) {
 		return $.isArray(v);
 	};
+
 	dom.isNumeric = function (str) {
-		var result = str.match(/^\d+$/);
-		if (result !== null) {
-			return true;
-		}
-		return false;
+		return str.match(numrgx) !== null;
 	};
+
 	dom.getUniqueId = function () {
 		var timestamp = (new Date()).getTime();
 		var random = Math.ceil(Math.random() * 1000000);
@@ -878,16 +834,16 @@
 		return false;
 	};
 	dom.arrayDiff = function (array1, array2, firstOnly) {
-		var al = array1.length;
-		var res = [];
-		for (var i = 0; i < al; i++) {
+		var al = array1.length,
+			i, res = [];
+		for (i = 0; i < al; i++) {
 			if (dom.inArray(array1[i], array2) === false) {
 				res.push(array1[i]);
 			}
 		}
 		if (firstOnly !== true) {
 			al = array2.length;
-			for (var i = 0; i < al; i++) {
+			for (i = 0; i < al; i++) {
 				if (dom.inArray(array2[i], array1) === false) {
 					res.push(array2[i]);
 				}
@@ -896,8 +852,8 @@
 		return res;
 	};
 	dom.arrayMerge = function (array1, array2) {
-		var c = array2.length;
-		for (var i = 0; i < c; i++) {
+		var c = array2.length, i;
+		for (i = 0; i < c; i++) {
 			array1.push(array2[i]);
 		}
 		return array1;
@@ -944,7 +900,7 @@
 					browser: match[ 1 ] || "",
 					version: match[ 2 ] || "0"
 				};
-			};
+			}
 	
 			var ua = navigator.userAgent.toLowerCase(),
 				matched = uaMatch(ua),
@@ -1043,21 +999,27 @@
 		return null;
 	};
 	dom.onBlockBoundary = function (leftContainer, rightContainer, blockEls) {
-		if (!leftContainer || !rightContainer) return false
-		var bleft = dom.isChildOfTagNames(leftContainer, blockEls) || dom.is(leftContainer, blockEls.join(', ')) && leftContainer || null;
-		var bright = dom.isChildOfTagNames(rightContainer, blockEls) || dom.is(rightContainer, blockEls.join(', ')) && rightContainer || null;
+		if (!leftContainer || !rightContainer) {
+			return false
+		}
+		var bleft = dom.isChildOfTagNames(leftContainer, blockEls) || dom.is(leftContainer, blockEls.join(', ')) && leftContainer || null,
+			bright = dom.isChildOfTagNames(rightContainer, blockEls) || dom.is(rightContainer, blockEls.join(', ')) && rightContainer || null;
 		return (bleft !== bright);
 	};
 
 	dom.isOnBlockBoundary = function (leftContainer, rightContainer, container) {
-		if (!leftContainer || !rightContainer) return false
-		var bleft = dom.getBlockParent(leftContainer, container) || dom.isBlockElement(leftContainer, container) && leftContainer || null;
-		var bright = dom.getBlockParent(rightContainer, container) || dom.isBlockElement(rightContainer, container) && rightContainer || null;
+		if (!leftContainer || !rightContainer) {
+			return false;
+		}
+		var bleft = dom.getBlockParent(leftContainer, container) || dom.isBlockElement(leftContainer, container) && leftContainer || null,
+			bright = dom.getBlockParent(rightContainer, container) || dom.isBlockElement(rightContainer, container) && rightContainer || null;
 		return (bleft !== bright);
 	};
 
 	dom.mergeContainers = function (node, mergeToNode) {
-		if (!node || !mergeToNode) return false;
+		if (!node || !mergeToNode) {
+			return false;
+		}
 
 		if (node.nodeType === dom.TEXT_NODE || dom.isStubElement(node)) {
 			// Move only this node.
@@ -1202,8 +1164,7 @@
 				offset *= -1;
 			}
 			offset -= date.getTimezoneOffset();
-			var timestamp = (date.getTime() + (offset * 60 * 1000));
-			return timestamp;
+			return (date.getTime() + (offset * 60 * 1000));
 		}
 		return null;
 	};

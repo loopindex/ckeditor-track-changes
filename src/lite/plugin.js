@@ -949,6 +949,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			this._domLoaded = true;
 			this._editor = dom.editor;
 			var ed = this._editor.editable();
+			ed.attachListener(ed, "mousedown", this._onMouseDown, this, null, 1);
 			ed.attachListener(ed, "keypress", this._onKeyPress, this, null, 1);
 			this._hideTooltip(); // clean up any leftover tooltip elements
 			this._onReady();
@@ -1194,7 +1195,6 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			if (isCutKeystroke(code)) {
 				evt.stop();
 			}
-			
 		},
 		
 		_onKeyDown: function(evt) {
@@ -1212,6 +1212,10 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 					evt.stop();
 				}
 			} 
+		},
+
+		_onMouseDown: function(/*evt*/) {
+			this._hideTooltip();
 		},
 		
 		/**
@@ -1308,7 +1312,6 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			if (ignore) {
 				return true;
 			}
-			//TODO check if we can just clean datavalue, call insert() and proceed
 			if ("string" == typeof data.dataValue) {
 				try {
 					var doc = this._editor.document.$,
@@ -1367,7 +1370,8 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		
 		/**
 		 * Handler for selection change events (caret moved or text marked/unmarked)
-		 * @param ignore
+		 * @param event
+		 * @param cleanupDOM flag passed to the tracker's isInsideChange method. Must be false to avoid cleaning up dom
 		 * @private
 		 */
 		_onSelectionChanged : function(event, cleanupDOM) {
