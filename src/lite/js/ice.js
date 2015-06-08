@@ -145,18 +145,12 @@
 		 * Turns on change tracking - sets up events, if needed, and initializes the environment,
 		 * range, and editor.
 		 */
-		startTracking: function () {
+		startTracking: function (options) {
 			// dfl:set contenteditable only if it has been explicitly set
 			if (typeof(this.contentEditable) == "boolean") {
 				this.element.setAttribute('contentEditable', this.contentEditable);
 			}
 		
-			// If we are handling events setup the delegate to handle various events on `this.element`.
-			var e = this.element;
-			
-//			e.addEventListener("keydown", this._boundEventHandler, true);
-			e.addEventListener("keypress", this._boundEventHandler, true);
-			
 			
 			this.initializeEnvironment();
 			this.initializeEditor();
@@ -193,6 +187,20 @@
 
 			this._updateTooltipsState();
 			return this;
+		},
+		
+		listenToEvents: function() {
+			this.unlistenToEvents();
+			if (this.element) {
+				this.element.addEventListener("keydown", this._boundEventHandler, true);
+			}
+		},
+		
+		unlistenToEvents: function() {
+			// If we are handling events setup the delegate to handle various events on `this.element`.
+			if (this.element) {
+				this.element.removeEventListener("keydown", this._boundEventHandler, true);
+			}
 		},
 	
 		/**
@@ -338,6 +346,7 @@
 					// If we are in a non-tracking/void element, move the range to the end/outside.
 					this._moveRangeToValidTrackingPos(range, hostRange);
 			
+					// insertnodes returns true if the text was inserted
 					ret = this._insertNodes(range, hostRange, {nodes: nodes, text: options.text, insertStubText: options.insertStubText !== false});
 				}
 			}
@@ -2085,11 +2094,12 @@
 				preventEvent = this.keyPress(e);
 			} 
 			else if ('keydown' == e.type) {
-				preventEvent = this.onKeyDown(e);
+				preventEvent = ! this.handleKeyDown(e);
 			}
 			if (preventEvent) {
 				e.stopImmediatePropagation();
 				e.preventDefault();
+				this.hostMethods.notifyChange();
 			}
 			return ! preventEvent;
 		},
@@ -2100,9 +2110,8 @@
 		 * @param {Event} e Event object.
 		 * @return {void|boolean} Returns true if default event needs to be blocked.
 		 */
-		_handleAncillaryKey: function (e) {
-			var key = e.keyCode ? e.keyCode : e.which,
-	    		browser = this._browser,
+		_handleAncillaryKey: function (key) {
+			var browser = this._browser,
 				preventDefault = false,
 				self = this,
 				range = self.getCurrentRange();
@@ -2161,6 +2170,19 @@
 			return preventDefault;
 	
 		},
+		
+		/**
+		 * Returns false if the event should be cancelled
+		 */
+		handleKeyDown: function (e) {
+			if (this._handleSpecialKey(e)) {
+				return true;
+			} 
+	
+			return ! this.keyPress(e);
+		},
+
+
 	
 		/**
 		 * @private
@@ -2175,20 +2197,11 @@
 			return this._handleAncillaryKey(e);
 		},
 
+		/**
+		 * Returns true if the event should be cancelled
+		 */
 		keyPress: function (e) {
-			if (this._preventKeyPress === true) {
-				this._preventKeyPress = false;
-				return false;
-			}
 			var c = null;
-			if (e.which == null) {
-			// IE.
-				c = String.fromCharCode(e.keyCode);
-			} 
-			else if (e.which > 0) {
-				c = String.fromCharCode(e.which);
-			}
-	
 			if (e.ctrlKey || e.metaKey) {
 				return false;
 			}
@@ -2200,26 +2213,32 @@
 				range.moveToNextEl(br);
 			}
 	
-			// Ice will ignore the keyPress event if CMD or CTRL key is also pressed
-			if (c !== null) {
+//			if (c !== null) {
 				var key = e.keyCode ? e.keyCode : e.which;
     		    switch (key) {
     		    	case 32: //ckeditor does funny stuff with spaces, so insert it ourselves
-    		    		return this.insert({ text: c });
+    		    		return this.insert({ text: ' ' });
 					case ice.dom.DOM_VK_DELETE:
-//					case 32: // space
-					// Handle delete key for Firefox.
-						return this._handleAncillaryKey(e);
+					case 46:
+					case ice.dom.DOM_VK_DOWN:
+					case ice.dom.DOM_VK_UP:
+					case ice.dom.DOM_VK_LEFT:
+					case ice.dom.DOM_VK_RIGHT:
+						return this._handleAncillaryKey(key);
 					case ice.dom.DOM_VK_ENTER:
 						this._handleEnter();
 						return false;
 					default:
+						c = String.fromCharCode(key);
+						if (c !== null) {
 						// If we are in a deletion, move the range to the end/outside.
-						return this.insert(/*{text: c}*/);
+							return this.insert(/*{text: c}*/);
+						}
+						return false;
 				}
-			}
+	//		}
 	
-			return this._handleAncillaryKey(e);
+//			return false; //this._handleAncillaryKey(e);
 		},
 	
 

@@ -126,15 +126,19 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 	defaultTooltipTemplate = "%a by %u %t",
 	
 	_emptyRegex = /^[\s\r\n]*$/, // for getting the clean text
-		_cleanRE = [{regex: /[\s]*title=\"[^\"]+\"/g, replace: "" },
+		_cleanRE = [
+		            {regex: /[\s]*title=\"[^\"]+\"/g, replace: "" },
 		            {regex: /[\s]*data-selected=\"[^\"]+\"/g, replace:""}
-					],
+		],
 	
 	_pluginMap = [],
 	
 	cutKeystrokes = [CKEDITOR.CTRL + 88,  // CTRL+X
-	                 CKEDITOR.CTRL + 120,
-	                 CKEDITOR.SHIFT + 46];
+			CKEDITOR.CTRL + 120,
+			CKEDITOR.SHIFT + 46],
+	_inited = false,
+	isOldCKEDITOR = false;
+
 	
 	function cleanNode(node) {
 		var ret, name, parent,
@@ -275,6 +279,16 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			return "on " + months[date.getMonth()] + " " + date.getDate() + ", " + date.getFullYear();
 		}
 	}
+	
+	function initModule() {
+		if (_inited) {
+			return;
+		}
+		_inited = true;
+		var ckv = parseFloat(CKEDITOR.version);
+		isOldCKEDITOR = isNaN(ckv) || ckv < 4.4;
+	}
+	
 	
 	/**
 	 * @class LITE.configuration
@@ -427,15 +441,12 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		 * @param ed an instance of CKEditor
 		 */
 		init: function(ed) {
+			initModule();
 			var rec = _findPluginRec(ed);
 			if (rec) { // should not happen
 				return;
 			}
-			// (CKEDITOR.ELEMENT_MODE_INLINE == ed.elementMode) {
-			if (! this._inited) { 
-				_ieFix();
-				this._inited = true;
-			}
+
 			var path = this.path,
 				plugin = new LITEPlugin(this.props, path),
 				liteConfig = CKEDITOR.tools.extend({}, ed.config.lite || {}),
@@ -951,6 +962,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			var ed = this._editor.editable();
 			ed.attachListener(ed, "mousedown", this._onMouseDown, this, null, 1);
 			ed.attachListener(ed, "keypress", this._onKeyPress, this, null, 1);
+//TEMP
 			this._hideTooltip(); // clean up any leftover tooltip elements
 			this._onReady();
 		},
@@ -1021,8 +1033,6 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 				e.on("insertElement", paste, null, null, 1);
 				e.on("mode", this._onModeChange.bind(this), null, null, 1);
 				e.on("readOnly", this._onReadOnly.bind(this));
-				
-//				e.on("key", this._onKeyDown.bind(this), null, null, 1);				
 			}
 			
 			if (this._tracker) {
@@ -1059,7 +1069,8 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 					},
 					setHostRange: this._setHostRange.bind(this),
 					hostCopy: this._hostCopy.bind(this),
-					beforeEdit: this._beforeEdit.bind(this)
+					beforeEdit: this._beforeEdit.bind(this),
+					notifyChange: this._afterEdit.bind(this)
 				}
 			};
 			if (debug.log) {
@@ -1258,17 +1269,23 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 					this._removeBindings[i].removeListener();
 				}
 				this._removeBindings = [];
+				this._tracker.unlistenToEvents();
 				if (track) {
 					var handler = this._onSelectionChanged.bind(this),
 						editable = this._editor.editable();
-					this._removeBindings.push(this._editor.on("key", function(e) {
-						if (this._tracker) {
-							var event = e.data.domEvent && e.data.domEvent.$;
-							// onkeydown returns true to prevent, so return false it it returns true
-							return event ? ! this._tracker.onKeyDown(event) : true;
-						}
-						return true;
-					}.bind(this)));
+					if (isOldCKEDITOR) {
+						this._tracker.listenToEvents();
+					}
+					else {
+						this._removeBindings.push(this._editor.on("key", function(e) {
+							if (this._tracker) {
+								var event = e.data.domEvent && e.data.domEvent.$;
+								// onkeydown returns true to prevent, so return false it it returns true
+								return event ? this._tracker.handleKeyDown(event) : true;
+							}
+							return true;
+						}.bind(this)));
+					}
 					this._removeBindings.push(editable.on("keyup", this._onSelectionChanged.bind(this, null, false)));
 					this._removeBindings.push(editable.on("click", handler));
 					this._removeBindings.push(this._editor.on("selectionChange", handler));
@@ -1548,6 +1565,10 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			}
 		},
 		
+		_afterEdit: function() {
+			this._editor.fire('saveSnapshot');
+		},
+		
 		_beforeEdit: function() {
 			CKEDITOR.iscutting = true;
 			var e = this._editor,
@@ -1777,16 +1798,4 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		return success || enabled;
 	}
 
-
-	function _ieFix () {
-		/* Begin fixes for IE */
-			Function.prototype.bind = Function.prototype.bind || function () {
-				var fn = this, args = Array.prototype.slice.call(arguments),
-				object = args.shift();
-				return function () {
-					return fn.apply(object,
-				args.concat(Array.prototype.slice.call(arguments)));
-				};
-			};
-	}
 })(window.CKEDITOR);
