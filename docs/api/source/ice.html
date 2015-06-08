@@ -116,14 +116,14 @@
 		this._userStyles = {};
 		this._styles = {}; // dfl, moved from prototype
 		this._savedNodesMap = {};
-		this.$this = jQuery(this);
+		this.$this = $(this);
 		this._browser = ice.dom.browser();
 		this._tooltipMouseOver = this._tooltipMouseOver.bind(this);
 		this._tooltipMouseOut = this._tooltipMouseOut.bind(this);
 		this._boundEventHandler = this._handleEvent.bind(this);
 		
 		ice.dom.extend(true, this, defaults, options);
-		if (options.tooltips &amp;&amp; (! jQuery.isFunction(options.hostMethods.showTooltip) || ! jQuery.isFunction(options.hostMethods.hideTooltip))) {
+		if (options.tooltips &amp;&amp; (! $.isFunction(options.hostMethods.showTooltip) || ! $.isFunction(options.hostMethods.hideTooltip))) {
 			throw new Error(&quot;hostMethods.showTooltip and hostMethods.hideTooltip must be defined if tooltips is true&quot;);
 		}
 		var us = options.userStyles || {}; // dfl, moved from prototype, allow preconfig
@@ -162,18 +162,12 @@
 </span>		 * Turns on change tracking - sets up events, if needed, and initializes the environment,
 		 * range, and editor.
 		 */
-		startTracking: function () {
+		startTracking: function (options) {
 			// dfl:set contenteditable only if it has been explicitly set
 			if (typeof(this.contentEditable) == &quot;boolean&quot;) {
 				this.element.setAttribute('contentEditable', this.contentEditable);
 			}
 		
-			// If we are handling events setup the delegate to handle various events on `this.element`.
-			var e = this.element;
-			
-//			e.addEventListener(&quot;keydown&quot;, this._boundEventHandler, true);
-			e.addEventListener(&quot;keypress&quot;, this._boundEventHandler, true);
-			
 			
 			this.initializeEnvironment();
 			this.initializeEditor();
@@ -197,7 +191,6 @@
 					e.removeEventListener(&quot;keyup&quot;, this._boundEventHandler, true);
 					e.removeEventListener(&quot;keydown&quot;, this._boundEventHandler, true);
 					e.removeEventListener(&quot;keypress&quot;, this._boundEventHandler, true);
-//					ice.dom.unbind(this.element, 'keyup.ice keydown.ice keypress.ice');
 				}
 		
 				// dfl:reset contenteditable unless requested not to do so
@@ -211,6 +204,20 @@
 
 			this._updateTooltipsState();
 			return this;
+		},
+		
+		listenToEvents: function() {
+			this.unlistenToEvents();
+			if (this.element) {
+				this.element.addEventListener(&quot;keydown&quot;, this._boundEventHandler, true);
+			}
+		},
+		
+		unlistenToEvents: function() {
+			// If we are handling events setup the delegate to handle various events on `this.element`.
+			if (this.element) {
+				this.element.removeEventListener(&quot;keydown&quot;, this._boundEventHandler, true);
+			}
 		},
 	
 <span id='ice-InlineChangeEditor-method-initializeEnvironment'>		/**
@@ -229,16 +236,6 @@
 </span>		 * Initializes the internal range object and sets focus to the editing element.
 		 */
 		initializeRange: function () {
-/*			var range = this.selection.createRange();
-			range.setStart(ice.dom.find(this.element, this.blockEls.join(', '))[0], 0);
-			range.collapse(true);
-			this.selection.addRange(range);
-			if (this.env.frame) {
-				this.env.frame.contentWindow.focus();
-			}
-			else {
-				this.element.focus();
-			} */
 		},
 	
 <span id='ice-InlineChangeEditor-method-initializeEditor'>		/**
@@ -320,7 +317,7 @@
 		 */
 		_createIceNode: function (changeType, childNode, changeId) {
 			var node = this.env.document.createElement(this.changeTypes[changeType].tag);
-			ice.dom.addClass(node, this._getIceNodeClass(changeType));
+			node.setAttribute(&quot;class&quot;, this._getIceNodeClass(changeType));
 	
 			if (childNode) {
 				node.appendChild(childNode);
@@ -359,13 +356,14 @@
 				}
 				if (range || hostRange) {
 					var nodes = options.nodes;
-					if (nodes &amp;&amp; ! jQuery.isArray(nodes)) {
+					if (nodes &amp;&amp; ! $.isArray(nodes)) {
 						nodes = [nodes];
 					}
 			
 					// If we are in a non-tracking/void element, move the range to the end/outside.
 					this._moveRangeToValidTrackingPos(range, hostRange);
 			
+					// insertnodes returns true if the text was inserted
 					ret = this._insertNodes(range, hostRange, {nodes: nodes, text: options.text, insertStubText: options.insertStubText !== false});
 				}
 			}
@@ -650,7 +648,7 @@
 				ice.dom.each(ice.dom.find(this.element, delSel), function (i, el) {
 					content = ice.dom.contents(el);
 					ice.dom.replaceWith(el, content);
-					jQuery.each(content, function(i,e) {
+					$.each(content, function(i,e) {
 						var parent = e &amp;&amp; e.parentNode;
 						self._normalizeNode(parent);
 					});
@@ -686,7 +684,11 @@
 		acceptRejectChange: function (node, isAccept) {
 			var delSel, insSel, selector, removeSel, replaceSel, 
 				trackNode, changes, dom = ice.dom, nChanges,
-				self = this, changeId, content;
+				self = this, changeId, content, userStyle,
+				userStyles = this._userStyles,
+				userId, userAttr = this.attributes.userId,
+				delClass = this._getIceNodeClass('deleteType'), 
+				insClass = this._getIceNodeClass('insertType');
 		
 			if (!node) {
 				var range = this.getCurrentRange();
@@ -696,8 +698,8 @@
 				node = range.startContainer;
 			}
 		
-			delSel = removeSel = '.' + this._getIceNodeClass('deleteType');
-			insSel = replaceSel = '.' + this._getIceNodeClass('insertType');
+			delSel = removeSel = '.' + delClass;
+			insSel = replaceSel = '.' + insClass;
 			if (!isAccept) {
 				removeSel = insSel;
 				replaceSel = delSel;
@@ -705,7 +707,7 @@
 	
 			selector = delSel + ',' + insSel;
 			trackNode = dom.getNode(node, selector);
-			changeId = dom.attr(trackNode, this.attributes.changeId); //dfl
+			changeId = dom.attr(trackNode, this.attributes.changeId);
 				// Some changes are done in batches so there may be other tracking
 				// nodes with the same `changeIdAttribute` batch number.
 			changes = dom.find(this.element, removeSel + '[' + this.attributes.changeId + '=' + changeId + ']');
@@ -722,9 +724,14 @@
 				if (isNewlineNode(node)) {
 					return stripNode(node);
 				}
+				userId = node.getAttribute(userAttr);
+				userStyle = userId !== null ? userStyles[userId] || &quot;&quot; :&quot;&quot;;
+				
 				content = ice.dom.contents(node); 
+				// work around a situation where the browser extracts the node style and applies it to the content
+				$(node).removeClass(insClass + ' ' + delClass + ' ' + userStyle);
 				dom.replaceWith(node, content);
-				jQuery.each(content, function(i,e) {
+				$.each(content, function(i,e) {
 					var txt = ice.dom.TEXT_NODE == e.nodeType &amp;&amp; e.nodeValue;
 					if (txt) {
 						var found = false;
@@ -777,7 +784,7 @@
 					classList.push('.' + self._getIceNodeClass(type));
 				});
 			classList = classList.join(',');
-			return jQuery(this.element).find(classList);
+			return $(this.element).find(classList);
 		},
 		
 <span id='ice-InlineChangeEditor-method-_getIceNode'>		/**
@@ -1132,42 +1139,44 @@
 		 * @private
 		 */
 		_addNodeToChange: function (changeid, ctNode) {
-			var change = this.getChange(changeid);
+			var change = this.getChange(changeid),
+				attributes = {};
 			
 			if (!ctNode.getAttribute(this.attributes.changeId)) {
-				ctNode.setAttribute(this.attributes.changeId, changeid);
+				attributes[this.attributes.changeId] = changeid;
 			}
 // handle missing userid, try to set username according to userid
 			var userId = ctNode.getAttribute(this.attributes.userId); 
 			if (! userId) {
-				ctNode.setAttribute(this.attributes.userId, userId = change.userid);
+				userId = change.userid;
+				attributes[this.attributes.userId] = userId;
 			}
 			if (userId == change.userid) {
-				ctNode.setAttribute(this.attributes.userName, change.username);
+				attributes[this.attributes.userName] = change.username;
 			}
 			
 // add change data
 			var changeData = ctNode.getAttribute(this.attributes.changeData);
-			if (null == changeData) {
-				ctNode.setAttribute(this.attributes.changeData, this._changeData || &quot;&quot;);
+			if (null === changeData) {
+				attributes[this.attributes.changeData] = this._changeData || &quot;&quot;;
 			}
 			
 			if (!ctNode.getAttribute(this.attributes.time)) {
-				ctNode.setAttribute(this.attributes.time, change.time);
+				attributes[this.attributes.time] = change.time;
 			}
 			
 			if (!ctNode.getAttribute(this.attributes.lastTime)) {
-				ctNode.setAttribute(this.attributes.lastTime, change.lastTime);
+				attributes[this.attributes.lastTime] = change.lastTime;
 			}
 			
 			if (change.sessionId &amp;&amp; ! ctNode.getAttribute(this.attributes.sessionId)) {
-				ctNode.setAttribute(this.attributes.sessionId, change.sessionId);
+				attributes[this.attributes.sessionId] = change.sessionId;
 			}
 			
-			var style = this._getUserStyle(change.userid);
-			if (!ice.dom.hasClass(ctNode, style)) {
-				ice.dom.addClass(ctNode, style);
+			if (! change.style) {
+				change.style = this._getUserStyle(change.userid);
 			}
+			$(ctNode).attr(attributes).addClass(change.style);
 			/* Added by dfl */
 			this._updateNodeTooltip(ctNode);
 		},
@@ -1462,7 +1471,7 @@
 			}
 	
 			// Some bugs in Firefox and Webkit make the caret disappear out of text nodes, so we try to put them back in.
-			if (isNewlineNode(commonAncestor)) {
+			if (isBRNode(commonAncestor)) {
 				this._addDeleteTrackingToBreak(commonAncestor, {range: range});
 				return true;
 			}
@@ -1480,7 +1489,7 @@
 		
 				if (commonAncestor.childNodes.length &gt; initialOffset) {
 					var next = commonAncestor.childNodes[initialOffset];
-					if (isNewlineNode(next)) {
+					if (isBRNode(next)) {
 						this._addDeleteTrackingToBreak(next, {range: range});
 						return true;
 					}
@@ -1494,7 +1503,7 @@
 					nextContainer = ice.dom.getNextContentNode(commonAncestor, this.element);
 			
 					if (nextContainer) {
-						if (isNewlineNode(nextContainer)) {
+						if (isBRNode(nextContainer)) {
 							this._addDeleteTrackingToBreak(nextContainer, { range: range }); 
 							return true;
 						}
@@ -1527,7 +1536,7 @@
 				}
 		
 				// If the next container is &lt;br&gt; element find the next node
-				if (isNewlineNode(nextContainer)) {
+				if (isBRNode(nextContainer)) {
 					this._addDeleteTrackingToBreak(nextContainer, { range: range }); 
 					return true;
 //					nextContainer = ice.dom.getNextNode(nextContainer, this.element);
@@ -1618,7 +1627,7 @@
 				return false;
 			}
 
-			if (isNewlineNode(commonAncestor)) {
+			if (isBRNode(commonAncestor)) {
 				this._addDeleteTrackingToBreak(commonAncestor, {range: range, moveLeft: true});
 				return true;
 			}
@@ -1665,7 +1674,7 @@
 					prevContainer = prevContainer.lastChild;
 				}
 				
-				if (isNewlineNode(prevContainer)) {
+				if (isBRNode(prevContainer)) {
 					this._addDeleteTrackingToBreak(prevContainer, { range: range, moveLeft: true });
 					return true;
 				}
@@ -1895,7 +1904,7 @@
 				}	
 			}
 			
-			if (! isNewlineNode(brNode)) {
+			if (! isBRNode(brNode)) {
 				logError(&quot;addDeleteTracking to BR: not a break element&quot;);
 				return;
 			}
@@ -2102,11 +2111,12 @@
 				preventEvent = this.keyPress(e);
 			} 
 			else if ('keydown' == e.type) {
-				preventEvent = this.onKeyDown(e);
+				preventEvent = ! this.handleKeyDown(e);
 			}
 			if (preventEvent) {
 				e.stopImmediatePropagation();
 				e.preventDefault();
+				this.hostMethods.notifyChange();
 			}
 			return ! preventEvent;
 		},
@@ -2114,12 +2124,11 @@
 <span id='ice-InlineChangeEditor-method-_handleAncillaryKey'>		/**
 </span>		 * @private
 		 * Handles arrow, delete key events, and others.
-		 * @param {JQuery Event} e The event object.
+		 * @param {Event} e Event object.
 		 * @return {void|boolean} Returns true if default event needs to be blocked.
 		 */
-		_handleAncillaryKey: function (e) {
-			var key = e.keyCode ? e.keyCode : e.which,
-	    		browser = this._browser,
+		_handleAncillaryKey: function (key) {
+			var browser = this._browser,
 				preventDefault = false,
 				self = this,
 				range = self.getCurrentRange();
@@ -2178,6 +2187,19 @@
 			return preventDefault;
 	
 		},
+		
+<span id='ice-InlineChangeEditor-method-handleKeyDown'>		/**
+</span>		 * Returns false if the event should be cancelled
+		 */
+		handleKeyDown: function (e) {
+			if (this._handleSpecialKey(e)) {
+				return true;
+			} 
+	
+			return ! this.keyPress(e);
+		},
+
+
 	
 <span id='ice-InlineChangeEditor-method-onKeyDown'>		/**
 </span>		 * @private
@@ -2192,20 +2214,11 @@
 			return this._handleAncillaryKey(e);
 		},
 
+<span id='ice-InlineChangeEditor-method-keyPress'>		/**
+</span>		 * Returns true if the event should be cancelled
+		 */
 		keyPress: function (e) {
-			if (this._preventKeyPress === true) {
-				this._preventKeyPress = false;
-				return false;
-			}
 			var c = null;
-			if (e.which == null) {
-			// IE.
-				c = String.fromCharCode(e.keyCode);
-			} 
-			else if (e.which &gt; 0) {
-				c = String.fromCharCode(e.which);
-			}
-	
 			if (e.ctrlKey || e.metaKey) {
 				return false;
 			}
@@ -2215,27 +2228,34 @@
 				br = range &amp;&amp; ice.dom.parents(range.startContainer, 'br')[0] || null;
 			if (br) {
 				range.moveToNextEl(br);
-//				br.parentNode.removeChild(br);
 			}
 	
-			// Ice will ignore the keyPress event if CMD or CTRL key is also pressed
-			if (c !== null) {
+//			if (c !== null) {
 				var key = e.keyCode ? e.keyCode : e.which;
     		    switch (key) {
+    		    	case 32: //ckeditor does funny stuff with spaces, so insert it ourselves
+    		    		return this.insert({ text: ' ' });
 					case ice.dom.DOM_VK_DELETE:
-//					case 32: // space
-					// Handle delete key for Firefox.
-						return this._handleAncillaryKey(e);
+					case 46:
+					case ice.dom.DOM_VK_DOWN:
+					case ice.dom.DOM_VK_UP:
+					case ice.dom.DOM_VK_LEFT:
+					case ice.dom.DOM_VK_RIGHT:
+						return this._handleAncillaryKey(key);
 					case ice.dom.DOM_VK_ENTER:
 						this._handleEnter();
 						return false;
 					default:
+						c = String.fromCharCode(key);
+						if (c !== null) {
 						// If we are in a deletion, move the range to the end/outside.
-						return this.insert(/*{text: c}*/);
+							return this.insert(/*{text: c}*/);
+						}
+						return false;
 				}
-			}
+	//		}
 	
-			return this._handleAncillaryKey(e);
+//			return false; //this._handleAncillaryKey(e);
 		},
 	
 
@@ -2284,6 +2304,7 @@
 </span>		 * Returns the first ice node in the hierarchy of the given node, or the current collapsed range.
 		 * @param node if null, check the current selection
 		 * @param onlyNode if true, check only the node, not its parents
+		 * @param cleanup if false, don't clean up empty nodes around selection
 		 * null if not in a track changes hierarchy
 		 */
 		currentChangeNode: function (node, onlyNode, cleanup) {
@@ -2338,7 +2359,7 @@
 		setShowChanges: function(bShow) {
 			bShow = !! bShow;
 			this._isVisible = bShow;
-			var $body = jQuery(this.element);
+			var $body = $(this.element);
 			$body.toggleClass(&quot;ICE-Tracking&quot;, bShow);
 			this._showTitles(bShow);
 			this._updateTooltipsState();
@@ -2494,7 +2515,7 @@
 		 * &lt;li&gt;filter: a filter function of the form function({userid, time, data}):boolean
 		 * &lt;li&gt;verify: a boolean indicating whether or not to verify that there are matching dom nodes for each matching change
 		 * &lt;/ul&gt;
-		 *	 @return an object with two members: count, changes (map of id:changeObject)
+		 *	@return {Object} an object with two members: count, changes (map of id:changeObject)
 		 * @private
 		 */
 		_filterChanges: function(_options) {
@@ -2502,8 +2523,8 @@
 				change,
 				options = _options || {},
 				filter = options.filter,
-				exclude = options.exclude ? jQuery.map(options.exclude, function(e) { return String(e); }) : null,
-				include = options.include ? jQuery.map(options.include, function(e) { return String(e); }) : null,
+				exclude = options.exclude ? $.map(options.exclude, function(e) { return String(e); }) : null,
+				include = options.include ? $.map(options.include, function(e) { return String(e); }) : null,
 				verify = options.verify,
 				elements = null;
 			for (var key in this._changes) {
@@ -2534,6 +2555,8 @@
 			var myUserId = this.currentUser &amp;&amp; this.currentUser.id,
 				myUserName = (this.currentUser &amp;&amp; this.currentUser.name) || &quot;&quot;,
 				now = (new Date()).getTime(),
+				styleMatch,
+				styleRegex = new RegExp(this.stylePrefix + '-(\\d+)'),
 			// Grab class for each changeType
 				changeTypeClasses = [];
 			for (var changeType in this.changeTypes) {
@@ -2543,14 +2566,20 @@
 			var nodes = this.getIceNodes();
 			var f = function(i, el) {
 				var styleIndex = 0,
-					 ctnType = '', i,
+					styleName,
+					ctnType = '', i,
 					classList = el.className.split(' ');
 				//TODO optimize this - create a map of regexp
 				for (i = 0; i &lt; classList.length; i++) {
-					var styleReg = new RegExp(this.stylePrefix + '-(\\d+)').exec(classList[i]);
-					if (styleReg) styleIndex = styleReg[1];
+					styleMatch = styleRegex.exec(classList[i]);
+					if (styleMatch) {
+						styleName = styleMatch[0];
+						styleIndex = styleMatch[1];
+					}
 					var ctnReg = new RegExp('(' + changeTypeClasses.join('|') + ')').exec(classList[i]);
-					if (ctnReg) ctnType = this._getChangeTypeFromAlias(ctnReg[1]);
+					if (ctnReg) {
+						ctnType = this._getChangeTypeFromAlias(ctnReg[1]);
+					}
 				}
 				var userid = ice.dom.attr(el, this.attributes.userId);
 				var userName;
@@ -2578,8 +2607,9 @@
 				var sessionId = el.getAttribute(this.attributes.sessionId);
 			
 				var changeData = ice.dom.attr(el, this.attributes.changeData) || &quot;&quot;;
-				var change = {
+				this._changes[changeid] = {
 					type: ctnType,
+					style: styleName,
 					userid: String(userid),// dfl: must stringify for consistency - when we read the props from dom attrs they are strings
 					username: userName,
 					time: timeStamp,
@@ -2587,7 +2617,6 @@
 					sessionId: sessionId,
 					data : changeData
 				};
-				this._changes[changeid] = change;
 				this._updateNodeTooltip(el);
 			}.bind(this);
 			nodes.each(f);
@@ -2615,12 +2644,12 @@
 		_showTitles : function(bShow) {
 			var nodes = this.getIceNodes();
 			if (bShow) {
-				jQuery(nodes).each((function(i, node) {
+				$(nodes).each((function(i, node) {
 					this._updateNodeTooltip(node);
 				}).bind(this));
 			}
 			else {
-				jQuery(nodes).removeAttr(&quot;title&quot;);
+				$(nodes).removeAttr(&quot;title&quot;);
 			}
 		},
 		
@@ -2641,18 +2670,18 @@
 				this._showingTips = false;
 				$nodes = this.getIceNodes();
 				$nodes.each(function(i, node) {
-					jQuery(node).unbind(&quot;mouseover&quot;).unbind(&quot;mouseout&quot;);
+					$(node).unbind(&quot;mouseover&quot;).unbind(&quot;mouseout&quot;);
 				});					
 			}
 		},
 		
 		_addTooltip: function(node) {
-			jQuery(node).unbind(&quot;mouseover&quot;).unbind(&quot;mouseout&quot;).mouseover(this._tooltipMouseOver).mouseout(this._tooltipMouseOut);
+			$(node).unbind(&quot;mouseover&quot;).unbind(&quot;mouseout&quot;).mouseover(this._tooltipMouseOver).mouseout(this._tooltipMouseOut);
 		},
 		
 		_tooltipMouseOver: function(event) {
 			var node = event.currentTarget,
-				$node = jQuery(node),
+				$node = $(node),
 				self = this;
 			if (! $node.data(&quot;_tooltip_t&quot;)) {
 				var to = setTimeout(function() {
@@ -2678,7 +2707,7 @@
 		
 		_tooltipMouseOut: function(event) {
 			var node = event.currentTarget,
-				$node = jQuery(node),
+				$node = $(node),
 				to = $node.data(&quot;_tooltip_t&quot;);
 			$node.removeData(&quot;_tooltip_t&quot;);
 			if (to) {
@@ -2701,13 +2730,13 @@
 				clsSelector = '.' + insClass+&quot;,.&quot;+delClass,
 				clsAttr = &quot;data-ice-class&quot;,
 				filter = function(node) {
-					var iceNode = null, 
+					var iceNode,
 						$iceNode = null;
 					if (node.nodeType == ice.dom.TEXT_NODE) {
-						$iceNode = jQuery(node).parents(clsSelector);
+						$iceNode = $(node).parents(clsSelector);
 					}
 					else {
-						var $node = jQuery(node);
+						var $node = $(node);
 						if ($node.is(clsSelector)) {
 							$iceNode = $node; 
 						}
@@ -2715,7 +2744,8 @@
 							$iceNode = $node.parents(clsSelector);
 						}
 					}
-					if (iceNode = ($iceNode &amp;&amp; $iceNode[0])) {
+					iceNode = ($iceNode &amp;&amp; $iceNode[0]);
+					if (iceNode) {
 						var cls = iceNode.className;
 						iceNode.setAttribute(clsAttr, cls);
 						iceNode.setAttribute(&quot;class&quot;, &quot;ice-no-decoration&quot;);
@@ -2726,7 +2756,7 @@
 			range.getNodes(null, filter);
 			var el = this.element;
 			setTimeout(function() {
-				var nodes = jQuery(el).find('['+ clsAttr + ']');
+				var nodes = $(el).find('['+ clsAttr + ']');
 				nodes.each(function(i, node) {
 					var cls = node.getAttribute(clsAttr);
 					if (cls) {
@@ -2747,19 +2777,17 @@
 			var insClass = this._getIceNodeClass('insertType'), 
 				delClass = this._getIceNodeClass('deleteType'),
 				clsSelector = '.' + insClass+&quot;,.&quot;+delClass,
-				doc= this.env.document,
 				saveMap = this._savedNodesMap,
 				clsAttr = &quot;data-ice-class&quot;,
 				base = Date.now() % 1000000,
 				filter = function(node) {
-					var iceNode = null, 
-						$node,
+					var $node,iceNode,
 						$iceNode = null;
 					if (node.nodeType == ice.dom.TEXT_NODE) {
-						$iceNode = jQuery(node).parents(clsSelector);
+						$iceNode = $(node).parents(clsSelector);
 					}
 					else {
-						$node = jQuery(node);
+						$node = $(node);
 						if ($node.is(clsSelector)) {
 							$iceNode = $node; 
 						}
@@ -2770,13 +2798,12 @@
 					if (iceNode = ($iceNode &amp;&amp; $iceNode[0])) {
 						var attrs = getNodeAttributes(iceNode),
 							cls = iceNode.className,
-							nodeData = {
-								attributes: attrs,
-								className: cls
-							},
 							dataId = String(base++);
 						
-						saveMap[dataId] = nodeData;
+						saveMap[dataId] = {
+							attributes: attrs,
+							className: cls
+						};
 						removeAllAttributes(iceNode);
 						iceNode.setAttribute(clsAttr, dataId);
 						iceNode.setAttribute(&quot;class&quot;, &quot;ice-no-decoration&quot;);
@@ -2787,7 +2814,7 @@
 			range.getNodes(null, filter);
 			var el = this.element;
 			setTimeout(function() {
-				var nodes = jQuery(el).find('['+ clsAttr + ']');
+				var nodes = $(el).find('['+ clsAttr + ']');
 				nodes.each(function(i, node) {
 					var dataId = node.getAttribute(clsAttr),
 						nodeData = saveMap[dataId];
@@ -2960,7 +2987,7 @@
 	
 	function splitTextAt(textNode, at, count) {
 		var textLength = textNode.length,
-			splitText = null;
+			splitText;
 		if (at &lt; 0 || at &gt;= textLength) {
 			return textNode;
 		}
@@ -2994,91 +3021,6 @@
 		}
 	}
 	
-	function printRangeOld(range, message) {
-		if (! range || ! range.startContainer || ! range.endContainer) {
-			return;
-		}
-		var parts = [];
-		function printText(txt) {
-			if (! txt) {
-				return &quot;&quot;;
-			}
-			txt = txt.replace('/\n/g', &quot;\\n&quot;).replace('/\r/g', &quot;&quot;).replace('\u200B', &quot;{filler}&quot;).replace('\uFEFF', &quot;{filler}&quot;)
-			if (txt.length &lt;= 15) {
-				return txt;
-			}
-			return txt.substring(0, 5)+ &quot;...&quot; + txt.substring(txt.length - 5);
-		}
-		function addNode(node) {
-			var str;
-			if (node.nodeType === 3) {
-				str = &quot;Text:&quot; + printText(node.nodeValue); 
-			}
-			else {
-				var txt = node.innerText;
-				str = node.nodeName + (txt ? &quot;(&quot; + printText(txt) + &quot;)&quot; :'');
-			}
-			parts.push(&quot;&lt;&quot; + str + &quot; /&gt;&quot;);
-		}
-		function printNode(node, offset1, offset2) {
-			if (&quot;number&quot; != typeof offset2) {
-				offset2 = -1;
-			}
-			if (3 == node.nodeType) { // text
-				var txt = node.nodeValue;
-				parts.push(printText(txt.substring(0, offset1)));
-				parts.push(&quot;|&quot;);
-				if (offset2 &gt; offset1) {
-					parts.push(printText(txt.substring(offset1, offset2)));
-					parts.push(&quot;|&quot;);
-					parts.push(printText(txt.substring(offset2)));
-				}
-				else {
-					parts.push(printText(txt.substring(offset1)));
-				}
-			}
-			else if (1 == node.nodeType) {
-				var i = 0,
-					children = node.childNodes;
-					start = (i &gt; 6 ? i - 5 : 0);
-				addNode(node);
-				if (start &gt; 0) {
-					parts.push(&quot;(...&quot; + start + &quot; nodes)&quot;);
-				}
-				for (i = start; i &lt; offset1; ++i) {
-					addNode(children[i]);
-				}
-				parts.push(&quot;|&quot;);
-				if (offset2 &gt; offset1) {
-					for (i = offset1; i &lt; offset2; ++i) {
-						addNode(children[i]);
-					}
-					parts.push('|');
-				}
-				if (offset2 &gt; 0 &amp;&amp; offset2 &lt; children.length){
-					var child = children[offset2];
-					while (child) {
-						addNode(child);
-						child = child.nextSibling;
-					}
-				}
-
-			}
-		}
-		if (range.startContainer === range.endContainer) {
-			printNode(range.startContainer, range.startOffset, range.endOffset);
-		}
-		else {
-			printNode(range.startContainer, range.startOffset);
-			printNode(range.endContainer, range.endOffset);
-		}
-		var ret = parts.join(' ');
-		if (message) {
-			console.log(message + &quot;:&quot; + ret);
-		}
-		return ret;
-	}
-
 	function printRange(range, message) {
 		if (! range || ! range.startContainer || ! range.endContainer) {
 			return;
@@ -3088,7 +3030,7 @@
 			if (! txt) {
 				return &quot;&quot;;
 			}
-			txt = txt.replace('/\n/g', &quot;\\n&quot;).replace('/\r/g', &quot;&quot;).replace('\u200B', &quot;{filler}&quot;).replace('\uFEFF', &quot;{filler}&quot;)
+			txt = txt.replace('/\n/g', &quot;\\n&quot;).replace('/\r/g', &quot;&quot;).replace('\u200B', &quot;{filler}&quot;).replace('\uFEFF', &quot;{filler}&quot;);
 			if (txt.length &lt;= 15) {
 				return txt;
 			}

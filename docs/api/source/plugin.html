@@ -143,15 +143,19 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 	defaultTooltipTemplate = &quot;%a by %u %t&quot;,
 	
 	_emptyRegex = /^[\s\r\n]*$/, // for getting the clean text
-		_cleanRE = [{regex: /[\s]*title=\&quot;[^\&quot;]+\&quot;/g, replace: &quot;&quot; },
+		_cleanRE = [
+		            {regex: /[\s]*title=\&quot;[^\&quot;]+\&quot;/g, replace: &quot;&quot; },
 		            {regex: /[\s]*data-selected=\&quot;[^\&quot;]+\&quot;/g, replace:&quot;&quot;}
-					],
+		],
 	
 	_pluginMap = [],
 	
 	cutKeystrokes = [CKEDITOR.CTRL + 88,  // CTRL+X
-	                 CKEDITOR.CTRL + 120,
-	                 CKEDITOR.SHIFT + 46];
+			CKEDITOR.CTRL + 120,
+			CKEDITOR.SHIFT + 46],
+	_inited = false,
+	isOldCKEDITOR = false;
+
 	
 	function cleanNode(node) {
 		var ret, name, parent,
@@ -292,6 +296,16 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			return &quot;on &quot; + months[date.getMonth()] + &quot; &quot; + date.getDate() + &quot;, &quot; + date.getFullYear();
 		}
 	}
+	
+	function initModule() {
+		if (_inited) {
+			return;
+		}
+		_inited = true;
+		var ckv = parseFloat(CKEDITOR.version);
+		isOldCKEDITOR = isNaN(ckv) || ckv &lt; 4.4;
+	}
+	
 	
 <span id='LITE-configuration'>	/**
 </span>	 * @class LITE.configuration
@@ -444,15 +458,12 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		 * @param ed an instance of CKEditor
 		 */
 		init: function(ed) {
+			initModule();
 			var rec = _findPluginRec(ed);
 			if (rec) { // should not happen
 				return;
 			}
-			// (CKEDITOR.ELEMENT_MODE_INLINE == ed.elementMode) {
-			if (! this._inited) { 
-				_ieFix();
-				this._inited = true;
-			}
+
 			var path = this.path,
 				plugin = new LITEPlugin(this.props, path),
 				liteConfig = CKEDITOR.tools.extend({}, ed.config.lite || {}),
@@ -966,7 +977,9 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			this._domLoaded = true;
 			this._editor = dom.editor;
 			var ed = this._editor.editable();
+			ed.attachListener(ed, &quot;mousedown&quot;, this._onMouseDown, this, null, 1);
 			ed.attachListener(ed, &quot;keypress&quot;, this._onKeyPress, this, null, 1);
+//TEMP
 			this._hideTooltip(); // clean up any leftover tooltip elements
 			this._onReady();
 		},
@@ -1037,8 +1050,6 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 				e.on(&quot;insertElement&quot;, paste, null, null, 1);
 				e.on(&quot;mode&quot;, this._onModeChange.bind(this), null, null, 1);
 				e.on(&quot;readOnly&quot;, this._onReadOnly.bind(this));
-				
-//				e.on(&quot;key&quot;, this._onKeyDown.bind(this), null, null, 1);				
 			}
 			
 			if (this._tracker) {
@@ -1075,7 +1086,8 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 					},
 					setHostRange: this._setHostRange.bind(this),
 					hostCopy: this._hostCopy.bind(this),
-					beforeEdit: this._beforeEdit.bind(this)
+					beforeEdit: this._beforeEdit.bind(this),
+					notifyChange: this._afterEdit.bind(this)
 				}
 			};
 			if (debug.log) {
@@ -1211,7 +1223,6 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			if (isCutKeystroke(code)) {
 				evt.stop();
 			}
-			
 		},
 		
 		_onKeyDown: function(evt) {
@@ -1229,6 +1240,10 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 					evt.stop();
 				}
 			} 
+		},
+
+		_onMouseDown: function(/*evt*/) {
+			this._hideTooltip();
 		},
 		
 <span id='LITE-LITEPlugin-method-_onBeforeGetData'>		/**
@@ -1271,17 +1286,23 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 					this._removeBindings[i].removeListener();
 				}
 				this._removeBindings = [];
+				this._tracker.unlistenToEvents();
 				if (track) {
 					var handler = this._onSelectionChanged.bind(this),
 						editable = this._editor.editable();
-					this._removeBindings.push(this._editor.on(&quot;key&quot;, function(e) {
-						if (this._tracker) {
-							var event = e.data.domEvent &amp;&amp; e.data.domEvent.$;
-							// onkeydown returns true to prevent, so return false it it returns true
-							return event ? ! this._tracker.onKeyDown(event) : true;
-						}
-						return true;
-					}.bind(this)));
+					if (isOldCKEDITOR) {
+						this._tracker.listenToEvents();
+					}
+					else {
+						this._removeBindings.push(this._editor.on(&quot;key&quot;, function(e) {
+							if (this._tracker) {
+								var event = e.data.domEvent &amp;&amp; e.data.domEvent.$;
+								// onkeydown returns true to prevent, so return false it it returns true
+								return event ? this._tracker.handleKeyDown(event) : true;
+							}
+							return true;
+						}.bind(this)));
+					}
 					this._removeBindings.push(editable.on(&quot;keyup&quot;, this._onSelectionChanged.bind(this, null, false)));
 					this._removeBindings.push(editable.on(&quot;click&quot;, handler));
 					this._removeBindings.push(this._editor.on(&quot;selectionChange&quot;, handler));
@@ -1325,7 +1346,6 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			if (ignore) {
 				return true;
 			}
-			//TODO check if we can just clean datavalue, call insert() and proceed
 			if (&quot;string&quot; == typeof data.dataValue) {
 				try {
 					var doc = this._editor.document.$,
@@ -1384,7 +1404,8 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		
 <span id='LITE-LITEPlugin-method-_onSelectionChanged'>		/**
 </span>		 * Handler for selection change events (caret moved or text marked/unmarked)
-		 * @param ignore
+		 * @param event
+		 * @param cleanupDOM flag passed to the tracker's isInsideChange method. Must be false to avoid cleaning up dom
 		 * @private
 		 */
 		_onSelectionChanged : function(event, cleanupDOM) {
@@ -1559,6 +1580,10 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			if (selection) {
 				selection.selectRanges([range]);
 			}
+		},
+		
+		_afterEdit: function() {
+			this._editor.fire('saveSnapshot');
 		},
 		
 		_beforeEdit: function() {
@@ -1790,18 +1815,6 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		return success || enabled;
 	}
 
-
-	function _ieFix () {
-		/* Begin fixes for IE */
-			Function.prototype.bind = Function.prototype.bind || function () {
-				var fn = this, args = Array.prototype.slice.call(arguments),
-				object = args.shift();
-				return function () {
-					return fn.apply(object,
-				args.concat(Array.prototype.slice.call(arguments)));
-				};
-			};
-	}
 })(window.CKEDITOR);
 </pre>
 </body>
