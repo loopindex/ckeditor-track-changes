@@ -17,7 +17,7 @@ function f() {
 	$("#editor-tabs").tabs({
 		activate: onTabChanged
 	});
-	CKEDITOR.timestamp = 0x9999; 
+	CKEDITOR.timestamp = 0x8999; 
 
 	function EditorState(editor ) {
 		this.editor = editor;
