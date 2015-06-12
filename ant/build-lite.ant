@@ -70,7 +70,7 @@
 		
 		<echo message="Processing docs in archive" />
 		<exec executable="${rar.exe}" dir="${lite.dir}">
-			<arg line="d ${rar.target} src\lite\plugin.min.js docs\api\extjs docs\api\index.html src\lite\lite-includes.min.js" />
+			<arg line="d ${rar.target} src\lite\plugin.min.js docs\api\extjs docs\api\index.html" />
 		</exec>
 		<echo message="renaming index-ext.html to index.html" />
 		<exec executable="${rar.exe}" dir="${lite.dir}">
@@ -230,7 +230,7 @@
 		</copy>
 
 		<move file="${dist.dir}/plugin.min.js" tofile="${dist.dir}/plugin.js" overwrite="true"/>
-		<move file="${dist.dir}/lite-includes.min.js" tofile="${dist.dir}/lite-includes.js" overwrite="true"/>
+		<copy file="${dist.dir}/lite-includes.min.js" tofile="${dist.dir}/lite-includes.js" overwrite="true"/>
 		<move file="${dist.dir}/js/opentip-adapter.min.js" tofile="${dist.dir}/js/opentip-adapter.js" overwrite="true"/>
 		<move file="${dist.dir}/css/opentip.min.css" tofile="${dist.dir}/css/opentip.css" overwrite="true"/>
 		<move file="${dist.dir}/css/lite.min.css" tofile="${dist.dir}/css/lite.css" overwrite="true"/>
