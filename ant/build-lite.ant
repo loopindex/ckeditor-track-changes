@@ -219,7 +219,7 @@
 
 		<copy todir="${dist.dir}">
 			<fileset dir="${src.dir}">
-				<include name="icons/*" />
+				<include name="icons/**" />
 				<include name="plugin.min.js" />
 				<include name="lite-interface.js" />
 				<include name="lite-includes.min.js" />
