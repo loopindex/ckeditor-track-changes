@@ -306,6 +306,22 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		isOldCKEDITOR = isNaN(ckv) || ckv &lt; 4.4;
 	}
 	
+<span id='LITE-Events-method-elementMatchesSelectors'>	/**
+</span>	 * returns true if the element matches one of the patterns
+	 */
+	function elementMatchesSelectors($el, patterns) {
+		var i, len = patterns &amp;&amp; patterns.length;
+		if (! $el || ! len) {
+			return false;
+		}
+		for (i = 0; i &lt; len; ++i) {
+			if ($el.is(patterns[i])) {
+				return true;
+			}
+		}
+		return false;
+	}
+	
 	
 <span id='LITE-configuration'>	/**
 </span>	 * @class LITE.configuration
@@ -1322,6 +1338,8 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 				evt.data || {},
 				ignore = false,
 				toInsert = null,
+				selectors = this._config.ignoreSelectors || [],
+				$ = window.jQuery,
 				node = (evt.name == &quot;insertElement&quot;) &amp;&amp; data.$;
 			if (! data) {
 				return;
@@ -1367,7 +1385,12 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			else {
 				return true;
 			}
-			if (toInsert) {
+			if (toInsert &amp;&amp; selectors.length) {
+				toInsert = toInsert.filter(function(e) {
+					return ! elementMatchesSelectors($(e), selectors);
+				});
+			}
+			if (toInsert &amp;&amp; toInsert.length) {
 				toInsert = cleanClipboard(toInsert);
 				var focused = this._editor.focusManager.hasFocus;
 				this._beforeInsert();
@@ -1376,11 +1399,10 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 				if (focused) {
 					this._editor.editable().focus();
 				}
+				evt.stop();
+				this._onIceTextChanged();
 			}
-//			evt.data = { dataValue : null};
 
-			evt.stop();
-			this._onIceTextChanged();
 			return true;
 		},
 		
