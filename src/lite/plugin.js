@@ -289,6 +289,22 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		isOldCKEDITOR = isNaN(ckv) || ckv < 4.4;
 	}
 	
+	/**
+	 * returns true if the element matches one of the patterns
+	 */
+	function elementMatchesSelectors($el, patterns) {
+		var i, len = patterns && patterns.length;
+		if (! $el || ! len) {
+			return false;
+		}
+		for (i = 0; i < len; ++i) {
+			if ($el.is(patterns[i])) {
+				return true;
+			}
+		}
+		return false;
+	}
+	
 	
 	/**
 	 * @class LITE.configuration
@@ -1281,7 +1297,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 							if (this._tracker) {
 								var event = e.data.domEvent && e.data.domEvent.$;
 								// onkeydown returns true to prevent, so return false it it returns true
-								return event ? this._tracker.handleKeyDown(event) : true;
+								return event ? this._tracker.handleEvent(event) : true;
 							}
 							return true;
 						}.bind(this)));
@@ -1305,6 +1321,8 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 				evt.data || {},
 				ignore = false,
 				toInsert = null,
+				selectors = this._config.ignoreSelectors || [],
+				$ = window.jQuery,
 				node = (evt.name == "insertElement") && data.$;
 			if (! data) {
 				return;
@@ -1350,7 +1368,12 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			else {
 				return true;
 			}
-			if (toInsert) {
+			if (toInsert && selectors.length) {
+				toInsert = toInsert.filter(function(e) {
+					return ! elementMatchesSelectors($(e), selectors);
+				});
+			}
+			if (toInsert && toInsert.length) {
 				toInsert = cleanClipboard(toInsert);
 				var focused = this._editor.focusManager.hasFocus;
 				this._beforeInsert();
@@ -1359,11 +1382,10 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 				if (focused) {
 					this._editor.editable().focus();
 				}
+				evt.stop();
+				this._onIceTextChanged();
 			}
-//			evt.data = { dataValue : null};
 
-			evt.stop();
-			this._onIceTextChanged();
 			return true;
 		},
 		
@@ -1566,6 +1588,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		},
 		
 		_afterEdit: function() {
+			this._editor.fire('change');
 			this._editor.fire('saveSnapshot');
 		},
 		

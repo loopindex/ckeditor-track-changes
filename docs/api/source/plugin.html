@@ -1298,7 +1298,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 							if (this._tracker) {
 								var event = e.data.domEvent &amp;&amp; e.data.domEvent.$;
 								// onkeydown returns true to prevent, so return false it it returns true
-								return event ? this._tracker.handleKeyDown(event) : true;
+								return event ? this._tracker.handleEvent(event) : true;
 							}
 							return true;
 						}.bind(this)));
@@ -1583,6 +1583,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		},
 		
 		_afterEdit: function() {
+			this._editor.fire('change');
 			this._editor.fire('saveSnapshot');
 		},
 		

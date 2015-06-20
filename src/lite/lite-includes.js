@@ -3795,7 +3795,7 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 		this._browser = ice.dom.browser();
 		this._tooltipMouseOver = this._tooltipMouseOver.bind(this);
 		this._tooltipMouseOut = this._tooltipMouseOut.bind(this);
-		this._boundEventHandler = this._handleEvent.bind(this);
+		this._boundEventHandler = this.handleEvent.bind(this);
 		
 		ice.dom.extend(true, this, defaults, options);
 		if (options.tooltips && (! $.isFunction(options.hostMethods.showTooltip) || ! $.isFunction(options.hostMethods.hideTooltip))) {
@@ -5773,11 +5773,10 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 	
 		/**
 		 * If tracking is on, handles event e when it is one of the following types:
-		 * mouseup, mousedown, keypress, keydown. Prevents default handling if the event
+		 * keypress, keydown. Prevents default handling if the event
 		 * was fully handled.
-		 * @private
 		 */
-		_handleEvent: function (e) {
+		handleEvent: function (e) {
 			if (!this._isTracking) {
 				return true;
 			}
@@ -6356,28 +6355,29 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 		
 		_tooltipMouseOver: function(event) {
 			var node = event.currentTarget,
-				$node = $(node),
+				$node = $(node), to,
 				self = this;
-			if (! $node.data("_tooltip_t")) {
-				var to = setTimeout(function() {
-					var iceNode = self.currentChangeNode(node),
-						cid = iceNode && iceNode.getAttribute(self.attributes.changeId),
-						change = cid && self.getChange(cid);
-					if (change) {
-						var type = ice.dom.hasClass(iceNode, self._getIceNodeClass("insertType")) ? "insert" : "delete";
-						$node.removeData("_tooltip_t");
-						self.hostMethods.showTooltip(node, {
-							userName: change.username,
-							changeId: cid,
-							userId: change.userid,
-							time: change.time,
-							lastTime: change.lastTime,
-							type: type
-						});
-					}
-				}, this.tooltipsDelay);
-				$node.data("_tooltip_t", to);
+			if (event.buttons || $node.data("_tooltip_t")) {
+				return;
 			}
+			to = setTimeout(function() {
+				var iceNode = self.currentChangeNode(node),
+					cid = iceNode && iceNode.getAttribute(self.attributes.changeId),
+					change = cid && self.getChange(cid);
+				if (change) {
+					var type = ice.dom.hasClass(iceNode, self._getIceNodeClass("insertType")) ? "insert" : "delete";
+					$node.removeData("_tooltip_t");
+					self.hostMethods.showTooltip(node, {
+						userName: change.username,
+						changeId: cid,
+						userId: change.userid,
+						time: change.time,
+						lastTime: change.lastTime,
+						type: type
+					});
+				}
+			}, this.tooltipsDelay);
+			$node.data("_tooltip_t", to);
 		},
 		
 		_tooltipMouseOut: function(event) {
