@@ -5898,7 +5898,7 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 			}
 	
 			// Inside a br - most likely in a placeholder of a new block - delete before handling.
-			var range = this.getCurrentRange(),
+			var range = this.getCurrentRange(), text,
 				br = range && ice.dom.parents(range.startContainer, 'br')[0] || null;
 			if (br) {
 				range.moveToNextEl(br);
@@ -5922,8 +5922,8 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 					default:
 						c = String.fromCharCode(key);
 						if (c !== null) {
-						// If we are in a deletion, move the range to the end/outside.
-							return this.insert(/*{text: c}*/);
+							text = this._browser.msie ? {text: c} : null;
+							return this.insert(text);
 						}
 						return false;
 				}
@@ -6681,6 +6681,9 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 	
 	function prepareSelectionForInsert(node, range, doc, insertStub) {
 		if (insertStub) {
+			if (range.collapsed && range.startContainer && range.startContainer.nodeType === ice.dom.TEXT_NODE && range.startContainer.length) {
+				return;
+			}
 		// create empty node and select it, to be replaced with the typed char
 			var tn = doc.createTextNode('\uFEFF');
 			if (node) {
@@ -7713,7 +7716,7 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 			}
 			browser.firefox = (/firefox/.test(ua) == true);
 			if (! browser.msie) {
-				browser.msie = !! /trident/.test(ua); 
+				browser.msie = Boolean( /trident/.test(ua)); 
 			}
 			
 			return browser;
@@ -7959,7 +7962,7 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 		if (! node) {
 			return;
 		}
-		if (ignoreNative !== true && "function" == typeof node.normalize) {
+		if (! dom.browser().msie && (ignoreNative !== true && "function" == typeof node.normalize)) {
 			return node.normalize();
 		}
 		return _myNormalizeNode(node);
