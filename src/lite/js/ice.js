@@ -2206,7 +2206,7 @@
 			}
 	
 			// Inside a br - most likely in a placeholder of a new block - delete before handling.
-			var range = this.getCurrentRange(),
+			var range = this.getCurrentRange(), text,
 				br = range && ice.dom.parents(range.startContainer, 'br')[0] || null;
 			if (br) {
 				range.moveToNextEl(br);
@@ -2230,8 +2230,8 @@
 					default:
 						c = String.fromCharCode(key);
 						if (c !== null) {
-						// If we are in a deletion, move the range to the end/outside.
-							return this.insert(/*{text: c}*/);
+							text = this._browser.msie ? {text: c} : null;
+							return this.insert(text);
 						}
 						return false;
 				}
@@ -2989,6 +2989,9 @@
 	
 	function prepareSelectionForInsert(node, range, doc, insertStub) {
 		if (insertStub) {
+			if (range.collapsed && range.startContainer && range.startContainer.nodeType === ice.dom.TEXT_NODE && range.startContainer.length) {
+				return;
+			}
 		// create empty node and select it, to be replaced with the typed char
 			var tn = doc.createTextNode('\uFEFF');
 			if (node) {

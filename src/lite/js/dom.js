@@ -927,7 +927,7 @@
 			}
 			browser.firefox = (/firefox/.test(ua) == true);
 			if (! browser.msie) {
-				browser.msie = !! /trident/.test(ua); 
+				browser.msie = Boolean( /trident/.test(ua)); 
 			}
 			
 			return browser;
@@ -1173,7 +1173,7 @@
 		if (! node) {
 			return;
 		}
-		if (ignoreNative !== true && "function" == typeof node.normalize) {
+		if (! dom.browser().msie && (ignoreNative !== true && "function" == typeof node.normalize)) {
 			return node.normalize();
 		}
 		return _myNormalizeNode(node);
