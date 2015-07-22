@@ -741,7 +741,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			if (! tracking && this._isTracking && ! force) {
 				var nChanges = this._tracker.countChanges({verify: true});
 				if (nChanges) {
-					return window.alert("Your document containssome pending changes.\nPlease resolve them before turning off change tracking.");
+					return window.alert("Your document contains some pending changes.\nPlease resolve them before turning off change tracking.");
 				}
 			}
 			this._isTracking = tracking;
