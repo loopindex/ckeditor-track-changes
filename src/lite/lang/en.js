@@ -16,7 +16,7 @@ var LITE_LABELS = {
 	NOW : "now",
 	MINUTE_AGO : "1 minute ago",
 	MINUTES_AGO : "xMinutes minutes ago",
-	BY : "on",
+	BY : "by",
 	ON : "on",
 	AT : "on",
 };
