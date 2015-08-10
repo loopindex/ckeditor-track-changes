@@ -372,7 +372,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 	 * 		show: true, // set to false to prevent tooltips
 	 * 		path: "js/opentip-adapter.js", // change to point to your own implementation
 	 * 		classPath: "OpentipAdapter", // the full name of tooltip class construtor
-	 * 		cssPath: "css/opentip.css", // the stylesheet file of the tooltips
+	 * 		cssPath: "css/opentip.css", // the stylesheet file of the tooltips, set to false to disable
 	 * 		delay: 500 // the delay in milliseconds between hovering over a change node and the appearance of a tooltip
 	 * 	};
 	 * </pre>
@@ -1031,9 +1031,12 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 				body = this._getBody(),
 				config = this._config,
 				debug = (config && config.debug) || {};
-			
-			this._loadCSS(doc, (config && config.cssPath) || "css/lite.css");
-			
+
+			//Don't load CSS if it is explicitly FALSE
+			if (!config || config.cssPath !== false) {
+				this._loadCSS(doc, (config && config.cssPath) || "css/lite.css");
+			}
+
 			if (! this._eventsBounds) {
 				this._eventsBounds = true;
 				var paste = this._onPaste.bind(this);
