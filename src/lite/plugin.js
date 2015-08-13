@@ -149,7 +149,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 				child = children[i];
 				cleanNode(child);
 				name = child.nodeName.toLowerCase();
-				if (name === 'ins' || name === 'del') {
+				if (name === props.insertTag || name === props.deleteTag) {
 					while (child.firstChild) {
 						node.insertBefore(child.firstChild, child);
 					}

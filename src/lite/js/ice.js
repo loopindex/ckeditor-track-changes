@@ -11,7 +11,17 @@
 	
 	/* constants */
 	var BREAK_ELEMENT = "br",
-		PARAGRAPH_ELEMENT = "p";
+		PARAGRAPH_ELEMENT = "p",
+		INSERT_TYPE = "insertType",
+		DELETE_TYPE = "deleteType",
+		ignoreKeyCodes = [
+			{start: 0, end: 31}, // everything below space, special cases handled separately
+			{start: 33, end: 40}, // nav keys
+			{start: 45, end: 45}, // insert
+			{start: 91, end: 93}, // windows keys
+			{start: 112, end: 123}, // function keys
+			{start: 144, end: 145}
+		];
 
 	defaults = {
 	// ice node attribute names:
@@ -49,12 +59,12 @@
 		// for the other types, leaving the html content in place.
 		changeTypes: {
 			insertType: {
-				tag: 'span',
+				tag: 'ins',
 				alias: 'ins',
 				action: 'Inserted'
 			},
 			deleteType: {
-				tag: 'span',
+				tag: 'del',
 				alias: 'del',
 				action: 'Deleted'
 			}
@@ -78,6 +88,21 @@
 		
 		_sessionId: null
 	};
+	
+	function isIgnoredKeyCode(key) {
+		if (! key) {
+			return true;
+		}
+		var i, len = ignoreKeyCodes.length, rec;
+		
+		for (i = 0; i < len; ++i) {
+			rec = ignoreKeyCodes[i];
+			if (key >= rec.start && key <= rec.end) {
+				return true;
+			}
+		}
+		return false;
+	}
 
 	/**
 	 * @class ice.InlineChangeEditor
@@ -97,6 +122,7 @@
 		// Tracks all of the styles for users according to the following model:
 		//	[userId] => styleId; where style is "this.stylePrefix" + "this.uniqueStyleIndex"
 		this._userStyles = {};
+		this.currentUser = {name: '', id: ''};
 		this._styles = {}; // dfl, moved from prototype
 		this._savedNodesMap = {};
 		this.$this = $(this);
@@ -121,6 +147,11 @@
 			}
 		}
 		logError = options.hostMethods.logError || function(){ return undefined; };
+		// cache css selectors
+		this._insertSelector = '.' + this._getIceNodeClass(INSERT_TYPE);
+		this._deleteSelector = '.' + this._getIceNodeClass(DELETE_TYPE);
+		this._iceSelector = this._insertSelector + ',' + this._deleteSelector;
+		
 	};
 
 	InlineChangeEditor.prototype = {
@@ -177,7 +208,7 @@
 				}
 		
 				// dfl:reset contenteditable unless requested not to do so
-				if (! onlyICE && (typeof(this.contentEditable) != "undefined")) {
+				if (! onlyICE && (typeof(this.contentEditable) !== "undefined")) {
 					this.element.setAttribute('contentEditable', !this.contentEditable);
 				}
 			}
@@ -261,12 +292,37 @@
 			this._isTracking = bTrack;
 		},
 		/**
-		 * Set the user to be tracked. A user object has the following properties:
+		 * Set the user to be tracked. 
+		 * @param {Object} inUser and object has the following properties:
 		 * {`id`, `name`}
 		 */
-		setCurrentUser: function (user) {
+		setCurrentUser: function (inUser) {
+			var user = {};
+			inUser = inUser || {};
+			user.name = inUser.name? String(inUser.name) : "";
+			if (inUser.id !== undefined && inUser.id !== null) {
+				user.id = String(inUser.id);
+			}
+			else {
+				user.id = "";
+			}
+			
 			this.currentUser = user;
-			this._updateUserData(user); // dfl, update data dependant on the user details
+			for (var key in this._changes) {
+				var change = this._changes[key];
+				if (change.userid == user.id) {
+					change.username = user.name;
+				}
+			}
+			var nodes = this.getIceNodes(),
+				userId,
+				userIdAttr = this.attributes.userId;
+			nodes.each((function(i,node) {
+				userId = node.getAttribute(userIdAttr);
+				if (userId === null || userId === user.id) {
+					node.setAttribute(this.attributes.userName, user.name);
+				}
+			}).bind(this));
 		},
 
 		/**
@@ -401,6 +457,11 @@
 				}
 				else {
 					this._cleanupSelection(range, false, true);
+					// if we're inside a current insert range, let the editor take care of the deletion
+					if (this._isCurrentUserIceNode(this._getIceNode(range.startContainer, INSERT_TYPE))) {
+						return false;
+					}
+
 			        if (right) {
 						// RIGHT DELETE
 						if(browser["type"] === "mozilla"){
@@ -420,9 +481,9 @@
 							// Calibrate Cursor before deleting
 							if(range.endOffset === ice.dom.getNodeCharacterLength(range.endContainer)){
 								var next = range.startContainer.nextSibling;
-								if (ice.dom.is(next,  '.' + this._getIceNodeClass('deleteType'))) {
+								if (ice.dom.is(next,  this._deleteSelector)) {
 									while(next){
-										if (ice.dom.is(next,  '.' + this._getIceNodeClass('deleteType'))) {
+										if (ice.dom.is(next,  this._deleteSelector)) {
 											next = next.nextSibling;
 											continue;
 										}
@@ -438,7 +499,7 @@
 			
 							// Calibrate Cursor after deleting
 							if(!this.visible(range.endContainer)){
-								if (ice.dom.is(range.endContainer.parentNode,  '.' + this._getIceNodeClass('insertType') + ', .' + this._getIceNodeClass('deleteType'))) {
+								if (ice.dom.is(range.endContainer.parentNode,  this._iceSelector)) {
 			//						range.setStart(range.endContainer.parentNode.nextSibling, 0);
 									range.setStartAfter(range.endContainer.parentNode);
 									range.collapse(true);
@@ -465,9 +526,9 @@
 							if(!this.visible(range.startContainer)){
 								if(range.endOffset === ice.dom.getNodeCharacterLength(range.endContainer)){
 									var prev = range.startContainer.previousSibling;
-									if (ice.dom.is(prev,  '.' + this._getIceNodeClass('deleteType'))) {
+									if (ice.dom.is(prev,  this._deleteSelector)) {
 										while(prev){
-											if (ice.dom.is(prev,  '.' + this._getIceNodeClass('deleteType'))) {
+											if (ice.dom.is(prev,  this._deleteSelector)) {
 												prev = prev.prevSibling;
 												continue;
 											}
@@ -554,7 +615,7 @@
 				self = this;
 			options = options || {};
 			ice.dom.each(this.changeTypes, function (type, i) {
-				if (type != 'deleteType') {
+				if (type !== DELETE_TYPE) {
 					if (i > 0) {
 						classList += ',';
 					}
@@ -584,7 +645,7 @@
 				}
 				el.parentNode.removeChild(el);
 			});
-			var deletes = ice.dom.find(body, '.' + this._getIceNodeClass('deleteType'));
+			var deletes = ice.dom.find(body, this._deleteSelector);
 			ice.dom.remove(deletes);
 	
 			body = options.callback ? options.callback.call(this, body) : body;
@@ -621,8 +682,8 @@
 				return this._acceptRejectSome(options, false);
 			}
 			else {
-				var insSel = '.' + this._getIceNodeClass('insertType'),
-					delSel = '.' + this._getIceNodeClass('deleteType'),
+				var insSel = this._insertSelector,
+					delSel = this._deleteSelector,
 					content, self = this;
 		
 				ice.dom.find(this.element, insSel).each(function(i,e) {
@@ -670,8 +731,8 @@
 				self = this, changeId, content, userStyle,
 				userStyles = this._userStyles,
 				userId, userAttr = this.attributes.userId,
-				delClass = this._getIceNodeClass('deleteType'), 
-				insClass = this._getIceNodeClass('insertType');
+				delClass = this._getIceNodeClass(DELETE_TYPE), 
+				insClass = this._getIceNodeClass(INSERT_TYPE);
 		
 			if (!node) {
 				var range = this.getCurrentRange();
@@ -788,11 +849,11 @@
 		},
 		
 		_isInsertNode: function(node) {
-			return this._isNodeOfChangeType(node, "insertType");
+			return this._isNodeOfChangeType(node, INSERT_TYPE);
 		},
 		
 		_isDeleteNode: function(node) {
-			return this._isNodeOfChangeType(node, "deleteType");
+			return this._isNodeOfChangeType(node, DELETE_TYPE);
 		},
 		
 		_normalizeNode: function(node) {
@@ -824,7 +885,7 @@
 				visited.push(el);
 				voidEl = this._getVoidElement(elNode);
 				if (voidEl) {
-					if ((voidEl != el) && (visited.indexOf(voidEl) >= 0)) {
+					if ((voidEl !== el) && (visited.indexOf(voidEl) >= 0)) {
 						return; // loop
 					}
 					visited.push(voidEl);
@@ -885,7 +946,7 @@
 		_getVoidElement: function (node) {
 			
 			try {
-				var voidParent = this._getIceNode(node, "deleteType");
+				var voidParent = this._getIceNode(node, DELETE_TYPE);
 				if (! voidParent) {
 					if (3 == node.nodeType && node.nodeValue == '\u200B') {
 						return node;
@@ -976,7 +1037,7 @@
 				ind = Math.max(0, ind - 1);
 				parent.removeChild(start);
 			}
-			if (parent.childNodes.length != childCount) {
+			if (parent.childNodes.length !== childCount) {
 				var f = isHostRange ? this.hostMethods.makeHostElement : nativeElement;
 				range.setStart(f(parent), ind);
 				range.setEnd(f(parent), ind);
@@ -1018,7 +1079,7 @@
 		 * @private
 		 */
 		_isCurrentUserIceNode: function (node) {
-			var ret = node && (ice.dom.attr(node, this.attributes.userId) == this.currentUser.id);
+			var ret = Boolean(node && (ice.dom.attr(node, this.attributes.userId) === this.currentUser.id));
 			if (ret && this._sessionId) {
 				ret = ice.dom.attr(node, this.attributes.sessionId) === this._sessionId;
 			}
@@ -1229,7 +1290,7 @@
 				doc= this.env.document,
 				inserted = false;
 				
-			var ctNode = this._getIceNode(start, 'insertType'),
+			var ctNode = this._getIceNode(start, INSERT_TYPE),
 				inCurrentUserInsert = this._isCurrentUserIceNode(ctNode);
 	
 			this._cleanupSelection(range, Boolean(hostRange), true);
@@ -1275,11 +1336,11 @@
 			}
 			else {
 				// If we aren't in an insert node which belongs to the current user, then create a new ins node
-				var node = this._createIceNode('insertType');
+				var node = this._createIceNode(INSERT_TYPE);
 				if (ctNode) {
 					var nChildren = ctNode.childNodes.length;
 					this._normalizeNode(ctNode);
-					if (nChildren != ctNode.childNodes.length) { // normalization removed nodes, refresh range
+					if (nChildren !== ctNode.childNodes.length) { // normalization removed nodes, refresh range
 						if (hostRange) {
 							hostRange = range = this.hostMethods.getHostRange();
 						}
@@ -1290,7 +1351,7 @@
 					if (ctNode) {
 						var end = (hostRange && this.hostMethods.getHostNode(hostRange.endContainer)) || range.endContainer;
 						// if inserting before the end of a tracked node by another user
-						if ((end.nodeType == 3 && range.endOffset < range.endContainer.length) || (end != ctNode.lastChild)) {
+						if ((end.nodeType == 3 && range.endOffset < range.endContainer.length) || (end !== ctNode.lastChild)) {
 							ctNode = this._splitNode(ctNode, range.endContainer, range.endOffset);
 						}
 					}
@@ -1353,7 +1414,7 @@
 			// If `el` is or is in a void element, but not a delete
 			// then collapse the `range` and return `true`.
 			var voidEl = el && this._getVoidElement(el);
-			if (voidEl && !this._getIceNode(voidEl, 'deleteType')) {
+			if (voidEl && !this._getIceNode(voidEl, DELETE_TYPE)) {
 				range.collapse(true);
 				return true;
 			}
@@ -1653,7 +1714,7 @@
 				}
 		
 				// Firefox finds an ice node wrapped around an image instead of the image itself sometimes, so we make sure to look at the image instead.
-				if (ice.dom.is(prevContainer,	'.' + this._getIceNodeClass('insertType') + ', .' + this._getIceNodeClass('deleteType')) && prevContainer.childNodes.length > 0 && prevContainer.lastChild) {
+				if (ice.dom.is(prevContainer,	this._iceSelector) && prevContainer.childNodes.length > 0 && prevContainer.lastChild) {
 					prevContainer = prevContainer.lastChild;
 				}
 				
@@ -1779,7 +1840,7 @@
 			var parent = node && node.parentNode;
 			if (parent) {
 				parent.removeChild(node);
-				if (parent != this.element && ice.dom.hasNoTextOrStubContent(parent)) {
+				if (parent !== this.element && ice.dom.hasNoTextOrStubContent(parent)) {
 					this._removeNode(parent);
 				}
 			}
@@ -1796,7 +1857,7 @@
 		_addDeleteTracking: function (contentNode, options) {
 	
 			var moveLeft = options && options.moveLeft;
-			var contentAddNode = this._getIceNode(contentNode, 'insertType'),
+			var contentAddNode = this._getIceNode(contentNode, INSERT_TYPE),
 				ctNode;
 	
 			if (contentAddNode) {
@@ -1804,7 +1865,7 @@
 			}
 			
 			var range = options && options.range;
-			if (range && this._getIceNode(contentNode, 'deleteType')) {
+			if (range && this._getIceNode(contentNode, DELETE_TYPE)) {
 				return this._deleteInDeleted(contentNode, options);
 	
 			}
@@ -1815,8 +1876,8 @@
 			if (contentNode.nextSibling && ice.dom.isEmptyTextNode(contentNode.nextSibling)) {
 				contentNode.parentNode.removeChild(contentNode.nextSibling);
 			}
-			var prevDelNode = this._getIceNode(contentNode.previousSibling, 'deleteType'),
-				nextDelNode = this._getIceNode(contentNode.nextSibling, 'deleteType');
+			var prevDelNode = this._getIceNode(contentNode.previousSibling, DELETE_TYPE),
+				nextDelNode = this._getIceNode(contentNode.nextSibling, DELETE_TYPE);
 	
 			if (prevDelNode && this._isCurrentUserIceNode(prevDelNode)) {
 				ctNode = prevDelNode;
@@ -1833,7 +1894,7 @@
 			} 
 			else { // not in the neighborhood of a delete node
 				var changeId = this.getAdjacentChangeId(contentNode, moveLeft);
-				ctNode = this._createIceNode('deleteType', null, changeId);
+				ctNode = this._createIceNode(DELETE_TYPE, null, changeId);
 				contentNode.parentNode.insertBefore(ctNode, contentNode);
 				ctNode.appendChild(contentNode);
 			}
@@ -1899,7 +1960,7 @@
 			}
 			// remove all attrs and classes from the node'
 			stripNode(brNode);
-			var type = "deleteType";
+			var type = DELETE_TYPE;
 			
 			ice.dom.addClass(brNode, this._getIceNodeClass(type));
 			var changeId = this.getAdjacentChangeId(brNode, moveLeft);
@@ -1925,7 +1986,7 @@
 				// Move to the left until there is valid sibling.
 				var previousSibling = ice.dom.getPrevContentNode(contentNode, this.element);
 				while (!found) {
-					ctNode = this._getIceNode(previousSibling, 'deleteType');
+					ctNode = this._getIceNode(previousSibling, DELETE_TYPE);
 					if (!ctNode) {
 						found = true;
 					} 
@@ -1947,7 +2008,7 @@
 	
 				var nextSibling = ice.dom.getNextContentNode(contentNode, this.element);
 				while (!found) {
-					ctNode = this._getIceNode(nextSibling, 'deleteType');
+					ctNode = this._getIceNode(nextSibling, DELETE_TYPE);
 					if (!ctNode) {
 						found = true;
 					} 
@@ -2015,7 +2076,7 @@
 					nChildren = parent.childNodes.length,
 					ctNode;
 				parent.removeChild(contentNode);
-				ctNode = this._createIceNode('deleteType');
+				ctNode = this._createIceNode(DELETE_TYPE);
 				ctNode.appendChild(contentNode);
 				if (cInd > 0 && cInd >= (nChildren - 1)) {
 					ice.dom.insertAfter(contentAddNode, ctNode);
@@ -2064,13 +2125,13 @@
 			var siblingDel,
 				content;
 	
-			if (this._isCurrentUserIceNode(siblingDel = this._getIceNode(delNode.previousSibling, 'deleteType'))) {
+			if (this._isCurrentUserIceNode(siblingDel = this._getIceNode(delNode.previousSibling, DELETE_TYPE))) {
 				content = ice.dom.extractContent(delNode);
 				delNode.parentNode.removeChild(delNode);
 				ice.dom.append(siblingDel, content);
 				this._mergeDeleteNode(siblingDel);
 			}
-			else if (this._isCurrentUserIceNode(siblingDel = this._getIceNode(delNode.nextSibling, 'deleteType'))) {
+			else if (this._isCurrentUserIceNode(siblingDel = this._getIceNode(delNode.nextSibling, DELETE_TYPE))) {
 					content = ice.dom.extractContent(siblingDel);
 					delNode.parentNode.removeChild(siblingDel);
 					ice.dom.append(delNode, content);
@@ -2228,9 +2289,11 @@
 						this._handleEnter();
 						return false;
 					default:
+						if (isIgnoredKeyCode(key))  {
+							return false;
+						}
 						c = String.fromCharCode(key);
-						if (c !== null) {
-						// If we are in a deletion, move the range to the end/outside.
+						if (c) { // covers null and empty string
 							return this.insert(/*{text: c}*/);
 						}
 						return false;
@@ -2290,7 +2353,7 @@
 		 * null if not in a track changes hierarchy
 		 */
 		currentChangeNode: function (node, onlyNode, cleanup) {
-			var selector = '.' + this._getIceNodeClass('insertType') + ', .' + this._getIceNodeClass('deleteType'),
+			var selector = this._iceSelector,
 				range = null;
 			if (!node) {
 				range = this.getCurrentRange();
@@ -2374,7 +2437,7 @@
 		},
 		
 		getDeleteClass: function() {
-			return this._getIceNodeClass('deleteType');
+			return this._getIceNodeClass(DELETE_TYPE);
 		},
 		
 		/**
@@ -2605,24 +2668,6 @@
 			this._triggerChange();
 		},
 		
-		_updateUserData : function(user) {
-			if (user) {
-				for (var key in this._changes) {
-					var change = this._changes[key];
-					if (change.userid == user.id) {
-						change.username = user.name;
-					}
-				}
-			}
-			var nodes = this.getIceNodes();
-			nodes.each((function(i,node) {
-				var match = (! user) || (user.id == node.getAttribute(this.attributes.userId));
-				if (user && match) {
-					node.setAttribute(this.attributes.userName, user.name);
-				}
-			}).bind(this));
-		},
-		
 		_showTitles : function(bShow) {
 			var nodes = this.getIceNodes();
 			if (bShow) {
@@ -2673,7 +2718,7 @@
 					cid = iceNode && iceNode.getAttribute(self.attributes.changeId),
 					change = cid && self.getChange(cid);
 				if (change) {
-					var type = ice.dom.hasClass(iceNode, self._getIceNodeClass("insertType")) ? "insert" : "delete";
+					var type = ice.dom.hasClass(iceNode, self._getIceNodeClass(INSERT_TYPE)) ? "insert" : "delete";
 					$node.removeData("_tooltip_t");
 					self.hostMethods.showTooltip(node, {
 						userName: change.username,
@@ -2708,8 +2753,8 @@
 		 * @private
 		 */
 		_removeTrackingInRangeOld: function (range) {
-			var insClass = this._getIceNodeClass('insertType'), 
-				delClass = this._getIceNodeClass('deleteType'),
+			var insClass = this._getIceNodeClass(INSERT_TYPE), 
+				delClass = this._getIceNodeClass(DELETE_TYPE),
 				clsSelector = '.' + insClass+",."+delClass,
 				clsAttr = "data-ice-class",
 				filter = function(node) {
@@ -2757,8 +2802,8 @@
 		 * @private
 		 */
 		_removeTrackingInRange: function (range) {
-			var insClass = this._getIceNodeClass('insertType'), 
-				delClass = this._getIceNodeClass('deleteType'),
+			var insClass = this._getIceNodeClass(INSERT_TYPE), 
+				delClass = this._getIceNodeClass(DELETE_TYPE),
 				clsSelector = '.' + insClass+",."+delClass,
 				saveMap = this._savedNodesMap,
 				clsAttr = "data-ice-class",
@@ -2822,7 +2867,7 @@
 				nextChange,
 				changeId = null;
 			
-			nextChange = this._getIceNode(next, "insertType") || this._getIceNode(next, "deleteType");
+			nextChange = this._getIceNode(next, INSERT_TYPE) || this._getIceNode(next, DELETE_TYPE);
 			if (! nextChange) {
 				if (this._isInsertNode(next) || this._isDeleteNode(next)) {
 					nextChange = next;
@@ -2927,11 +2972,11 @@
 		var current;
 		// fix end
 		try {
-			while ((current = range.endContainer) && (current != top) && (range.endOffset == 0) && ! range.collapsed) {
+			while ((current = range.endContainer) && (current !== top) && (range.endOffset == 0) && ! range.collapsed) {
 				if (current.previousSibling) {
 					range.setEndBefore(current);
 				}
-				else if (current.parentNode && current.parentNode != top) {
+				else if (current.parentNode && current.parentNode !== top) {
 					range.setEndBefore(current.parentNode);
 				}
 				if (range.endContainer == current) {
@@ -2945,7 +2990,7 @@
 
 		
 		try {
-			while ((current = range.startContainer) && (current != top) && ! range.collapsed) {
+			while ((current = range.startContainer) && (current !== top) && ! range.collapsed) {
 				current = range.startContainer;
 
 				if (current.nodeType == ice.dom.TEXT_NODE) {
@@ -3031,7 +3076,7 @@
 			parts.push("<" + str + " />");
 		}
 		function printNode(node, offset1, offset2) {
-			if ("number" != typeof offset2) {
+			if ("number" !== typeof offset2) {
 				offset2 = -1;
 			}
 			if (3 == node.nodeType) { // text
