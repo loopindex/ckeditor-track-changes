@@ -488,25 +488,25 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 					_pluginMap.splice(ind, 1);
 				}
 			}).bind(this));
-			
-			if (this._scriptsLoaded) {
+
+			if (this._scriptsLoaded || liteConfig.disableScriptLoading) {
 				plugin._onScriptsLoaded();
 				return;
 			}
 			else if (this._scriptsLoaded === false) { // still loading, initial value was null
 				return;
 			}
-			
+
 			this._scriptsLoaded = false;
 			var	jQueryLoaded = (typeof(jQuery) == "function"),
 				self = this,
 				jQueryPath = liteConfig.jQueryPath || "js/jquery.min.js",
 				scripts = (liteConfig.includeType ? liteConfig["includes_" + liteConfig.includeType] : liteConfig.includes) || ["lite-includes.js"];
-			
+
 			scripts = scripts.slice(); // create a copy not referenced by the config
-			
+
 			for (var i = 0, len = scripts.length; i < len; ++i) {
-				scripts[i] = path + scripts[i]; 
+				scripts[i] = path + scripts[i];
 			}
 			if (! jQueryLoaded) {
 				scripts.splice(0, 0, this.path + jQueryPath);
@@ -514,7 +514,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			if (ttConfig.path) {
 				scripts.push(this.path + ttConfig.path);
 			}
-			
+
 			var load1 = function() {
 				if (scripts.length < 1) {
 					self._scriptsLoaded = true;
@@ -530,8 +530,8 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 					CKEDITOR.scriptLoader.load(script, function() {load1();}, self);
 				}
 			};
-			
-			load1(scripts);		
+
+			load1(scripts);
 		},
 		
 		/**
