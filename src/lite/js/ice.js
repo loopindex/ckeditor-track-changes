@@ -457,7 +457,7 @@
 								} else {
 									range.setEnd(range.startContainer.parentNode, 0);
 								}
-								range.moveEnd(ice.dom.CHARACTER_UNIT, ice.dom.getNodeCharacterLength(range.endContainer));
+								range.moveEndIce(ice.dom.CHARACTER_UNIT, ice.dom.getNodeCharacterLength(range.endContainer));
 								range.collapse(false);
 							}
 						}
@@ -1502,8 +1502,8 @@
 			// text1 |<img> text2 -> text1 <img>| text2
 
 			try {
-				range.moveEnd(ice.dom.CHARACTER_UNIT, 1);
-				range.moveEnd(ice.dom.CHARACTER_UNIT, -1);
+				range.moveEndIce(ice.dom.CHARACTER_UNIT, 1);
+				range.moveEndIce(ice.dom.CHARACTER_UNIT, -1);
 			}
 			catch (ignore){}
 	
@@ -1630,7 +1630,7 @@
 					else {
 						var lastItem = commonAncestor.lastElementChild;
 						if (lastItem) {
-							lastSelectable = range.getLastSelectableChild(lastItem);
+							lastSelectable = range.getLastSelectableChildIce(lastItem);
 							if (lastSelectable) {
 								range.setStart(lastSelectable, lastSelectable.data.length);
 								range.collapse();
@@ -1707,8 +1707,8 @@
 						return true;
 					}
 					// Find the last selectable part of the prevContainer. If it exists, put the caret there.
-					lastSelectable = range.getLastSelectableChild(prevContainer);
-		
+					lastSelectable = range.getLastSelectableChildIce(prevContainer);
+
 					if (lastSelectable && !ice.dom.isOnBlockBoundary(range.startContainer, lastSelectable, this.element)) {
 						range.selectNodeContents(lastSelectable);
 						range.collapse();
@@ -1728,8 +1728,8 @@
 			// to potentially delete into or before a stub element.	E.G.: <em>text</em>| test	->	<em>text|</em> test or
 			// text1 <img>| text2 -> text1 |<img> text2
 			try {
-				range.moveStart(ice.dom.CHARACTER_UNIT, -1);
-				range.moveStart(ice.dom.CHARACTER_UNIT, 1);
+				range.moveStartIce(ice.dom.CHARACTER_UNIT, -1);
+				range.moveStartIce(ice.dom.CHARACTER_UNIT, 1);
 			}
 			catch(ignore){}
 	
@@ -1751,7 +1751,7 @@
 				}
 		
 				// Place the caret at the end of the previous block.
-				lastSelectable = range.getLastSelectableChild(prevBlock);
+				lastSelectable = range.getLastSelectableChildIce(prevBlock);
 				if (lastSelectable) {
 					range.setStart(lastSelectable, lastSelectable.data.length);
 					range.collapse(true);
@@ -1934,7 +1934,7 @@
 					}
 				}
 				if (previousSibling) {
-					var lastSelectable = range.getLastSelectableChild(previousSibling);
+					var lastSelectable = range.getLastSelectableChildIce(previousSibling);
 					if (lastSelectable) {
 						previousSibling = lastSelectable;
 					}
@@ -2136,7 +2136,7 @@
 							if(range.startContainer.parentNode.previousSibling){
 								// When moving left and moving into a hidden element, skip it and go to the previousSibling
 								range.setEnd(range.startContainer.parentNode.previousSibling, 0);
-								range.moveEnd(ice.dom.CHARACTER_UNIT, ice.dom.getNodeCharacterLength(range.endContainer));
+								range.moveEndIce(ice.dom.CHARACTER_UNIT, ice.dom.getNodeCharacterLength(range.endContainer));
 								range.collapse(false);
 							}
 							// if Previous sibling doesn't exist, get out of the hidden zone by moving to the right

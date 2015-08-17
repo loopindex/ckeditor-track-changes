@@ -89,9 +89,9 @@
 			switch (unitType) {
 				case ice.dom.CHARACTER_UNIT:
 					if (units > 0) {
-						range.moveCharRight(isStart, units);
+						range.moveCharRightIce(isStart, units);
 					} else {
-						range.moveCharLeft(isStart, units * -1);
+						range.moveCharLeftIce(isStart, units * -1);
 					}
 					break;
 	
@@ -110,15 +110,15 @@
 		 * Moves the start of the range using the specified `unitType`, by the specified
 		 * number of `units`. Defaults to `CHARACTER_UNIT` and units of 1.
 		 */
-		rangy.rangePrototype.moveStart = function (unitType, units) {
-			move(this, unitType, units, true);
-		};
+        rangy.rangePrototype.moveStartIce = function (unitType, units) {
+            move(this, unitType, units, true);
+        };
 
 		/**
 		 * Moves the end of the range using the specified `unitType`, by the specified
 		 * number of `units`.
 		 */
-		rangy.rangePrototype.moveEnd = function (unitType, units) {
+		rangy.rangePrototype.moveEndIce = function (unitType, units) {
 			move(this, unitType, units, false);
 		};
 
@@ -126,7 +126,7 @@
 		 * Depending on the given `start` boolean, sets the start or end containers
 		 * to the given `container` with `offset` units.
 		 */
-		rangy.rangePrototype.setRange = function (start, container, offset) {
+		rangy.rangePrototype.setRangeIce = function (start, container, offset) {
 			if (start) {
 				this.setStart(container, offset);
 			} 
@@ -177,7 +177,7 @@
 		 * 
 		 * <p><TEXT>some </TEXT><SPAN>test</SPAN><TEXT> text</TEXT></p>
 		 */
-		rangy.rangePrototype.moveCharLeft = function (moveStart, units) {
+		rangy.rangePrototype.moveCharLeftIce = function (moveStart, units) {
 			var container, offset;
 	
 			if (moveStart) {
@@ -198,7 +198,7 @@
 						container = nextContainer;
 					}
 					else {
-						container = this.getPreviousTextNode(lastChild); 
+						container = this.getPreviousTextNodeIce(lastChild);
 					}
 					if (! container) {
 						return;
@@ -216,8 +216,8 @@
 			if (offset < 0) {
 				// We need to move to a previous selectable container.
 				while (offset < 0) {
-					container = this.getPreviousTextNode(container);
-		
+					container = this.getPreviousTextNodeIce(container);
+
 					// We are at the beginning/out of the editable - break.
 					if (!container) {
 						return;
@@ -230,8 +230,8 @@
 					offset += container.data.length;
 				}
 			}
-	
-			this.setRange(moveStart, container, offset);
+
+			this.setRangeIce(moveStart, container, offset);
 		};
 
 		/**
@@ -276,7 +276,7 @@
 		 * <p><TEXT>some </TEXT><SPAN>test</SPAN><TEXT> text</TEXT></p>
 		 * Fixed by dfl to handle cases when there's no next container
 		 */
-		rangy.rangePrototype.moveCharRight = function (moveStart, units) {
+		rangy.rangePrototype.moveCharRightIce = function (moveStart, units) {
 			var container, offset;
 	
 			if (moveStart) {
@@ -289,12 +289,12 @@
 			}
 	
 			if (container.nodeType === ice.dom.ELEMENT_NODE) {
-				var next = this.getNextTextNode(container.childNodes[Math.min(offset, container.childNodes.length -1)]);
+				var next = this.getNextTextNodeIce(container.childNodes[Math.min(offset, container.childNodes.length -1)]);
 				if (next) {
 					container = next;
 				}
 				else {
-					container = this.getNextTextNode(container);
+					container = this.getNextTextNodeIce(container);
 				}
 	
 				offset = units;
@@ -310,7 +310,7 @@
 			if (diff > 0) {
 				// We need to move to the next selectable container.
 				while (diff > 0) {
-					container = this.getNextContainer(container);
+					container = this.getNextContainerIce(container);
 					if (! container) {
 						return;
 					}
@@ -332,7 +332,7 @@
 	
 				offset = diff;
 			}
-			this.setRange(moveStart, container, offset);
+			this.setRangeIce(moveStart, container, offset);
 		};
 
 		/**
@@ -340,7 +340,7 @@
 		 * For example, if the next container is an element that contains text nodes,
 		 * the the container's firstChild is returned.
 		 */
-		rangy.rangePrototype.getNextContainer = function (container, skippedBlockEl) {
+		rangy.rangePrototype.getNextContainerIce = function (container, skippedBlockEl) {
 			if (!container) {
 				return null;
 			}
@@ -349,7 +349,7 @@
 			while (container.nextSibling) {
 				container = container.nextSibling;
 				if (container.nodeType !== ice.dom.TEXT_NODE) {
-					var child = this.getFirstSelectableChild(container);
+					var child = this.getFirstSelectableChildIce(container);
 					if (child !== null) {
 						return child;
 					}
@@ -375,13 +375,13 @@
 			else if (ice.dom.isBlockElement(container) === true) {
 				skippedBlockEl.push(container);
 			}
-	
-			var selChild = this.getFirstSelectableChild(container);
+
+			var selChild = this.getFirstSelectableChildIce(container);
 			if (selChild !== null) {
 				return selChild;
 			}
-	
-			return this.getNextContainer(container, skippedBlockEl);
+
+			return this.getNextContainerIce(container, skippedBlockEl);
 		};
 
 		/**
@@ -389,7 +389,7 @@
 		 * For example, if the previous container is an element that contains text nodes,
 		 * then the container's lastChild is returned.
 		 */
-		rangy.rangePrototype.getPreviousContainer = function (container, skippedBlockEl) {
+		rangy.rangePrototype.getPreviousContainerIce = function (container, skippedBlockEl) {
 			if (!container) {
 				return null;
 			}
@@ -434,43 +434,43 @@
 			if (selChild !== null) {
 				return selChild;
 			}
-			return this.getPreviousContainer(container, skippedBlockEl);
+			return this.getPreviousContainerIce(container, skippedBlockEl);
 		};
-	
-		rangy.rangePrototype.getNextTextNode = function (container) {
+
+		rangy.rangePrototype.getNextTextNodeIce = function (container) {
 			if (container.nodeType === ice.dom.ELEMENT_NODE) {
 				if (container.firstChild) {
-					var ret = this.getFirstSelectableChild(container);
+					var ret = this.getFirstSelectableChildIce(container);
 					if (ret) {
 						return ret;
 					}
 				}
 			}
-	
-			container = this.getNextContainer(container);
+
+			container = this.getNextContainerIce(container);
 			if (! container) {
 				return null;
 			}
 			if (container.nodeType === ice.dom.TEXT_NODE) {
 				return container;
 			}
-	
-			return this.getNextTextNode(container);
+
+			return this.getNextTextNodeIce(container);
 		};
-	
-		rangy.rangePrototype.getPreviousTextNode = function (container, skippedBlockEl) {
-			container = this.getPreviousContainer(container, skippedBlockEl);
+
+		rangy.rangePrototype.getPreviousTextNodeIce = function (container, skippedBlockEl) {
+			container = this.getPreviousContainerIce(container, skippedBlockEl);
 			if (! container) {
 				return null;
 			}
 			if (container.nodeType === ice.dom.TEXT_NODE) {
 				return container;
 			}
-	
-			return this.getPreviousTextNode(container, skippedBlockEl);
+
+			return this.getPreviousTextNodeIce(container, skippedBlockEl);
 		};
-	
-		rangy.rangePrototype.getFirstSelectableChild = function (element) {
+
+		rangy.rangePrototype.getFirstSelectableChildIce = function (element) {
 			if (!element) {
 				return null;
 			}
@@ -484,7 +484,7 @@
 				} 
 				else if (child.firstChild) {
 				// This node does have child nodes.
-					var res = this.getFirstSelectableChild(child);
+					var res = this.getFirstSelectableChildIce(child);
 					if (res !== null) {
 						return res;
 					} else {
@@ -498,7 +498,7 @@
 			return null;
 		};
 
-		rangy.rangePrototype.getLastSelectableChild = function (element) {
+		rangy.rangePrototype.getLastSelectableChildIce = function (element) {
 			if (! element) {
 				return null;
 			}
