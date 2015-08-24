@@ -692,14 +692,14 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 					command : LITE.Commands.ACCEPT_ONE,
 					group : 'lite',
 					order : 1,
-					icon : path + 'icons/accept_one.png'
+					icon : path + 'icons/lite-acceptone.png'
 				};
 				params[LITE.Commands.REJECT_ONE] = {
 					label : LITE_LABELS.REJECT_ONE,
 					command : LITE.Commands.REJECT_ONE,
 					group : 'lite',
 					order : 2,
-					icon : path + 'icons/reject_one.png'
+					icon : path + 'icons/lite-rejectone.png'
 				};
 
 				ed.addMenuItems(params);
