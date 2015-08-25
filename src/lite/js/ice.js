@@ -809,7 +809,7 @@
 		 */
 		isInsideChange: function (node, onlyNode, cleanupDOM) {
 			try {
-				return !! this.currentChangeNode(node, onlyNode, cleanupDOM); // refactored by dfl
+				return Boolean(this.currentChangeNode(node, onlyNode, cleanupDOM));
 			}
 			catch (e) {
 				logError(e, "While testing if isInsideChange");

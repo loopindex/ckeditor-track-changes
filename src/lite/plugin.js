@@ -1310,11 +1310,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 					}
 					this._removeBindings.push(editable.on("keyup", this._onSelectionChanged.bind(this, null, false)));
 					this._removeBindings.push(editable.on("click", handler));
-					this._removeBindings.push(this._editor.on("selectionChange", handler));
-					this._removeBindings.push(this._editor.on("copy", function(evt) {
-						debugger
-					}));
-					
+					this._removeBindings.push(this._editor.on("selectionChange", handler));					
 				}
 			}
 		},
@@ -1341,7 +1337,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 				data = {
 					dataValue: data,
 					type: "text"
-				}
+				};
 			}
 			if (node) {
 				ignore = node.getAttribute("data-track-changes-ignore");

@@ -140,6 +140,25 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		delay: 500
 	},
 	
+	LITEConstants = {
+		deleteTag: 'del',
+		insertTag: 'ins',
+		deleteClass: 'ice-del',
+		insertClass: 'ice-ins',
+		attributes: {
+			changeId: &quot;data-cid&quot;,
+			userId: &quot;data-userid&quot;,
+			userName: &quot;data-username&quot;,
+			sessionId: &quot;data-session-id&quot;,
+			changeData: &quot;data-changedata&quot;,
+			time: &quot;data-time&quot;,
+			lastTime: &quot;data-last-change-time&quot;
+		},
+		stylePrefix: 'ice-cts',
+		preserveOnPaste: 'p',
+		css: 'css/lite.css'
+	},
+	
 	defaultTooltipTemplate = &quot;%a by %u %t&quot;,
 	
 	_emptyRegex = /^[\s\r\n]*$/, // for getting the clean text
@@ -166,7 +185,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 				child = children[i];
 				cleanNode(child);
 				name = child.nodeName.toLowerCase();
-				if (name === 'ins' || name === 'del') {
+				if (name === LITEConstants.insertTag || name === LITEConstants.deleteTag) {
 					while (child.firstChild) {
 						node.insertBefore(child.firstChild, child);
 					}
@@ -447,25 +466,6 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		icons: &quot;lite-acceptall,lite-acceptone,lite-rejectall,lite-rejectone,lite-toggleshow,lite-toggletracking&quot;,// %REMOVE_LINE_CORE%
 		hidpi: true,
 
-		props : {
-			deleteTag: 'del',
-			insertTag: 'ins',
-			deleteClass: 'ice-del',
-			insertClass: 'ice-ins',
-			attributes: {
-					changeId: &quot;data-cid&quot;,
-					userId: &quot;data-userid&quot;,
-					userName: &quot;data-username&quot;,
-					sessionId: &quot;data-session-id&quot;,
-					changeData: &quot;data-changedata&quot;,
-					time: &quot;data-time&quot;,
-					lastTime: &quot;data-last-change-time&quot;
-			},
-			stylePrefix: 'ice-cts',
-			preserveOnPaste: 'p',
-			css: 'css/lite.css'
-		},
-		
 		_scriptsLoaded : null, // not false, which means we're loading
 		
 <span id='LITE-lite-method-init'>		/**
@@ -481,11 +481,11 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			}
 
 			var path = this.path,
-				plugin = new LITEPlugin(this.props, path),
+				plugin = new LITEPlugin(path),
 				liteConfig = CKEDITOR.tools.extend({}, ed.config.lite || {}),
 				ttConfig = liteConfig.tooltips;
 			
-			if (undefined == ttConfig) {
+			if (undefined === ttConfig) {
 				ttConfig = true;
 			}
 				
@@ -580,8 +580,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 </span>	 * @class LITE.LITEPlugin
 	 * The LITEPlugin is created per instance of a CKEditor. This object handles all the events and commands associated with change tracking in a specific editor.
 	 */
-	var LITEPlugin = function(props, path) {
-		this.props = CKEDITOR.tools.clone(props);
+	var LITEPlugin = function(path) {
 		this.path = path;
 	};
 
@@ -602,7 +601,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			this._removeBindings = [];
 
 			ed.ui.addToolbarGroup('lite');
-			this._setPluginFeatures(ed, this.props);
+			this._setPluginFeatures(ed, LITEConstants);
 			this._changeTimeout = null;
 			this._notifyChange = this._notifyChange.bind(this);
 			this._notifyTextChange = this._notifyTextChange.bind(this);
@@ -876,7 +875,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 				return true;
 			}
 			try {
-				if (e.hasClass(this.props.insertClass) || e.hasClass(this.props.deleteClass)) {
+				if (e.hasClass(LITEConstants.insertClass) || e.hasClass(LITEConstants.deleteClass)) {
 					return false;
 				}
 			}
@@ -1005,23 +1004,30 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			this._onReady();
 		},
 		
-		_loadCSS : function(doc, cssPath) {
-			var head = doc.getElementsByTagName(&quot;head&quot;)[0];
+		_loadCSS : function(doc, options) {
+			var head = doc.getElementsByTagName(&quot;head&quot;)[0],
+				cssPath = options.cssPath,
+				pathPrefix = this.path;
 			function load(path, id) {
+				if (! path) {
+					return;
+				}
 				var style = jQuery(head).find('#' + id);
 				if (! style.length) {
 					style = doc.createElement(&quot;link&quot;);
 					style.setAttribute(&quot;rel&quot;, &quot;stylesheet&quot;);
 					style.setAttribute(&quot;type&quot;, &quot;text/css&quot;);
 					style.setAttribute(&quot;id&quot;, id);
-					style.setAttribute(&quot;href&quot;, path);
+					style.setAttribute(&quot;href&quot;, pathPrefix + path);
 					head.appendChild(style);
 				}
 			}
-			load(this.path + cssPath, &quot;__lite__css__&quot;);
+			if (cssPath !== false) {
+				load(cssPath || options.defaultCssPath, &quot;__lite__css__&quot;);
+			}
 			
 			if (this._config.tooltips.cssPath) {
-				load(this.path + this._config.tooltips.cssPath, &quot;__lite_tt_css__&quot;);
+				load(this._config.tooltips.cssPath, &quot;__lite_tt_css__&quot;);
 			}
 		},
 		
@@ -1049,7 +1055,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 				config = this._config,
 				debug = (config &amp;&amp; config.debug) || {};
 			
-			this._loadCSS(doc, (config &amp;&amp; config.cssPath) || &quot;css/lite.css&quot;);
+			this._loadCSS(doc, { cssPath: config.cssPath, defaultCssPath: &quot;css/lite.css&quot; });
 			
 			if (! this._eventsBounds) {
 				this._eventsBounds = true;
@@ -1088,8 +1094,8 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 				},
 				userStyles: config.userStyles,
 				changeTypes: {
-					insertType: {tag: this.props.insertTag, alias: this.props.insertClass, action:&quot;Inserted&quot;},
-					deleteType: {tag: this.props.deleteTag, alias: this.props.deleteClass, action:&quot;Deleted&quot;}
+					insertType: {tag: LITEConstants.insertTag, alias: LITEConstants.insertClass, action:&quot;Inserted&quot;},
+					deleteType: {tag: LITEConstants.deleteTag, alias: LITEConstants.deleteClass, action:&quot;Deleted&quot;}
 				},
 				hostMethods: {
 					getHostRange : this._getHostRange.bind(this),
@@ -1130,7 +1136,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 					}
 				}
 			}
-			jQuery.extend(iceprops, this.props);
+			jQuery.extend(iceprops, LITEConstants);
 			this._tracker = new ice.InlineChangeEditor(iceprops);
 			try {
 				this._tracker.startTracking();
@@ -1321,7 +1327,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 					}
 					this._removeBindings.push(editable.on(&quot;keyup&quot;, this._onSelectionChanged.bind(this, null, false)));
 					this._removeBindings.push(editable.on(&quot;click&quot;, handler));
-					this._removeBindings.push(this._editor.on(&quot;selectionChange&quot;, handler));
+					this._removeBindings.push(this._editor.on(&quot;selectionChange&quot;, handler));					
 				}
 			}
 		},
@@ -1348,7 +1354,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 				data = {
 					dataValue: data,
 					type: &quot;text&quot;
-				}
+				};
 			}
 			if (node) {
 				ignore = node.getAttribute(&quot;data-track-changes-ignore&quot;);
@@ -1490,8 +1496,8 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		_processContent: function() {
 			var body = this._getBody(),
 				$ = window.jQuery,
-				insTag = this.props.insertTag,
-				delTag = this.props.deleteTag,
+				insTag = LITEConstants.insertTag,
+				delTag = LITEConstants.deleteTag,
 				nodes, doc;
 			if (! body) {
 				return;
@@ -1510,13 +1516,13 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			}
 			
 			if (insTag !== &quot;span&quot;) {
-				nodes = $(body).find(&quot;span.&quot; + this.props.insertClass);
+				nodes = $(body).find(&quot;span.&quot; + LITEConstants.insertClass);
 				nodes.each(function(i, node) {
 					replaceNode(node, insTag);
 				});
 			}
 			if (delTag !== &quot;span&quot;) {
-				nodes = $(body).find(&quot;span.&quot; + this.props.deleteClass);
+				nodes = $(body).find(&quot;span.&quot; + LITEConstants.deleteClass);
 				nodes.each(function(i, node) {
 					replaceNode(node, delTag);
 				});
