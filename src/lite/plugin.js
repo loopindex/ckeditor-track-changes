@@ -123,6 +123,25 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		delay: 500
 	},
 	
+	LITEConstants = {
+		deleteTag: 'del',
+		insertTag: 'ins',
+		deleteClass: 'ice-del',
+		insertClass: 'ice-ins',
+		attributes: {
+			changeId: "data-cid",
+			userId: "data-userid",
+			userName: "data-username",
+			sessionId: "data-session-id",
+			changeData: "data-changedata",
+			time: "data-time",
+			lastTime: "data-last-change-time"
+		},
+		stylePrefix: 'ice-cts',
+		preserveOnPaste: 'p',
+		css: 'css/lite.css'
+	},
+	
 	defaultTooltipTemplate = "%a by %u %t",
 	
 	_emptyRegex = /^[\s\r\n]*$/, // for getting the clean text
@@ -149,7 +168,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 				child = children[i];
 				cleanNode(child);
 				name = child.nodeName.toLowerCase();
-				if (name === 'ins' || name === 'del') {
+				if (name === LITEConstants.insertTag || name === LITEConstants.deleteTag) {
 					while (child.firstChild) {
 						node.insertBefore(child.firstChild, child);
 					}
@@ -430,25 +449,6 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		icons: "lite-acceptall,lite-acceptone,lite-rejectall,lite-rejectone,lite-toggleshow,lite-toggletracking",// %REMOVE_LINE_CORE%
 		hidpi: true,
 
-		props : {
-			deleteTag: 'del',
-			insertTag: 'ins',
-			deleteClass: 'ice-del',
-			insertClass: 'ice-ins',
-			attributes: {
-					changeId: "data-cid",
-					userId: "data-userid",
-					userName: "data-username",
-					sessionId: "data-session-id",
-					changeData: "data-changedata",
-					time: "data-time",
-					lastTime: "data-last-change-time"
-			},
-			stylePrefix: 'ice-cts',
-			preserveOnPaste: 'p',
-			css: 'css/lite.css'
-		},
-		
 		_scriptsLoaded : null, // not false, which means we're loading
 		
 		/**
@@ -464,11 +464,11 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			}
 
 			var path = this.path,
-				plugin = new LITEPlugin(this.props, path),
+				plugin = new LITEPlugin(path),
 				liteConfig = CKEDITOR.tools.extend({}, ed.config.lite || {}),
 				ttConfig = liteConfig.tooltips;
 			
-			if (undefined == ttConfig) {
+			if (undefined === ttConfig) {
 				ttConfig = true;
 			}
 				
@@ -563,8 +563,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 	 * @class LITE.LITEPlugin
 	 * The LITEPlugin is created per instance of a CKEditor. This object handles all the events and commands associated with change tracking in a specific editor.
 	 */
-	var LITEPlugin = function(props, path) {
-		this.props = CKEDITOR.tools.clone(props);
+	var LITEPlugin = function(path) {
 		this.path = path;
 	};
 
@@ -585,7 +584,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			this._removeBindings = [];
 
 			ed.ui.addToolbarGroup('lite');
-			this._setPluginFeatures(ed, this.props);
+			this._setPluginFeatures(ed, LITEConstants);
 			this._changeTimeout = null;
 			this._notifyChange = this._notifyChange.bind(this);
 			this._notifyTextChange = this._notifyTextChange.bind(this);
@@ -859,7 +858,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 				return true;
 			}
 			try {
-				if (e.hasClass(this.props.insertClass) || e.hasClass(this.props.deleteClass)) {
+				if (e.hasClass(LITEConstants.insertClass) || e.hasClass(LITEConstants.deleteClass)) {
 					return false;
 				}
 			}
@@ -988,23 +987,30 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			this._onReady();
 		},
 		
-		_loadCSS : function(doc, cssPath) {
-			var head = doc.getElementsByTagName("head")[0];
+		_loadCSS : function(doc, options) {
+			var head = doc.getElementsByTagName("head")[0],
+				cssPath = options.cssPath,
+				pathPrefix = this.path;
 			function load(path, id) {
+				if (! path) {
+					return;
+				}
 				var style = jQuery(head).find('#' + id);
 				if (! style.length) {
 					style = doc.createElement("link");
 					style.setAttribute("rel", "stylesheet");
 					style.setAttribute("type", "text/css");
 					style.setAttribute("id", id);
-					style.setAttribute("href", path);
+					style.setAttribute("href", pathPrefix + path);
 					head.appendChild(style);
 				}
 			}
-			load(this.path + cssPath, "__lite__css__");
+			if (cssPath !== false) {
+				load(cssPath || options.defaultCssPath, "__lite__css__");
+			}
 			
 			if (this._config.tooltips.cssPath) {
-				load(this.path + this._config.tooltips.cssPath, "__lite_tt_css__");
+				load(this._config.tooltips.cssPath, "__lite_tt_css__");
 			}
 		},
 		
@@ -1032,7 +1038,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 				config = this._config,
 				debug = (config && config.debug) || {};
 			
-			this._loadCSS(doc, (config && config.cssPath) || "css/lite.css");
+			this._loadCSS(doc, { cssPath: config.cssPath, defaultCssPath: "css/lite.css" });
 			
 			if (! this._eventsBounds) {
 				this._eventsBounds = true;
@@ -1071,8 +1077,8 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 				},
 				userStyles: config.userStyles,
 				changeTypes: {
-					insertType: {tag: this.props.insertTag, alias: this.props.insertClass, action:"Inserted"},
-					deleteType: {tag: this.props.deleteTag, alias: this.props.deleteClass, action:"Deleted"}
+					insertType: {tag: LITEConstants.insertTag, alias: LITEConstants.insertClass, action:"Inserted"},
+					deleteType: {tag: LITEConstants.deleteTag, alias: LITEConstants.deleteClass, action:"Deleted"}
 				},
 				hostMethods: {
 					getHostRange : this._getHostRange.bind(this),
@@ -1113,7 +1119,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 					}
 				}
 			}
-			jQuery.extend(iceprops, this.props);
+			jQuery.extend(iceprops, LITEConstants);
 			this._tracker = new ice.InlineChangeEditor(iceprops);
 			try {
 				this._tracker.startTracking();
@@ -1305,6 +1311,10 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 					this._removeBindings.push(editable.on("keyup", this._onSelectionChanged.bind(this, null, false)));
 					this._removeBindings.push(editable.on("click", handler));
 					this._removeBindings.push(this._editor.on("selectionChange", handler));
+					this._removeBindings.push(this._editor.on("copy", function(evt) {
+						debugger
+					}));
+					
 				}
 			}
 		},
@@ -1473,8 +1483,8 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		_processContent: function() {
 			var body = this._getBody(),
 				$ = window.jQuery,
-				insTag = this.props.insertTag,
-				delTag = this.props.deleteTag,
+				insTag = LITEConstants.insertTag,
+				delTag = LITEConstants.deleteTag,
 				nodes, doc;
 			if (! body) {
 				return;
@@ -1493,13 +1503,13 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			}
 			
 			if (insTag !== "span") {
-				nodes = $(body).find("span." + this.props.insertClass);
+				nodes = $(body).find("span." + LITEConstants.insertClass);
 				nodes.each(function(i, node) {
 					replaceNode(node, insTag);
 				});
 			}
 			if (delTag !== "span") {
-				nodes = $(body).find("span." + this.props.deleteClass);
+				nodes = $(body).find("span." + LITEConstants.deleteClass);
 				nodes.each(function(i, node) {
 					replaceNode(node, delTag);
 				});
