@@ -341,7 +341,30 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		return false;
 	}
 	
+<span id='LITE-AcceptRejectOptions'>	/**
+</span>	 * @class LITE.AcceptRejectOptions
+	 * A map of options for filtering changes before they're accepted/rejected.
+	 */
 	
+<span id='LITE-AcceptRejectOptions-property-include'>	/**
+</span>	 * @member LITE.AcceptRejectOptions
+	 * @property {Array} include
+	 * An array of user ids to include. Only changes made by users in the include list will be accepted/rejected
+	 */
+	
+<span id='LITE-AcceptRejectOptions-property-exclude'>	/**
+</span>	 * @member LITE.AcceptRejectOptions
+	 * @property {Array} exclude
+	 * An array of user ids to exclude. Changes made by users in the exclude list will be not accepted/rejected
+	 */
+	
+<span id='LITE-AcceptRejectOptions-property-filter'>	/**
+</span>	 * @member LITE.AcceptRejectOptions
+	 * @property {Function} filter
+	 * a filter function of the form function({userid, time, data}):boolean . Only changes for which the function
+	 * returns true are accepted/rejected
+	 */
+
 <span id='LITE-configuration'>	/**
 </span>	 * @class LITE.configuration
 	 * The configuration object for the {@link LITE.lite} and the {@link LITE.LITEPlugin} objects
@@ -816,6 +839,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		
 <span id='LITE-LITEPlugin-method-acceptAll'>		/**
 </span>		 * Accept all tracked changes
+		 * @param {LITE.AcceptRejectOptions} options for matching changes to accept
 		 */
 		acceptAll: function(options) {
 			this._tracker.acceptAll(options);
@@ -825,6 +849,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		
 <span id='LITE-LITEPlugin-method-rejectAll'>		/**
 </span>		 * Reject all tracked changes
+		 * @param {LITE.AcceptRejectOptions} options for matching changes to accept
 		 */
 		rejectAll: function(options) {
 			this._tracker.rejectAll(options);
@@ -855,7 +880,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		 * exclude has precdence).
 		 */
 		countChanges : function(options) {
-			return ((this._tracker &amp;&amp; this._tracker.countChanges(options)) || 0);		
+			return (this._tracker &amp;&amp; this._tracker.countChanges(options)) || 0;		
 		},
 		
 <span id='LITE-LITEPlugin-method-enableAcceptReject'>		/**
@@ -1271,6 +1296,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 <span id='LITE-LITEPlugin-method-_onBeforeGetData'>		/**
 </span>		 * Callback for the editor's beforeGetData event
 		 * Remove tooltips from dom
+		 * @private
 		 */
 		_onBeforeGetData: function(/*evt*/) {
 			this._hideTooltip();
@@ -1279,6 +1305,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 <span id='LITE-LITEPlugin-method-_onAfterSetData'>		/**
 </span>		 * Callback for the editor's afterSetData event
 		 * Remove tooltips from dom
+		 * @private
 		 */
 		_onAfterSetData: function(/*evt*/) {
 			this._hideTooltip();

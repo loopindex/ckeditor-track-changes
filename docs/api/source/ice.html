@@ -169,6 +169,14 @@
 		this._deleteSelector = '.' + this._getIceNodeClass(DELETE_TYPE);
 		this._iceSelector = this._insertSelector + ',' + this._deleteSelector;
 		
+		this._domObserver = new window.MutationObserver(this._onDomMutation.bind(this));
+		this._domObserverConfig = {
+//			attributes: true,
+			childList: true,
+			characterData: false,
+			subtree: true
+		};
+		this._domObserverTimeout = null;
 	};
 
 	InlineChangeEditor.prototype = {
@@ -2328,6 +2336,8 @@
 			if (range &amp;&amp; !range.collapsed) {
 				this._deleteContents();
 			}
+			this._domObserver.observe(this.element, this._domObserverConfig);
+			this._setDomObserverTimeout();
 		},
 
 <span id='ice-InlineChangeEditor-method-_handleSpecialKey'>		/**
@@ -2575,7 +2585,8 @@
 <span id='ice-InlineChangeEditor-method-_filterChanges'>		/**
 </span>		 * Filters the current change set based on options
 		 * @param _options may contain one of:&lt;ul&gt;
-		 * &lt;li&gt;exclude: an array of user ids to exclude&lt;li&gt;include: an array of user ids to include
+		 * &lt;li&gt;exclude: an array of user ids to exclude
+		 * &lt;li&gt;include: an array of user ids to include
 		 * &lt;li&gt;filter: a filter function of the form function({userid, time, data}):boolean
 		 * &lt;li&gt;verify: a boolean indicating whether or not to verify that there are matching dom nodes for each matching change
 		 * &lt;/ul&gt;
@@ -2881,6 +2892,35 @@
 			}, 10);
 		},
 		
+		_onDomMutation: function(mutations) {
+			var i, len = mutations.length, m,
+				nodeIndex, lst,
+				node;
+			for (i = 0; i &lt; len; ++i) {
+				m = mutations[i];
+				switch (m.type) {
+					case &quot;childList&quot;:
+						lst  = m.addedNodes;
+						for (nodeIndex = lst.length - 1; nodeIndex &gt;= 0; --nodeIndex) {
+							node = lst[nodeIndex];
+							console.log(&quot;mutation: added node&quot;, node.tagName);
+						}
+						break;
+				}
+			}
+		},
+		
+		_setDomObserverTimeout: function() {
+			var self = this;
+			if (this._domObserverTimeout) {
+				window.clearTimeout(this._domObserverTimeout);
+			}
+			this._domObserverTimeout = window.setTimeout(function() {
+				self._domObserverTimeout = null;
+				self._domObserver.disconnect();
+			}, 1);
+		},
+		
 		getAdjacentChangeId: function(node, left) {
 			var next = left ? ice.dom.getNextNode(node) : ice.dom.getPrevNode(node),
 				nextChange,
@@ -3057,6 +3097,7 @@
 				return;
 			}
 		// create empty node and select it, to be replaced with the typed char
+			console.log(&quot;prepareSelectionForInsert: appending filler node&quot;);
 			var tn = doc.createTextNode('\uFEFF');
 			if (node) {
 				node.appendChild(tn);

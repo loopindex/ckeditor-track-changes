@@ -324,7 +324,30 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		return false;
 	}
 	
+	/**
+	 * @class LITE.AcceptRejectOptions
+	 * A map of options for filtering changes before they're accepted/rejected.
+	 */
 	
+	/**
+	 * @member LITE.AcceptRejectOptions
+	 * @property {Array} include
+	 * An array of user ids to include. Only changes made by users in the include list will be accepted/rejected
+	 */
+	
+	/**
+	 * @member LITE.AcceptRejectOptions
+	 * @property {Array} exclude
+	 * An array of user ids to exclude. Changes made by users in the exclude list will be not accepted/rejected
+	 */
+	
+	/**
+	 * @member LITE.AcceptRejectOptions
+	 * @property {Function} filter
+	 * a filter function of the form function({userid, time, data}):boolean . Only changes for which the function
+	 * returns true are accepted/rejected
+	 */
+
 	/**
 	 * @class LITE.configuration
 	 * The configuration object for the {@link LITE.lite} and the {@link LITE.LITEPlugin} objects
@@ -799,6 +822,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		
 		/**
 		 * Accept all tracked changes
+		 * @param {LITE.AcceptRejectOptions} options for matching changes to accept
 		 */
 		acceptAll: function(options) {
 			this._tracker.acceptAll(options);
@@ -808,6 +832,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		
 		/**
 		 * Reject all tracked changes
+		 * @param {LITE.AcceptRejectOptions} options for matching changes to accept
 		 */
 		rejectAll: function(options) {
 			this._tracker.rejectAll(options);
@@ -833,12 +858,20 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		},
 		
 		/**
+		 * Returns a copy of the properties of the current user: id, name
+		 * @returns {Object} an object with the properties <strong>id</strong> and <strong>name</strong>
+		 */
+		getUserInfo: function() {
+			return this._tracker ? this._tracker.getCurrentUser() : { name: "", id: ""};
+		},
+		
+		/**
 		 * Return the count of pending changes
 		 * @param options optional list of user ids whose changes we include or exclude (only one of the two should be provided,
 		 * exclude has precdence).
 		 */
 		countChanges : function(options) {
-			return ((this._tracker && this._tracker.countChanges(options)) || 0);		
+			return (this._tracker && this._tracker.countChanges(options)) || 0;		
 		},
 		
 		/**
@@ -1254,6 +1287,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		/**
 		 * Callback for the editor's beforeGetData event
 		 * Remove tooltips from dom
+		 * @private
 		 */
 		_onBeforeGetData: function(/*evt*/) {
 			this._hideTooltip();
@@ -1262,6 +1296,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		/**
 		 * Callback for the editor's afterSetData event
 		 * Remove tooltips from dom
+		 * @private
 		 */
 		_onAfterSetData: function(/*evt*/) {
 			this._hideTooltip();
