@@ -427,7 +427,6 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 	 * <li><strong>%hh</strong>    double digit hour of change, e.g. 05
 	 * <li><strong>%h</strong>  hour of change, e.g. 5
 	 * </ul>
-	 * 
 	 */
 	
 	/**
@@ -436,6 +435,14 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 	 * the path (relative to the LITE plugin.js file) to jQuery
 	 * @default js/jquery.min.js 
 	 */
+	
+	/**
+	 * @member LITE.configuration
+	 * @property {Boolean} contextMenu
+	 * If false, don't add LITE commands to CKEditor's context menu
+	 */
+
+
 
 	/**
 	 * @class LITE.lite
@@ -642,7 +649,8 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 				}
 			];
 		
-			this._isTracking = config.isTracking !== false;
+			this._isTracking = config.isTracking !== false; // user preference for tracking state
+			this._trackingState = null; // reflects the real tracking state, not just the user pref
 			this._eventsBounds = false;
 		
 			ed.on("contentDom", (function(dom) {
@@ -663,7 +671,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 					readOnly: rec.readOnly || false
 				});
 		
-				if (/*rec.icon && */rec.title && commands.indexOf(rec.command) >= 0) { // configuration doens't include this command
+				if (rec.title && commands.indexOf(rec.command) >= 0) { // configuration doens't include this command
 					var name = self._commandNameToUIName(rec.command);
 					ed.ui.addButton(name, {
 						label : rec.title,
@@ -682,40 +690,39 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 				add1(commandsMap[i]);
 			}
 			
-
-			if ( ed.addMenuItems ) {
-				ed.addMenuGroup ( 'lite', 50);
-				var params = {};
-				params[LITE.Commands.ACCEPT_ONE] = {
-					label : 'Accept Change',
-					command : LITE.Commands.ACCEPT_ONE,
-					group : 'lite',
-					order : 1,
-					icon : path + 'icons/accept_one.png'
-				};
-				params[LITE.Commands.REJECT_ONE] = {
-					label : 'Reject Change',
-					command : LITE.Commands.REJECT_ONE,
-					group : 'lite',
-					order : 2,
-					icon : path + 'icons/reject_one.png'
-				};
-
-				ed.addMenuItems(params);
-			}
-
-			if ( ed.contextMenu ) {
-				ed.contextMenu.addListener( (function( element /*, selection */ ) {
-					 if (element && this._tracker && this._tracker.currentChangeNode(element)) {
-						 var ret = {};
-						 ret[LITE.Commands.ACCEPT_ONE] = CKEDITOR.TRISTATE_OFF;
-						 ret[LITE.Commands.REJECT_ONE]= CKEDITOR.TRISTATE_OFF;
-						 return ret;
-					 }
-					 else {
-						 return null;
-					 }
-				}).bind(this) );
+			if (config.contextMenu !== false) {
+				if ( ed.addMenuItems ) {
+					ed.addMenuGroup ( 'lite', 50);
+					var params = {};
+					params[LITE.Commands.ACCEPT_ONE] = {
+						label : 'Accept Change',
+						command : LITE.Commands.ACCEPT_ONE,
+						group : 'lite',
+						order : 1
+					};
+					params[LITE.Commands.REJECT_ONE] = {
+						label : 'Reject Change',
+						command : LITE.Commands.REJECT_ONE,
+						group : 'lite',
+						order : 2
+					};
+	
+					ed.addMenuItems(params);
+				}
+	
+				if ( ed.contextMenu ) {
+					ed.contextMenu.addListener( (function( element /*, selection */ ) {
+						 if (element && this._tracker && this._tracker.currentChangeNode(element)) {
+							 var ret = {};
+							 ret[LITE.Commands.ACCEPT_ONE] = CKEDITOR.TRISTATE_OFF;
+							 ret[LITE.Commands.REJECT_ONE]= CKEDITOR.TRISTATE_OFF;
+							 return ret;
+						 }
+						 else {
+							 return null;
+						 }
+					}).bind(this) );
+				}
 			}
 		},
 		
@@ -1285,7 +1292,11 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		 */
 		_updateTrackingState: function() {
 			if (this._tracker) {
-				var track = this._isTracking && this._editor.mode == "wysiwyg" && ! this._editor.readOnly;
+				var track = this._isTracking && this._editor.mode === "wysiwyg" && ! this._editor.readOnly;
+				if (track === this._trackingState) {
+					return;
+				}
+				this._trackingState = track;
 				this._tracker.toggleChangeTracking(track);
 				for (var i = this._removeBindings.length - 1; i >= 0; --i) {
 					this._removeBindings[i].removeListener();
