@@ -3821,7 +3821,6 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 		this._browser = ice.dom.browser();
 		this._tooltipMouseOver = this._tooltipMouseOver.bind(this);
 		this._tooltipMouseOut = this._tooltipMouseOut.bind(this);
-		this._boundEventHandler = this.handleEvent.bind(this);
 		
 		ice.dom.extend(true, this, defaults, options);
 		if (options.tooltips && (! $.isFunction(options.hostMethods.showTooltip) || ! $.isFunction(options.hostMethods.hideTooltip))) {
@@ -3894,9 +3893,7 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 				// If we are handling events setup the delegate to handle various events on `this.element`.
 				var e = this.element;
 				if (e) {
-					e.removeEventListener("keyup", this._boundEventHandler, true);
-					e.removeEventListener("keydown", this._boundEventHandler, true);
-					e.removeEventListener("keypress", this._boundEventHandler, true);
+					this.unlistenToEvents();
 				}
 		
 				// dfl:reset contenteditable unless requested not to do so
@@ -3913,17 +3910,18 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 		},
 		
 		listenToEvents: function() {
-			this.unlistenToEvents();
-			if (this.element) {
+			if (this.element && ! this._boundEventHandler) {
+				this.unlistenToEvents();
+				this._boundEventHandler = this._handleEnter.bind(this);
 				this.element.addEventListener("keydown", this._boundEventHandler, true);
 			}
 		},
 		
 		unlistenToEvents: function() {
-			// If we are handling events setup the delegate to handle various events on `this.element`.
-			if (this.element) {
+			if (this.element && this._boundEventHandler) {
 				this.element.removeEventListener("keydown", this._boundEventHandler, true);
 			}
+			this._boundEventHandler = null;
 		},
 	
 		/**
@@ -3980,7 +3978,7 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 		 * @param {Boolean} bTrack if undefined, the tracking state is toggled, otherwise set to the parameter
 		 */
 		toggleChangeTracking: function (bTrack) {
-			bTrack = (undefined === bTrack) ? ! this._isTracking : !!bTrack;
+			bTrack = (undefined === bTrack) ? ! this._isTracking : Boolean(bTrack);
 			this._isTracking = bTrack;
 		},
 		/**
@@ -5935,7 +5933,6 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 		},
 
 
-	
 		/**
 		 * @private
 		 * @param e event

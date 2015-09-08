@@ -146,7 +146,6 @@
 		this._browser = ice.dom.browser();
 		this._tooltipMouseOver = this._tooltipMouseOver.bind(this);
 		this._tooltipMouseOut = this._tooltipMouseOut.bind(this);
-		this._boundEventHandler = this.handleEvent.bind(this);
 		
 		ice.dom.extend(true, this, defaults, options);
 		if (options.tooltips &amp;&amp; (! $.isFunction(options.hostMethods.showTooltip) || ! $.isFunction(options.hostMethods.hideTooltip))) {
@@ -219,9 +218,7 @@
 				// If we are handling events setup the delegate to handle various events on `this.element`.
 				var e = this.element;
 				if (e) {
-					e.removeEventListener(&quot;keyup&quot;, this._boundEventHandler, true);
-					e.removeEventListener(&quot;keydown&quot;, this._boundEventHandler, true);
-					e.removeEventListener(&quot;keypress&quot;, this._boundEventHandler, true);
+					this.unlistenToEvents();
 				}
 		
 				// dfl:reset contenteditable unless requested not to do so
@@ -238,17 +235,18 @@
 		},
 		
 		listenToEvents: function() {
-			this.unlistenToEvents();
-			if (this.element) {
+			if (this.element &amp;&amp; ! this._boundEventHandler) {
+				this.unlistenToEvents();
+				this._boundEventHandler = this._handleEnter.bind(this);
 				this.element.addEventListener(&quot;keydown&quot;, this._boundEventHandler, true);
 			}
 		},
 		
 		unlistenToEvents: function() {
-			// If we are handling events setup the delegate to handle various events on `this.element`.
-			if (this.element) {
+			if (this.element &amp;&amp; this._boundEventHandler) {
 				this.element.removeEventListener(&quot;keydown&quot;, this._boundEventHandler, true);
 			}
+			this._boundEventHandler = null;
 		},
 	
 <span id='ice-InlineChangeEditor-method-initializeEnvironment'>		/**
@@ -305,7 +303,7 @@
 		 * @param {Boolean} bTrack if undefined, the tracking state is toggled, otherwise set to the parameter
 		 */
 		toggleChangeTracking: function (bTrack) {
-			bTrack = (undefined === bTrack) ? ! this._isTracking : !!bTrack;
+			bTrack = (undefined === bTrack) ? ! this._isTracking : Boolean(bTrack);
 			this._isTracking = bTrack;
 		},
 <span id='ice-InlineChangeEditor-method-setCurrentUser'>		/**
@@ -2260,7 +2258,6 @@
 		},
 
 
-	
 <span id='ice-InlineChangeEditor-method-onKeyDown'>		/**
 </span>		 * @private
 		 * @param e event

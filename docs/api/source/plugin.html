@@ -42,47 +42,40 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 </span>			 * @member LITE.Events
 			 * @event INIT
 			 * string value: &quot;lite:init&quot;
-			 * @param {LITE.LITEPlugin} an instance of a lite object associated with a ckeditor instance
+			 * @param {LITE.LITEPlugin} lite an instance of a lite object associated with a ckeditor instance
 			 */
 			INIT : &quot;lite:init&quot;,
 <span id='LITE-Events-event-ACCEPT'>			/**
 </span>			 * @member LITE.Events
 			 * @event ACCEPT
 			 * string value: &quot;lite:accept&quot;
-			 * @param {Object} An object with the fields
-			 * &lt;ul&gt;&lt;li&gt;&lt;code&gt;options&lt;/code&gt; passed to the accept method
-			 * &lt;li&gt;&lt;code&gt;lite&lt;/code&gt;The LITE instance with which this event is associated
-			 * &lt;/ul&gt;
+			 * @param {LITE.LITEPlugin} lite an instance of a lite object associated with a ckeditor instance
+			 * @param {Object} options filtering options
 			 */
 			ACCEPT : &quot;lite:accept&quot;,
 <span id='LITE-Events-event-REJECT'>			/**
 </span>			 * @member LITE.Events
 			 * @event REJECT
 			 * string value: &quot;lite:reject&quot;
-			 * @param {Object} An object with the fields
-			 * &lt;ul&gt;&lt;li&gt;&lt;code&gt;options&lt;/code&gt; passed to the reject method
-			 * &lt;li&gt;&lt;code&gt;lite&lt;/code&gt;The LITE instance with which this event is associated
-			 * &lt;/ul&gt;
+			 * @param {LITE.LITEPlugin} lite an instance of a lite object associated with a ckeditor instance
+			 * @param {Object} options filtering options
 			 */
+
 			REJECT : &quot;lite:reject&quot;,
 <span id='LITE-Events-event-SHOW_HIDE'>			/**
 </span>			 * @member LITE.Events
 			 * @event SHOW_HIDE
 			 * string value: &quot;lite:showHide&quot;
-			 * @param {Object} An object with the fields
-			 * &lt;ul&gt;&lt;li&gt;&lt;code&gt;show&lt;/code&gt; indicating the new change tracking show status
-			 * &lt;li&gt;&lt;code&gt;lite&lt;/code&gt;The LITE instance with which this event is associated
-			 * &lt;/ul&gt;
+			 * @param {LITE.LITEPlugin} lite an instance of a lite object associated with a ckeditor instance
+			 * @param {Boolean} show indicates the new change tracking show status
 			 */
 			SHOW_HIDE : &quot;lite:showHide&quot;,
 <span id='LITE-Events-event-TRACKING'>			/**
 </span>			 * @member LITE.Events
 			 * @event TRACKING
 			 * string value: &quot;lite:tracking&quot;
-			 * @param {Object} An object with the fields 
-			 * &lt;ul&gt;&lt;li&gt;&lt;code&gt;tracking&lt;/code&gt; indicating the new tracking status
-			 * &lt;li&gt;&lt;code&gt;lite&lt;/code&gt;The LITE instance with which this event is associated
-			 * &lt;/ul&gt;
+			 * @param {LITE.LITEPlugin} lite an instance of a lite object associated with a ckeditor instance
+			 * @param {Boolean} tracking indicates the new tracking status
 			 */
 			TRACKING : &quot;lite:tracking&quot;,
 			
@@ -90,9 +83,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 </span>			 * @member LITE.Events
 			 * @event CHANGE
 			 * string value: &quot;lite:change&quot;
-			 * @param {Object} An object with the fields 
-			 * &lt;ul&gt;&lt;li&gt;&lt;code&gt;lite&lt;/code&gt;The LITE instance with which this event is associated
-			 * &lt;/ul&gt;
+			 * @param {LITE.LITEPlugin} lite an instance of a lite object associated with a ckeditor instance
 			 */
 			CHANGE : &quot;lite:change&quot;,
 
@@ -100,11 +91,9 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 </span>			 * @member LITE.Events
 			 * @event HOVER_IN
 			 * string value: &quot;lite:hover-in&quot;
-			 * @param {Object} An object with the fields 
-			 * &lt;ul&gt;&lt;li&gt;&lt;code&gt;lite&lt;/code&gt;The LITE instance with which this event is associated
-			 * &lt;li&gt;&lt;code&gt;node&lt;/code&gt;The DOM node hovered
-			 * &lt;li&gt;&lt;code&gt;changeId&lt;/code&gt;The relevant change id
-			 * &lt;/ul&gt;
+			 * @param {LITE.LITEPlugin} lite an instance of a lite object associated with a ckeditor instance
+			 * @param {Object} node The DOM node hovered
+			 * @param {String} changeId The relevant change id
 			 */
 			HOVER_IN: &quot;lite:hover-in&quot;,
 
@@ -112,11 +101,9 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 </span>			 * @member LITE.Events
 			 * @event HOVER_OUT
 			 * string value: &quot;lite:hover-out&quot;
-			 * @param {Object} An object with the fields 
-			 * &lt;ul&gt;&lt;li&gt;&lt;code&gt;lite&lt;/code&gt;The LITE instance with which this event is associated
-			 * &lt;li&gt;&lt;code&gt;node&lt;/code&gt;The DOM node hovered
-			 * &lt;li&gt;&lt;code&gt;changeId&lt;/code&gt;The relevant change id
-			 * &lt;/ul&gt;
+			 * @param {LITE.LITEPlugin} lite an instance of a lite object associated with a ckeditor instance
+			 * @param {Object} node The DOM node hovered
+			 * @param {String} changeId The relevant change id
 			 */
 			HOVER_OUT: &quot;lite:hover-out&quot;
 		},
@@ -417,16 +404,14 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 	
 <span id='LITE-configuration-property-jQueryPath'>	/**
 </span>	 * @member LITE.configuration
-	 * @property {String} jQueryPath
+	 * @property {String} jQueryPath=&quot;js/jquery.min.js&quot;
 	 * the path (relative to the LITE plugin.js file) to jQuery
-	 * @default js/jquery.min.js 
 	 */
 
 <span id='LITE-configuration-property-tooltipTemplate'>	/**
 </span>	 * @member LITE.configuration
-	 * @property {String} tooltipTemplate
+	 * @property {String} tooltipTemplate=&quot;%a by %u %t&quot;
 	 * A format string used to create the content of tooltips shown over change spans
-	 * @default &quot;%a by %u %t&quot;
 	 * &lt;h3&gt;formats&lt;/h3&gt;
 	 * (use uppercase to apply the format to the last modification date of the change span rather than the first) 
 	 * &lt;ul&gt;
@@ -444,14 +429,12 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 	 * &lt;li&gt;&lt;strong&gt;%hh&lt;/strong&gt;    double digit hour of change, e.g. 05
 	 * &lt;li&gt;&lt;strong&gt;%h&lt;/strong&gt;  hour of change, e.g. 5
 	 * &lt;/ul&gt;
-	 * 
 	 */
 	
-<span id='LITE-configuration-property-jQueryPath'>	/**
+<span id='LITE-configuration-property-contextMenu'>	/**
 </span>	 * @member LITE.configuration
-	 * @property {String} jQueryPath
-	 * the path (relative to the LITE plugin.js file) to jQuery
-	 * @default js/jquery.min.js 
+	 * @property {Boolean} contextMenu
+	 * If false, don't add LITE commands to CKEditor's context menu
 	 */
 
 <span id='LITE-lite'>	/**
@@ -659,7 +642,8 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 				}
 			];
 		
-			this._isTracking = config.isTracking !== false;
+			this._isTracking = config.isTracking !== false; // user preference for tracking state
+			this._trackingState = null; // reflects the real tracking state, not just the user pref
 			this._eventsBounds = false;
 		
 			ed.on(&quot;contentDom&quot;, (function(dom) {
@@ -680,7 +664,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 					readOnly: rec.readOnly || false
 				});
 		
-				if (/*rec.icon &amp;&amp; */rec.title &amp;&amp; commands.indexOf(rec.command) &gt;= 0) { // configuration doens't include this command
+				if (rec.title &amp;&amp; commands.indexOf(rec.command) &gt;= 0) { // configuration doens't include this command
 					var name = self._commandNameToUIName(rec.command);
 					ed.ui.addButton(name, {
 						label : rec.title,
@@ -699,40 +683,39 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 				add1(commandsMap[i]);
 			}
 			
-
-			if ( ed.addMenuItems ) {
-				ed.addMenuGroup ( 'lite', 50);
-				var params = {};
-				params[LITE.Commands.ACCEPT_ONE] = {
-					label : 'Accept Change',
-					command : LITE.Commands.ACCEPT_ONE,
-					group : 'lite',
-					order : 1,
-					icon : path + 'icons/accept_one.png'
-				};
-				params[LITE.Commands.REJECT_ONE] = {
-					label : 'Reject Change',
-					command : LITE.Commands.REJECT_ONE,
-					group : 'lite',
-					order : 2,
-					icon : path + 'icons/reject_one.png'
-				};
-
-				ed.addMenuItems(params);
-			}
-
-			if ( ed.contextMenu ) {
-				ed.contextMenu.addListener( (function( element /*, selection */ ) {
-					 if (element &amp;&amp; this._tracker &amp;&amp; this._tracker.currentChangeNode(element)) {
-						 var ret = {};
-						 ret[LITE.Commands.ACCEPT_ONE] = CKEDITOR.TRISTATE_OFF;
-						 ret[LITE.Commands.REJECT_ONE]= CKEDITOR.TRISTATE_OFF;
-						 return ret;
-					 }
-					 else {
-						 return null;
-					 }
-				}).bind(this) );
+			if (config.contextMenu !== false) {
+				if ( ed.addMenuItems ) {
+					ed.addMenuGroup ( 'lite', 50);
+					var params = {};
+					params[LITE.Commands.ACCEPT_ONE] = {
+						label : 'Accept Change',
+						command : LITE.Commands.ACCEPT_ONE,
+						group : 'lite',
+						order : 1
+					};
+					params[LITE.Commands.REJECT_ONE] = {
+						label : 'Reject Change',
+						command : LITE.Commands.REJECT_ONE,
+						group : 'lite',
+						order : 2
+					};
+	
+					ed.addMenuItems(params);
+				}
+	
+				if ( ed.contextMenu ) {
+					ed.contextMenu.addListener( (function( element /*, selection */ ) {
+						 if (element &amp;&amp; this._tracker &amp;&amp; this._tracker.currentChangeNode(element)) {
+							 var ret = {};
+							 ret[LITE.Commands.ACCEPT_ONE] = CKEDITOR.TRISTATE_OFF;
+							 ret[LITE.Commands.REJECT_ONE]= CKEDITOR.TRISTATE_OFF;
+							 return ret;
+						 }
+						 else {
+							 return null;
+						 }
+					}).bind(this) );
+				}
 			}
 		},
 		
@@ -1302,7 +1285,11 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		 */
 		_updateTrackingState: function() {
 			if (this._tracker) {
-				var track = this._isTracking &amp;&amp; this._editor.mode == &quot;wysiwyg&quot; &amp;&amp; ! this._editor.readOnly;
+				var track = this._isTracking &amp;&amp; this._editor.mode === &quot;wysiwyg&quot; &amp;&amp; ! this._editor.readOnly;
+				if (track === this._trackingState) {
+					return;
+				}
+				this._trackingState = track;
 				this._tracker.toggleChangeTracking(track);
 				for (var i = this._removeBindings.length - 1; i &gt;= 0; --i) {
 					this._removeBindings[i].removeListener();

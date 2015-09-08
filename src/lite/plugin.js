@@ -25,47 +25,40 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			 * @member LITE.Events
 			 * @event INIT
 			 * string value: "lite:init"
-			 * @param {LITE.LITEPlugin} an instance of a lite object associated with a ckeditor instance
+			 * @param {LITE.LITEPlugin} lite an instance of a lite object associated with a ckeditor instance
 			 */
 			INIT : "lite:init",
 			/**
 			 * @member LITE.Events
 			 * @event ACCEPT
 			 * string value: "lite:accept"
-			 * @param {Object} An object with the fields
-			 * <ul><li><code>options</code> passed to the accept method
-			 * <li><code>lite</code>The LITE instance with which this event is associated
-			 * </ul>
+			 * @param {LITE.LITEPlugin} lite an instance of a lite object associated with a ckeditor instance
+			 * @param {Object} options filtering options
 			 */
 			ACCEPT : "lite:accept",
 			/**
 			 * @member LITE.Events
 			 * @event REJECT
 			 * string value: "lite:reject"
-			 * @param {Object} An object with the fields
-			 * <ul><li><code>options</code> passed to the reject method
-			 * <li><code>lite</code>The LITE instance with which this event is associated
-			 * </ul>
+			 * @param {LITE.LITEPlugin} lite an instance of a lite object associated with a ckeditor instance
+			 * @param {Object} options filtering options
 			 */
+
 			REJECT : "lite:reject",
 			/**
 			 * @member LITE.Events
 			 * @event SHOW_HIDE
 			 * string value: "lite:showHide"
-			 * @param {Object} An object with the fields
-			 * <ul><li><code>show</code> indicating the new change tracking show status
-			 * <li><code>lite</code>The LITE instance with which this event is associated
-			 * </ul>
+			 * @param {LITE.LITEPlugin} lite an instance of a lite object associated with a ckeditor instance
+			 * @param {Boolean} show indicates the new change tracking show status
 			 */
 			SHOW_HIDE : "lite:showHide",
 			/**
 			 * @member LITE.Events
 			 * @event TRACKING
 			 * string value: "lite:tracking"
-			 * @param {Object} An object with the fields 
-			 * <ul><li><code>tracking</code> indicating the new tracking status
-			 * <li><code>lite</code>The LITE instance with which this event is associated
-			 * </ul>
+			 * @param {LITE.LITEPlugin} lite an instance of a lite object associated with a ckeditor instance
+			 * @param {Boolean} tracking indicates the new tracking status
 			 */
 			TRACKING : "lite:tracking",
 			
@@ -73,9 +66,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			 * @member LITE.Events
 			 * @event CHANGE
 			 * string value: "lite:change"
-			 * @param {Object} An object with the fields 
-			 * <ul><li><code>lite</code>The LITE instance with which this event is associated
-			 * </ul>
+			 * @param {LITE.LITEPlugin} lite an instance of a lite object associated with a ckeditor instance
 			 */
 			CHANGE : "lite:change",
 
@@ -83,11 +74,9 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			 * @member LITE.Events
 			 * @event HOVER_IN
 			 * string value: "lite:hover-in"
-			 * @param {Object} An object with the fields 
-			 * <ul><li><code>lite</code>The LITE instance with which this event is associated
-			 * <li><code>node</code>The DOM node hovered
-			 * <li><code>changeId</code>The relevant change id
-			 * </ul>
+			 * @param {LITE.LITEPlugin} lite an instance of a lite object associated with a ckeditor instance
+			 * @param {Object} node The DOM node hovered
+			 * @param {String} changeId The relevant change id
 			 */
 			HOVER_IN: "lite:hover-in",
 
@@ -95,11 +84,9 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			 * @member LITE.Events
 			 * @event HOVER_OUT
 			 * string value: "lite:hover-out"
-			 * @param {Object} An object with the fields 
-			 * <ul><li><code>lite</code>The LITE instance with which this event is associated
-			 * <li><code>node</code>The DOM node hovered
-			 * <li><code>changeId</code>The relevant change id
-			 * </ul>
+			 * @param {LITE.LITEPlugin} lite an instance of a lite object associated with a ckeditor instance
+			 * @param {Object} node The DOM node hovered
+			 * @param {String} changeId The relevant change id
 			 */
 			HOVER_OUT: "lite:hover-out"
 		},
@@ -400,16 +387,14 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 	
 	/**
 	 * @member LITE.configuration
-	 * @property {String} jQueryPath
+	 * @property {String} jQueryPath="js/jquery.min.js"
 	 * the path (relative to the LITE plugin.js file) to jQuery
-	 * @default js/jquery.min.js 
 	 */
 
 	/**
 	 * @member LITE.configuration
-	 * @property {String} tooltipTemplate
+	 * @property {String} tooltipTemplate="%a by %u %t"
 	 * A format string used to create the content of tooltips shown over change spans
-	 * @default "%a by %u %t"
 	 * <h3>formats</h3>
 	 * (use uppercase to apply the format to the last modification date of the change span rather than the first) 
 	 * <ul>
@@ -431,18 +416,9 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 	
 	/**
 	 * @member LITE.configuration
-	 * @property {String} jQueryPath
-	 * the path (relative to the LITE plugin.js file) to jQuery
-	 * @default js/jquery.min.js 
-	 */
-	
-	/**
-	 * @member LITE.configuration
 	 * @property {Boolean} contextMenu
 	 * If false, don't add LITE commands to CKEditor's context menu
 	 */
-
-
 
 	/**
 	 * @class LITE.lite
