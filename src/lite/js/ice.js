@@ -152,14 +152,14 @@
 		this._deleteSelector = '.' + this._getIceNodeClass(DELETE_TYPE);
 		this._iceSelector = this._insertSelector + ',' + this._deleteSelector;
 		
-		this._domObserver = new window.MutationObserver(this._onDomMutation.bind(this));
+/*		this._domObserver = new window.MutationObserver(this._onDomMutation.bind(this));
 		this._domObserverConfig = {
 //			attributes: true,
 			childList: true,
 			characterData: false,
 			subtree: true
 		};
-		this._domObserverTimeout = null;
+		this._domObserverTimeout = null; */
 	};
 
 	InlineChangeEditor.prototype = {
@@ -2330,8 +2330,10 @@
 			if (range && !range.collapsed) {
 				this._deleteContents();
 			}
-			this._domObserver.observe(this.element, this._domObserverConfig);
+/*
+ 			this._domObserver.observe(this.element, this._domObserverConfig);
 			this._setDomObserverTimeout();
+*/
 		},
 
 		/**
