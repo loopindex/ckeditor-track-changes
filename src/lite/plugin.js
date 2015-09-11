@@ -670,19 +670,22 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 				if ( ed.addMenuItems ) {
 					ed.addMenuGroup ( 'lite', 50);
 					var params = {};
-					params[LITE.Commands.ACCEPT_ONE] = {
-						label : 'Accept Change',
-						command : LITE.Commands.ACCEPT_ONE,
-						group : 'lite',
-						order : 1
-					};
-					params[LITE.Commands.REJECT_ONE] = {
-						label : 'Reject Change',
-						command : LITE.Commands.REJECT_ONE,
-						group : 'lite',
-						order : 2
-					};
-	
+					if (commands.indexOf(LITE.Commands.ACCEPT_ONE) >= 0) {
+						params[LITE.Commands.ACCEPT_ONE] = {
+							label : 'Accept Change',
+							command : LITE.Commands.ACCEPT_ONE,
+							group : 'lite',
+							order : 1
+						};
+					}
+					if (commands.indexOf(LITE.Commands.REJECT_ONE) >= 0) {
+						params[LITE.Commands.REJECT_ONE] = {
+							label : 'Reject Change',
+							command : LITE.Commands.REJECT_ONE,
+							group : 'lite',
+							order : 2
+						};
+					}
 					ed.addMenuItems(params);
 				}
 	
@@ -921,6 +924,15 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 				this._editor.fire(LITE.Events.REJECT, {lite:this});
 				this._onSelectionChanged(null);
 			}
+		},
+		
+		/**
+		 * get a map of the pending changes. The keys are the change ids,
+		 * the values are objects with the type, time, lastTime, session id, user id, user name, data (arbitrary string associated with the change)
+		 * @param {Object} options
+		 */
+		getChanges: function(options) {
+			return (this._tracker && this._tracker.getChanges(options)) || {}; 
 		},
 		
 		////////////// Implementation ///////////////

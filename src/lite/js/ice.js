@@ -220,7 +220,7 @@
 		listenToEvents: function() {
 			if (this.element && ! this._boundEventHandler) {
 				this.unlistenToEvents();
-				this._boundEventHandler = this._handleEnter.bind(this);
+				this._boundEventHandler = this.handleEvent.bind(this);
 				this.element.addEventListener("keydown", this._boundEventHandler, true);
 			}
 		},
@@ -553,9 +553,11 @@
 		/**
 		 * Returns the changes - a hash of objects with the following properties:
 		 * [changeid] => {`type`, `time`, `userid`, `username`}
+		 * @param {Object} options
 		 */
-		getChanges: function () {
-			return this._changes;
+		getChanges: function (options) {
+			var changes = options ? this._filterChanges(options) : this._changes;
+			return $.extend({}, changes);
 		},
 	
 		/**
@@ -923,6 +925,7 @@
 		/**
 		 * Utility function
 		 * Returns the range if its startcontainer is a descendant of (or equal to) the given top element
+		 * @private
 		 */
 		_isRangeInElement: function(range, top) {
 			var start = range && range.startContainer;
@@ -1970,6 +1973,7 @@
 		
 		/**
 		 * Handle the case of deletion inside a delete element
+		 * @private
 		 */
 		_deleteInDeleted: function(contentNode, options) {
 			var range = options.range, 
@@ -2118,6 +2122,7 @@
 	
 		/**
 		 * Merges a delete node with its siblings if they belong to the same user
+		 * @private
 		 */
 		_mergeDeleteNode: function(delNode) {
 			var siblingDel,
