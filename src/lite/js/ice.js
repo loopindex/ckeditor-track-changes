@@ -192,7 +192,7 @@
 	
 		/**
 		 * Removes contenteditability and stops event handling.
-		 * Changed by dfl to have the option of not setting contentEditable
+		 * @param {Boolean} onlyICE if true, stop tracking but don't remove the contenteditable property of the tracked element
 		 */
 		stopTracking: function (onlyICE) {
 	
@@ -606,9 +606,9 @@
 		 * change type tags are removed, leaving the html content in place. 
 		 * @param body If not null, the node or html to process
 		 * @param options may contain:
-		 * <ul><li>callback - executed after cleaning, should return the processed body
-		 * <li>clone If true, process a clone of the target element
-		 * <li>prepare function to run on body before the cleaning
+		 * <ul><li>callback - executed after cleaning, should return the processed body</li>
+		 * <li>clone If true, process a clone of the target element</li>
+		 * <li>prepare function to run on body before the cleaning</li>
 		 */
 		getCleanDOM : function(body, options) {
 			var classList = '',
@@ -2560,9 +2560,9 @@
 		/**
 		 * Filters the current change set based on options
 		 * @param _options may contain one of:<ul>
-		 * <li>exclude: an array of user ids to exclude<li>include: an array of user ids to include
-		 * <li>filter: a filter function of the form function({userid, time, data}):boolean
-		 * <li>verify: a boolean indicating whether or not to verify that there are matching dom nodes for each matching change
+		 * <li>exclude: an array of user ids to exclude<li>include: an array of user ids to include</li>
+		 * <li>filter: a filter function of the form function({userid, time, data}):boolean</li>
+		 * <li>verify: a boolean indicating whether or not to verify that there are matching dom nodes for each matching change</li>
 		 * </ul>
 		 *	@return {Object} an object with two members: count, changes (map of id:changeObject)
 		 * @private

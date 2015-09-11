@@ -709,8 +709,8 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		 * Change the state of change tracking for the change editor associated with this plugin.
 		 * Toggles tracking visibility in accordance with the tracking state. 
 		 * @param {Boolean} track if undefined - toggle the state, otherwise set the tracking state to this value, 
-		 * @param {Object} options an optional object with the following fields: <ul><li>notify: boolean, if not false, dispatch the TRACKING event
-		 * <li>force: if true, don't check for pending changes and just toggle</ul>
+		 * @param {Object} options an optional object with the following fields: <ul><li>notify: boolean, if not false, dispatch the TRACKING event</li>
+		 * <li>force: if true, don't check for pending changes and just toggle</li></ul>
 		 */	
 		toggleTracking: function(track, options) {
 			if ("boolean" === typeof options) {
@@ -929,7 +929,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		/**
 		 * get a map of the pending changes. The keys are the change ids,
 		 * the values are objects with the type, time, lastTime, session id, user id, user name, data (arbitrary string associated with the change)
-		 * @param {Object} options
+		 * @param {Object} options=null
 		 */
 		getChanges: function(options) {
 			return (this._tracker && this._tracker.getChanges(options)) || {}; 
@@ -1249,6 +1249,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		/**
 		 * Callback for the editor's beforeGetData event
 		 * Remove tooltips from dom
+		 * @private
 		 */
 		_onBeforeGetData: function(/*evt*/) {
 			this._hideTooltip();
@@ -1257,6 +1258,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		/**
 		 * Callback for the editor's afterSetData event
 		 * Remove tooltips from dom
+		 * @private
 		 */
 		_onAfterSetData: function(/*evt*/) {
 			this._hideTooltip();

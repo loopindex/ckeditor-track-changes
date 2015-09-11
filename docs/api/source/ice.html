@@ -237,7 +237,7 @@
 		listenToEvents: function() {
 			if (this.element &amp;&amp; ! this._boundEventHandler) {
 				this.unlistenToEvents();
-				this._boundEventHandler = this._handleEnter.bind(this);
+				this._boundEventHandler = this.handleEvent.bind(this);
 				this.element.addEventListener(&quot;keydown&quot;, this._boundEventHandler, true);
 			}
 		},
@@ -570,9 +570,11 @@
 <span id='ice-InlineChangeEditor-method-getChanges'>		/**
 </span>		 * Returns the changes - a hash of objects with the following properties:
 		 * [changeid] =&gt; {`type`, `time`, `userid`, `username`}
+		 * @param {Object} options
 		 */
-		getChanges: function () {
-			return this._changes;
+		getChanges: function (options) {
+			var changes = options ? this._filterChanges(options) : this._changes;
+			return $.extend({}, changes);
 		},
 	
 <span id='ice-InlineChangeEditor-method-getChangeUserids'>		/**
@@ -621,9 +623,9 @@
 		 * change type tags are removed, leaving the html content in place. 
 		 * @param body If not null, the node or html to process
 		 * @param options may contain:
-		 * &lt;ul&gt;&lt;li&gt;callback - executed after cleaning, should return the processed body
-		 * &lt;li&gt;clone If true, process a clone of the target element
-		 * &lt;li&gt;prepare function to run on body before the cleaning
+		 * &lt;ul&gt;&lt;li&gt;callback - executed after cleaning, should return the processed body&lt;/li&gt;
+		 * &lt;li&gt;clone If true, process a clone of the target element&lt;/li&gt;
+		 * &lt;li&gt;prepare function to run on body before the cleaning&lt;/li&gt;
 		 */
 		getCleanDOM : function(body, options) {
 			var classList = '',
@@ -940,6 +942,7 @@
 <span id='ice-InlineChangeEditor-method-_isRangeInElement'>		/**
 </span>		 * Utility function
 		 * Returns the range if its startcontainer is a descendant of (or equal to) the given top element
+		 * @private
 		 */
 		_isRangeInElement: function(range, top) {
 			var start = range &amp;&amp; range.startContainer;
@@ -1987,6 +1990,7 @@
 		
 <span id='ice-InlineChangeEditor-method-_deleteInDeleted'>		/**
 </span>		 * Handle the case of deletion inside a delete element
+		 * @private
 		 */
 		_deleteInDeleted: function(contentNode, options) {
 			var range = options.range, 
@@ -2135,6 +2139,7 @@
 	
 <span id='ice-InlineChangeEditor-method-_mergeDeleteNode'>		/**
 </span>		 * Merges a delete node with its siblings if they belong to the same user
+		 * @private
 		 */
 		_mergeDeleteNode: function(delNode) {
 			var siblingDel,
@@ -2572,9 +2577,9 @@
 <span id='ice-InlineChangeEditor-method-_filterChanges'>		/**
 </span>		 * Filters the current change set based on options
 		 * @param _options may contain one of:&lt;ul&gt;
-		 * &lt;li&gt;exclude: an array of user ids to exclude&lt;li&gt;include: an array of user ids to include
-		 * &lt;li&gt;filter: a filter function of the form function({userid, time, data}):boolean
-		 * &lt;li&gt;verify: a boolean indicating whether or not to verify that there are matching dom nodes for each matching change
+		 * &lt;li&gt;exclude: an array of user ids to exclude&lt;li&gt;include: an array of user ids to include&lt;/li&gt;
+		 * &lt;li&gt;filter: a filter function of the form function({userid, time, data}):boolean&lt;/li&gt;
+		 * &lt;li&gt;verify: a boolean indicating whether or not to verify that there are matching dom nodes for each matching change&lt;/li&gt;
 		 * &lt;/ul&gt;
 		 *	@return {Object} an object with two members: count, changes (map of id:changeObject)
 		 * @private
