@@ -151,6 +151,14 @@
 		this._deleteSelector = '.' + this._getIceNodeClass(DELETE_TYPE);
 		this._iceSelector = this._insertSelector + ',' + this._deleteSelector;
 		
+/*		this._domObserver = new window.MutationObserver(this._onDomMutation.bind(this));
+		this._domObserverConfig = {
+//			attributes: true,
+			childList: true,
+			characterData: false,
+			subtree: true
+		};
+		this._domObserverTimeout = null; */
 	};
 
 	InlineChangeEditor.prototype = {
@@ -289,6 +297,17 @@
 			bTrack = (undefined === bTrack) ? ! this._isTracking : Boolean(bTrack);
 			this._isTracking = bTrack;
 		},
+		
+		/**
+		 * Gets the current user
+		 * @return {Object} an object with the properties id, name
+		 */
+		getCurrentUser: function() {
+			var u = this.currentUser || {},
+				id = (u.id === null || u.id === undefined) ? "" : String(u.id);
+			return {name: u.name || "", id: id};
+		},
+		
 		/**
 		 * Set the user to be tracked. 
 		 * @param {Object} inUser and object has the following properties:
@@ -369,7 +388,7 @@
 		 * the range first if needed. If range is undefined, then the range from the Selection object
 		 * is used. If the range is in a parent delete node, then the range is positioned after the delete.
 		 * @param options may contain <strong>nodes</strong> (DOM element or array of dom elements) or <strong>text</strong> (string). 
-		 * @returns {Boolean} true if the action should continue, false if the action was finished in the insert sequence
+		 * @return {Boolean} true if the action should continue, false if the action was finished in the insert sequence
 		 */
 		insert: function (options) {
 			this.hostMethods.beforeInsert && this.hostMethods.beforeInsert();
@@ -552,8 +571,8 @@
 	
 		/**
 		 * Returns the changes - a hash of objects with the following properties:
-		 * [changeid] => {`type`, `time`, `userid`, `username`}
-		 * @param {Object} options
+		 * [changeid] => {`type`, `time`, `userid`, `username`, `lastTime`, `data`}
+		 * @param {LITE.AcceptRejectOptions} [options=null] filtering options for the changes to be accepted
 		 */
 		getChanges: function (options) {
 			var changes = options ? this._filterChanges(options) : this._changes;
@@ -656,7 +675,7 @@
 		/**
 		 * Accepts all changes in the element body - removes delete nodes, and removes outer
 		 * insert tags keeping the inner content in place.
-		 * dfl:added support for filtering
+		 * @param {LITE.AcceptRejectOptions} options=null filtering options for the changes to be accepted
 		 */
 		acceptAll: function (options) {
 			if (options) {
@@ -675,7 +694,7 @@
 		/**
 		 * Rejects all changes in the element body - removes insert nodes, and removes outer
 		 * delete tags keeping the inner content in place.*
-		 * dfl:added support for filtering
+		 * @param {LITE.AcceptRejectOptions} options=null filtering options for the changes to be accepted
 		 */
 		rejectAll: function (options) {
 			if (options) {
@@ -2313,6 +2332,10 @@
 			if (range && !range.collapsed) {
 				this._deleteContents();
 			}
+/*
+ 			this._domObserver.observe(this.element, this._domObserverConfig);
+			this._setDomObserverTimeout();
+*/
 		},
 
 		/**
@@ -2560,9 +2583,10 @@
 		/**
 		 * Filters the current change set based on options
 		 * @param _options may contain one of:<ul>
-		 * <li>exclude: an array of user ids to exclude<li>include: an array of user ids to include</li>
-		 * <li>filter: a filter function of the form function({userid, time, data}):boolean</li>
-		 * <li>verify: a boolean indicating whether or not to verify that there are matching dom nodes for each matching change</li>
+		 * <li>exclude: an array of user ids to exclude
+		 * <li>include: an array of user ids to include
+		 * <li>filter: a filter function of the form function({userid, time, data}):boolean
+		 * <li>verify: a boolean indicating whether or not to verify that there are matching dom nodes for each matching change
 		 * </ul>
 		 *	@return {Object} an object with two members: count, changes (map of id:changeObject)
 		 * @private
@@ -2866,6 +2890,35 @@
 			}, 10);
 		},
 		
+		_onDomMutation: function(mutations) {
+			var i, len = mutations.length, m,
+				nodeIndex, lst,
+				node;
+			for (i = 0; i < len; ++i) {
+				m = mutations[i];
+				switch (m.type) {
+					case "childList":
+						lst  = m.addedNodes;
+						for (nodeIndex = lst.length - 1; nodeIndex >= 0; --nodeIndex) {
+							node = lst[nodeIndex];
+							console.log("mutation: added node", node.tagName);
+						}
+						break;
+				}
+			}
+		},
+		
+		_setDomObserverTimeout: function() {
+			var self = this;
+			if (this._domObserverTimeout) {
+				window.clearTimeout(this._domObserverTimeout);
+			}
+			this._domObserverTimeout = window.setTimeout(function() {
+				self._domObserverTimeout = null;
+				self._domObserver.disconnect();
+			}, 1);
+		},
+		
 		getAdjacentChangeId: function(node, left) {
 			var next = left ? ice.dom.getNextNode(node) : ice.dom.getPrevNode(node),
 				nextChange,
@@ -2931,7 +2984,6 @@
 	/**
 	 * Strip all attributes and classes from a node
 	 * @param node
-	 * @returns
 	 */
 	function stripNode(node) {
 		// remove all attrs and classes from the node

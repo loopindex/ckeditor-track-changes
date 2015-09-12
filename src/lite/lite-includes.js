@@ -3843,6 +3843,14 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 		this._deleteSelector = '.' + this._getIceNodeClass(DELETE_TYPE);
 		this._iceSelector = this._insertSelector + ',' + this._deleteSelector;
 		
+/*		this._domObserver = new window.MutationObserver(this._onDomMutation.bind(this));
+		this._domObserverConfig = {
+//			attributes: true,
+			childList: true,
+			characterData: false,
+			subtree: true
+		};
+		this._domObserverTimeout = null; */
 	};
 
 	InlineChangeEditor.prototype = {
@@ -3884,7 +3892,7 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 	
 		/**
 		 * Removes contenteditability and stops event handling.
-		 * Changed by dfl to have the option of not setting contentEditable
+		 * @param {Boolean} onlyICE if true, stop tracking but don't remove the contenteditable property of the tracked element
 		 */
 		stopTracking: function (onlyICE) {
 	
@@ -3912,7 +3920,7 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 		listenToEvents: function() {
 			if (this.element && ! this._boundEventHandler) {
 				this.unlistenToEvents();
-				this._boundEventHandler = this._handleEnter.bind(this);
+				this._boundEventHandler = this.handleEvent.bind(this);
 				this.element.addEventListener("keydown", this._boundEventHandler, true);
 			}
 		},
@@ -3981,6 +3989,17 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 			bTrack = (undefined === bTrack) ? ! this._isTracking : Boolean(bTrack);
 			this._isTracking = bTrack;
 		},
+		
+		/**
+		 * Gets the current user
+		 * @return {Object} an object with the properties id, name
+		 */
+		getCurrentUser: function() {
+			var u = this.currentUser || {},
+				id = (u.id === null || u.id === undefined) ? "" : String(u.id);
+			return {name: u.name || "", id: id};
+		},
+		
 		/**
 		 * Set the user to be tracked. 
 		 * @param {Object} inUser and object has the following properties:
@@ -4061,7 +4080,7 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 		 * the range first if needed. If range is undefined, then the range from the Selection object
 		 * is used. If the range is in a parent delete node, then the range is positioned after the delete.
 		 * @param options may contain <strong>nodes</strong> (DOM element or array of dom elements) or <strong>text</strong> (string). 
-		 * @returns {Boolean} true if the action should continue, false if the action was finished in the insert sequence
+		 * @return {Boolean} true if the action should continue, false if the action was finished in the insert sequence
 		 */
 		insert: function (options) {
 			this.hostMethods.beforeInsert && this.hostMethods.beforeInsert();
@@ -4244,10 +4263,12 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 	
 		/**
 		 * Returns the changes - a hash of objects with the following properties:
-		 * [changeid] => {`type`, `time`, `userid`, `username`}
+		 * [changeid] => {`type`, `time`, `userid`, `username`, `lastTime`, `data`}
+		 * @param {LITE.AcceptRejectOptions} [options=null] filtering options for the changes to be accepted
 		 */
-		getChanges: function () {
-			return this._changes;
+		getChanges: function (options) {
+			var changes = options ? this._filterChanges(options) : this._changes;
+			return $.extend({}, changes);
 		},
 	
 		/**
@@ -4296,9 +4317,9 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 		 * change type tags are removed, leaving the html content in place. 
 		 * @param body If not null, the node or html to process
 		 * @param options may contain:
-		 * <ul><li>callback - executed after cleaning, should return the processed body
-		 * <li>clone If true, process a clone of the target element
-		 * <li>prepare function to run on body before the cleaning
+		 * <ul><li>callback - executed after cleaning, should return the processed body</li>
+		 * <li>clone If true, process a clone of the target element</li>
+		 * <li>prepare function to run on body before the cleaning</li>
 		 */
 		getCleanDOM : function(body, options) {
 			var classList = '',
@@ -4346,7 +4367,7 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 		/**
 		 * Accepts all changes in the element body - removes delete nodes, and removes outer
 		 * insert tags keeping the inner content in place.
-		 * dfl:added support for filtering
+		 * @param {LITE.AcceptRejectOptions} options=null filtering options for the changes to be accepted
 		 */
 		acceptAll: function (options) {
 			if (options) {
@@ -4365,7 +4386,7 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 		/**
 		 * Rejects all changes in the element body - removes insert nodes, and removes outer
 		 * delete tags keeping the inner content in place.*
-		 * dfl:added support for filtering
+		 * @param {LITE.AcceptRejectOptions} options=null filtering options for the changes to be accepted
 		 */
 		rejectAll: function (options) {
 			if (options) {
@@ -4615,6 +4636,7 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 		/**
 		 * Utility function
 		 * Returns the range if its startcontainer is a descendant of (or equal to) the given top element
+		 * @private
 		 */
 		_isRangeInElement: function(range, top) {
 			var start = range && range.startContainer;
@@ -5662,6 +5684,7 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 		
 		/**
 		 * Handle the case of deletion inside a delete element
+		 * @private
 		 */
 		_deleteInDeleted: function(contentNode, options) {
 			var range = options.range, 
@@ -5810,6 +5833,7 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 	
 		/**
 		 * Merges a delete node with its siblings if they belong to the same user
+		 * @private
 		 */
 		_mergeDeleteNode: function(delNode) {
 			var siblingDel,
@@ -6000,6 +6024,10 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 			if (range && !range.collapsed) {
 				this._deleteContents();
 			}
+/*
+ 			this._domObserver.observe(this.element, this._domObserverConfig);
+			this._setDomObserverTimeout();
+*/
 		},
 
 		/**
@@ -6247,7 +6275,8 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 		/**
 		 * Filters the current change set based on options
 		 * @param _options may contain one of:<ul>
-		 * <li>exclude: an array of user ids to exclude<li>include: an array of user ids to include
+		 * <li>exclude: an array of user ids to exclude
+		 * <li>include: an array of user ids to include
 		 * <li>filter: a filter function of the form function({userid, time, data}):boolean
 		 * <li>verify: a boolean indicating whether or not to verify that there are matching dom nodes for each matching change
 		 * </ul>
@@ -6553,6 +6582,35 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 			}, 10);
 		},
 		
+		_onDomMutation: function(mutations) {
+			var i, len = mutations.length, m,
+				nodeIndex, lst,
+				node;
+			for (i = 0; i < len; ++i) {
+				m = mutations[i];
+				switch (m.type) {
+					case "childList":
+						lst  = m.addedNodes;
+						for (nodeIndex = lst.length - 1; nodeIndex >= 0; --nodeIndex) {
+							node = lst[nodeIndex];
+							console.log("mutation: added node", node.tagName);
+						}
+						break;
+				}
+			}
+		},
+		
+		_setDomObserverTimeout: function() {
+			var self = this;
+			if (this._domObserverTimeout) {
+				window.clearTimeout(this._domObserverTimeout);
+			}
+			this._domObserverTimeout = window.setTimeout(function() {
+				self._domObserverTimeout = null;
+				self._domObserver.disconnect();
+			}, 1);
+		},
+		
 		getAdjacentChangeId: function(node, left) {
 			var next = left ? ice.dom.getNextNode(node) : ice.dom.getPrevNode(node),
 				nextChange,
@@ -6618,7 +6676,6 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 	/**
 	 * Strip all attributes and classes from a node
 	 * @param node
-	 * @returns
 	 */
 	function stripNode(node) {
 		// remove all attrs and classes from the node
