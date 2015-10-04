@@ -83,6 +83,42 @@
 			<arg line='copy /y ${rar.targetfile} "${shared.dir}/${rar.targetfilePrefix}.${lite.version}._zip"' />
       	</exec>
 	</target>
+	
+	<target name="zip-lite-dist" depends="init">
+		<local name="rar.native"/>
+		<local name="rar.targetfile"/>
+		<local name="rar.target" />
+		<property name="rar.targetBaseName" value="${rar.targetfilePrefix}.${lite.version}-dist" />
+		<property name="rar.targetfile" value="${rar.targetBaseName}.${rar.targetfileExtension}" />
+		<property name="rar.target" value="${lite.dir}/../${rar.targetfile}" />
+		
+		<script language="javascript">
+			project.setProperty('rar.native', project.getProperty('rar.target').
+			   replace(/\//g, "\\"));
+		</script>
+
+
+		<echo message="deleting previous version of ${rar.target}" />
+		<exec executable="cmd.exe" dir="${lite.dir}/..">
+			<arg line="/c" />
+			<arg line="del /q ${rar.targetfile}" />
+			<arg line=">NUL" />
+			<arg line="2>&amp;1" />
+		</exec>
+		<echo message="running ${rar.exe}" />
+		
+		<exec executable="${rar.exe}" dir="${lite.dir}/src/dist">
+			<arg line="a" />
+			<arg line="${rar.target}" />
+			<arg line="lite" />
+		</exec>
+
+		<echo message="Copying ${rar.native} to ${shared.dir}" />
+		<exec executable="cmd.exe" dir="${lite.dir}/..">
+			<arg line="/c" />
+			<arg line='copy /y ${rar.targetfile} "${shared.dir}/${rar.targetBaseName}._zip"' />
+      	</exec>
+	</target>
 
 	<macrodef name="minify-one" description="Minifies the file provided as a parameter">
 		<attribute name="src" />
@@ -226,6 +262,13 @@
 				<include name="js/*.min.js" />
 				<include name="css/*.min.css" />
 				<include name="css/*.min.css" />
+			</fileset>
+		</copy>
+
+		<copy todir="${dist.dir}">
+			<fileset dir="${lite.dir}">
+				<include name="readme.html" />
+				<include name="LICENSE.md" />
 			</fileset>
 		</copy>
 

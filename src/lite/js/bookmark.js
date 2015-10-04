@@ -139,8 +139,10 @@
 			catch (e) {}
 
 			if (endPos === null) {
-				range.setEnd(startPos, startOffset);
-				range.collapse(false);
+				if (range) {
+					range.setEnd(startPos, startOffset);
+					range.collapse(false);
+				}
 			} 
 			else {
 				range.setStart(startPos, startOffset);
