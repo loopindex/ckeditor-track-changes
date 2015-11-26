@@ -917,10 +917,13 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		 * @returns
 		 */
 		getCleanText : function() {
-			var root = this._getBody();
-			if (! root){
+			var doc = this._getDocument();
+			if (! doc) {
 				return "";
 			}
+			var data = this._editor.getData(),
+				root = doc.createElement("DIV");
+			root.innerHTML = data;
 			var textFragments = [];
 			textFragments.push("");
 			var deleteClass = this._tracker.getDeleteClass();
@@ -1056,6 +1059,10 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			catch (e) {
 				return null;
 			}
+		},
+		
+		_getDocument: function() {
+			return this._editor && this._editor.document && this._editor.document.$;		
 		},
 		
 		_afterReady : function() {
