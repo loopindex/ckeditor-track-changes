@@ -100,8 +100,6 @@
 		<exec executable="cmd.exe" dir="${lite.dir}/..">
 			<arg line="/c" />
 			<arg line="del /q ${rar.targetfile}" />
-			<arg line=">NUL" />
-			<arg line="2>&amp;1" />
 		</exec>
 		<echo message="running ${rar.exe}" />
 		
@@ -260,6 +258,7 @@
 				<include name="js/*.min.js" />
 				<include name="css/*.min.css" />
 				<include name="css/*.min.css" />
+				<include name="lang/*.js" />
 			</fileset>
 		</copy>
 
