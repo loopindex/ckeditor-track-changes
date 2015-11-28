@@ -2313,7 +2313,7 @@
 						if (isIgnoredKeyCode(key))  {
 							return false;
 						}
-						c = String.fromCharCode(key);
+						c = e["char"] || String.fromCharCode(key);
 
 						if (c) { // covers null and empty string
 							var text = this._browser.msie ? {text: c} : null;
