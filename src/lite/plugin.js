@@ -110,6 +110,8 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		delay: 500
 	},
 	
+	defaultTooltipTemplate = null,
+
 	LITEConstants = {
 		deleteTag: 'del',
 		insertTag: 'ins',
@@ -247,42 +249,42 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		return padString(s, length, '0');
 	}
 	
-	function relativeDateFormat(date) {
+	function relativeDateFormat(date, lang) {
 		var now = new Date(),
 			today = now.getDate(),
 			month = now.getMonth(),
 			year = now.getFullYear(),
-			minutes, hours;
+			minutes, hours; 
 		
 		var t = typeof(date);
 		if (t == "string" || t == "number") {
 			date = new Date(date);
 		}
 		
-		var months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+		var months = lang.MONTHS;
 		
 		if (today == date.getDate() && month == date.getMonth() && year == date.getFullYear()) {
 			minutes = Math.floor((now.getTime() - date.getTime()) / 60000);
 			if (minutes < 1) {
-				return "now";
+				return lang.NOW;
 			}
 			else if (minutes < 2) {
-				return "1 minute ago";
+				return lang.MINUTE_AGO;
 			}
 			else if (minutes < 60) {
-				return (minutes + " minutes ago");
+				return (lang.MINUTES_AGO.replace("xMinutes", minutes));
 			}
 			else {
 				hours = date.getHours();
 				minutes = date.getMinutes();
-				return "on " + padNumber(hours, 2) + ":" + padNumber(minutes, 2, "0");
+				return lang.AT + " " + padNumber(hours, 2) + ":" + padNumber(minutes, 2, "0");
 			}
 		} 
 		else if (year == date.getFullYear()) {
-			return "on " + months[date.getMonth()] + " " + date.getDate();
+			return lang.ON + " " + LITE_LABELS_DATE(date.getDate(), date.getMonth());
 		}
 		else {
-			return "on " + months[date.getMonth()] + " " + date.getDate() + ", " + date.getFullYear();
+			return lang.ON + " " + lang.LITE_LABELS_DATE(date.getDate(), date.getMonth(), date.getFullYear());
 		}
 	}
 	
@@ -454,6 +456,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		
 		icons: "lite-acceptall,lite-acceptone,lite-rejectall,lite-rejectone,lite-toggleshow,lite-toggletracking",// %REMOVE_LINE_CORE%
 		hidpi: true,
+		lang: ["en", "de"],
 
 		_scriptsLoaded : null, // not false, which means we're loading
 		
@@ -580,6 +583,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		 * @param {LITE.configuration} config a LITE configuration object, not null, ready to be used as a local copy
 		 */
 		init: function(ed, config) {
+			var lang = ed.lang.lite;
 			this._editor = ed;
 			this._domLoaded =  false;
 			this._editor =  null;
@@ -588,6 +592,10 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			this._liteCommandNames =  [];
 			this._canAcceptReject =  true; // enable state for accept reject overriding editor readonly
 			this._removeBindings = [];
+			
+			if (! defaultTooltipTemplate) {
+				defaultTooltipTemplate = "%a " + lang.lite.BY + " %u %t";
+			}
 
 			ed.ui.addToolbarGroup('lite');
 			this._setPluginFeatures(ed, LITEConstants);
@@ -602,42 +610,42 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 				{
 					command : LITE.Commands.TOGGLE_TRACKING,
 					exec : this._onToggleTracking, 
-					title: "Toggle Tracking Changes",
+					title: lang.TOGGLE_TRACKING,
 //					icon: "track_changes_on_off.png",
 					trackingOnly : false
 				},
 				{
 					command: LITE.Commands.TOGGLE_SHOW, 
 					exec: this._onToggleShow, 
-					title: "Toggle Tracking Changes",
+					title: lang.TOGGLE_SHOW,
 //					icon: "show_hide.png",
 					readOnly : true
 				},
 				{
 					command:LITE.Commands.ACCEPT_ALL, 
 					exec:this._onAcceptAll, 
-					title:"Accept all changes",
+					title: lang.ACCEPT_ALL,
 //					icon:"accept_all.png",
 					readOnly : allow
 				},
 				{
 					command:LITE.Commands.REJECT_ALL,
 					exec: this._onRejectAll,
-					title: "Reject all changes", 
+					title: lang.REJECT_ALL, 
 //					icon:"reject_all.png",
 					readOnly : allow
 				},
 				{
 					command:LITE.Commands.ACCEPT_ONE,
 					exec:this._onAcceptOne,
-					title:"Accept Change",
+					title: lang.ACCEPT_ONE,
 //					icon:"accept_one.png",
 					readOnly : allow
 				},
 				{
 					command:LITE.Commands.REJECT_ONE,
 					exec:this._onRejectOne,
-					title:"Reject Change",
+					title: lang.REJECT_ONE,
 //					icon:"reject_one.png",
 					readOnly : allow
 				},
@@ -695,7 +703,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 					var params = {};
 					if (commands.indexOf(LITE.Commands.ACCEPT_ONE) >= 0) {
 						params[LITE.Commands.ACCEPT_ONE] = {
-							label : 'Accept Change',
+							label :  lang.ACCEPT_ONE,
 							command : LITE.Commands.ACCEPT_ONE,
 							group : 'lite',
 							order : 1
@@ -703,7 +711,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 					}
 					if (commands.indexOf(LITE.Commands.REJECT_ONE) >= 0) {
 						params[LITE.Commands.REJECT_ONE] = {
-							label : 'Reject Change',
+							label : lang.REJECT_ONE,
 							command : LITE.Commands.REJECT_ONE,
 							group : 'lite',
 							order : 2
@@ -745,11 +753,12 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			
 			var tracking = (undefined === track) ? ! this._isTracking : track,
 				e = this._editor,
+				lang = this._editor.lang.lite,
 				force = options && options.force;
 			if (! tracking && this._isTracking && ! force) {
 				var nChanges = this._tracker.countChanges({verify: true});
 				if (nChanges) {
-					return window.alert("Your document containssome pending changes.\nPlease resolve them before turning off change tracking.");
+					return window.alert(lang.PENDING_CHANGES);
 				}
 			}
 			this._isTracking = tracking;
@@ -761,7 +770,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			this._setCommandsState(LITE.Commands.TOGGLE_TRACKING, tracking ? CKEDITOR.TRISTATE_ON : CKEDITOR.TRISTATE_OFF);
 			var ui = e.ui.get(this._commandNameToUIName(LITE.Commands.TOGGLE_TRACKING));
 			if (ui) {
-				this._setButtonTitle(ui, tracking ? 'Stop tracking changes' : 'Start tracking changes');
+				this._setButtonTitle(ui, tracking ? lang.STOP_TRACKING : lang.START_TRACKING);
 			}
 			if (options.notify !== false) {
 				e.fire(LITE.Events.TRACKING, {tracking:tracking, lite:this});
@@ -774,7 +783,8 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		 * @param {Boolean} [bNotify=true] if not false, dispatch the TOGGLE_SHOW event
 		 */	
 		toggleShow : function(show, bNotify) {
-			var vis = (typeof(show) == "undefined") ? (! this._isVisible) : show;
+			var vis = (typeof(show) == "undefined") ? (! this._isVisible) : show,
+				lang = this._editor.lang.lite;
 			this._isVisible = vis;
 			if (this._isTracking) {
 				this._setCommandsState(LITE.Commands.TOGGLE_SHOW, vis ? CKEDITOR.TRISTATE_ON : CKEDITOR.TRISTATE_OFF);
@@ -783,7 +793,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			
 			var ui = this._editor.ui.get(this._commandNameToUIName(LITE.Commands.TOGGLE_SHOW));
 			if (ui) {
-				this._setButtonTitle(ui, vis ? 'Hide tracked changes' : 'Show tracked changes');
+				this._setButtonTitle(ui, vis ? lang.HIDE_TRACKED : lang.SHOW_TRACKED);
 			}
 			if (bNotify !== false) {
 				this._editor.fire(LITE.Events.SHOW_HIDE, {show:vis, lite:this});
@@ -1704,7 +1714,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 					changeId: change.changeId});
 			}
 			if (config.show) {
-				var title = this._makeTooltipTitle(change);
+				var title = this._makeTooltipTitle(change, this._editor.lang.lite);
 				if (this._tooltipsHandler) {
 					this._tooltipsHandler.hideAll(this._getBody());
 					this._tooltipsHandler.showTooltip(node, title, this._editor.container.$);
@@ -1775,12 +1785,12 @@ Written by (David *)Frenkiel - https://github.com/imdfl
  * @ignore
  * @param change
  * @returns {Boolean}
- */		_makeTooltipTitle: function(change) {
+ */		_makeTooltipTitle: function(change, lang) {
 			var title = this._config.tooltipTemplate || defaultTooltipTemplate,
 				time = new Date(change.time),
 				lastTime = new Date(change.lastTime);
-			title = title.replace(/%a/g, "insert" == change.type ? "added" : "deleted");
-			title = title.replace(/%t/g, relativeDateFormat(time));
+			title = title.replace(/%a/g, "insert" == change.type ? lang.CHANGE_TYPE_ADDED : this._editor.lang.lite.CHANGE_TYPE_DELETED);
+			title = title.replace(/%t/g, relativeDateFormat(time, lang));
 			title = title.replace(/%u/g, change.userName);
 			title = title.replace(/%dd/g, padNumber(time.getDate(), 2));
 			title = title.replace(/%d/g, time.getDate());
@@ -1793,7 +1803,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			title = title.replace(/%hh/g, padNumber(time.getHours(), 2));
 			title = title.replace(/%h/g, time.getHours());
 
-			title = title.replace(/%T/g, relativeDateFormat(lastTime));
+			title = title.replace(/%T/g, relativeDateFormat(lastTime, lang));
 			title = title.replace(/%DD/g, padNumber(lastTime.getDate(), 2));
 			title = title.replace(/%D/g, lastTime.getDate());
 			title = title.replace(/%MM/g, padNumber(lastTime.getMonth() + 1, 2));
