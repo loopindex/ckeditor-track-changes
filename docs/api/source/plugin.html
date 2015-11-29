@@ -1186,7 +1186,9 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 				this._tracker.startTracking();
 				this.toggleTracking(this._isTracking, false);
 				this._updateTrackingState();
-				jQuery(this._tracker).on(&quot;change&quot;, this._onIceChange.bind(this)).on(&quot;textChange&quot;, this._onIceTextChanged.bind(this));
+				jQuery(this._tracker)
+					.on(&quot;change&quot;, this._onIceChange.bind(this))
+					.on(&quot;textChange&quot;, this._onIceTextChanged.bind(this));
 				e.fire(LITE.Events.INIT, {lite: this});
 				this._onSelectionChanged(null);
 				this._onIceChange(null);
@@ -1456,7 +1458,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 					this._editor.editable().focus();
 				}
 				evt.stop();
-				this._onIceTextChanged();
+//				this._onIceTextChanged();
 			}
 
 			return true;
@@ -1512,7 +1514,8 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		 * @param ignore event
 		 */
 		_onIceTextChanged : function(ignore) {
-			this._triggerChange();
+			this._editor.fire(&quot;change&quot;);
+			this._editor.fire('saveSnapshot');
 		},
 		
 <span id='global-method-_triggerChange'>		/**

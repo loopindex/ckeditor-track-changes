@@ -427,7 +427,7 @@
 				logError(e, "while trying to insert nodes");
 			}
 			finally {
-				this._endBatchChange(changeid);
+				this._endBatchChange(changeid, nodes || options.text || !ret);
 			}
 			return ret;//isPropagating;
 		},
@@ -564,7 +564,7 @@
 				range && this.selection.addRange(range);
 			}
 			finally {
-				this._endBatchChange(changeid);
+				this._endBatchChange(changeid, prevent);
 			}
 			return prevent;
 		},
@@ -685,9 +685,8 @@
 				this.getCleanDOM(this.element, {
 					clone: false
 				});
-//				this.element.innerHTML = this.getCleanContent();
 				this._changes = {}; // dfl, reset the changes table
-				this._triggerChange(); // notify the world that our change count has changed
+				this._triggerChange({ isText: true }); // notify the world that our change count has changed
 			}
 		},
 	
@@ -717,7 +716,7 @@
 					});
 				});
 				this._changes = {}; // dfl, reset the changes table
-				this._triggerChange(); // notify the world that our change count has changed
+				this._triggerChange({ isText: true }); // notify the world that our change count has changed
 			}
 		},
 	
@@ -728,7 +727,7 @@
 		 * the case of delete, the node will be removed.
 		 */
 		acceptChange: function (node) {
-			this.acceptRejectChange(node, true);
+			this.acceptRejectChange(node, { isAccept: true });
 		},
 	
 		/**
@@ -738,20 +737,22 @@
 		 * the case of insert, the node will be removed.
 		 */
 		rejectChange: function (node) {
-			this.acceptRejectChange(node, false);
+			this.acceptRejectChange(node, { isAccept: false });
 		},
 	
 		/**
 		 * Handles accepting or rejecting tracking changes
 		 */
-		acceptRejectChange: function (node, isAccept) {
+		acceptRejectChange: function (node, options) {
 			var delSel, insSel, selector, removeSel, replaceSel, 
 				trackNode, changes, dom = ice.dom, nChanges,
 				self = this, changeId, content, userStyle,
 				userStyles = this._userStyles,
 				userId, userAttr = this.attributes.userId,
 				delClass = this._getIceNodeClass(DELETE_TYPE), 
-				insClass = this._getIceNodeClass(INSERT_TYPE);
+				insClass = this._getIceNodeClass(INSERT_TYPE),
+				isAccept = options && options.isAccept,
+				dontNotify = options && (options.notify === false);
 		
 			if (!node) {
 				var range = this.getCurrentRange();
@@ -813,8 +814,8 @@
 
 			/* begin dfl: if changes were accepted/rejected, remove change trigger change event */
 			delete this._changes[changeId];
-			if (nChanges > 0) {
-				this._triggerChange();
+			if (nChanges > 0 && ! dontNotify) {
+				this._triggerChange({ isText: true });
 			}
 			/* end dfl */
 		},
@@ -1187,7 +1188,7 @@
 					username: this.currentUser.name,
 					data : this._changeData || ""
 				};
-				this._triggerChange(); //dfl
+				this._triggerChange({ text: false }); //dfl
 			}
 			ice.dom.foreach(ctNodes, function (i) {
 				self._addNodeToChange(changeid, ctNodes[i]);
@@ -1280,11 +1281,15 @@
 		 * End the batch change
 		 * @param changeid If not identical to the current change id, no action is taken
 		 * this allows callers to start a batch change but end it only if the change was really started by the caller
+		 * @param wasTextChanged if true, notify that text was changed in this batch
 		 */
-		_endBatchChange: function (changeid) {
+		_endBatchChange: function (changeid, wasTextChanged) {
 			if (changeid && (changeid === this._batchChangeId)) {
 				this._batchChangeId = null;
-				this._triggerChangeText();
+				
+				if (wasTextChanged) {
+					this._triggerChange({ isText: true });
+				}
 			}
 		},
 	
@@ -2181,7 +2186,6 @@
 			if (preventEvent) {
 				e.stopImmediatePropagation();
 				e.preventDefault();
-				this.hostMethods.notifyChange();
 			}
 			return ! preventEvent;
 		},
@@ -2550,16 +2554,19 @@
 			  return node.previousSibling;
 		},
 		
-		_triggerChange: function() {
+		/**
+		 * Notify that the DOM has changed
+		 * if options.isText === true, also notify that text has changed
+		 */
+		_triggerChange: function(options) {
 			if (this._isTracking) {
 				this.$this.trigger("change");
+				if (options && options.isText) {
+					this.$this.trigger("textChange");
+				}
 			}
 		},
 	
-		_triggerChangeText: function() {
-			this.$this.trigger("textChange");
-		},
-		
 		_updateNodeTooltip: function(node) {
 			if (this.tooltips && this._isVisible) {
 				this._addTooltip(node);
@@ -2568,7 +2575,7 @@
 	
 		_acceptRejectSome: function(options, isAccept) {
 			var f = (function(index, node) {
-				this.acceptRejectChange(node, isAccept);
+				this.acceptRejectChange(node, { isAccept: isAccept, notify: false });
 			}).bind(this);
 			var changes = this._filterChanges(options);
 			for (var id in changes.changes) {
@@ -2576,7 +2583,7 @@
 				nodes.each(f);
 			}
 			if (changes.count) {
-				this._triggerChange();
+				this._triggerChange({ isText: true });
 			}
 		},
 		

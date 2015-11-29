@@ -1135,8 +1135,8 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 					},
 					setHostRange: this._setHostRange.bind(this),
 					hostCopy: this._hostCopy.bind(this),
-					beforeEdit: this._beforeEdit.bind(this),
-					notifyChange: this._afterEdit.bind(this)
+					beforeEdit: this._beforeEdit.bind(this)/*,
+					notifyChange: this._afterEdit.bind(this)*/
 				}
 			};
 			if (debug.log) {
@@ -1169,7 +1169,9 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 				this._tracker.startTracking();
 				this.toggleTracking(this._isTracking, false);
 				this._updateTrackingState();
-				jQuery(this._tracker).on("change", this._onIceChange.bind(this)).on("textChange", this._onIceTextChanged.bind(this));
+				jQuery(this._tracker)
+					.on("change", this._onIceChange.bind(this))
+					.on("textChange", this._onIceTextChanged.bind(this));
 				e.fire(LITE.Events.INIT, {lite: this});
 				this._onSelectionChanged(null);
 				this._onIceChange(null);
@@ -1439,7 +1441,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 					this._editor.editable().focus();
 				}
 				evt.stop();
-				this._onIceTextChanged();
+//				this._onIceTextChanged();
 			}
 
 			return true;
@@ -1495,7 +1497,8 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		 * @param ignore event
 		 */
 		_onIceTextChanged : function(ignore) {
-			this._triggerChange();
+			this._editor.fire("change");
+			this._editor.fire('saveSnapshot');
 		},
 		
 		/**
@@ -1643,11 +1646,11 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			}
 		},
 		
-		_afterEdit: function() {
+/*		_afterEdit: function() {
 			this._editor.fire('change');
 			this._editor.fire('saveSnapshot');
 		},
-		
+*/		
 		_beforeEdit: function() {
 			CKEDITOR.iscutting = true;
 			var e = this._editor,
