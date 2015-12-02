@@ -5878,7 +5878,6 @@ rangy.createCoreModule("WrappedSelection", ["DomRange", "WrappedRange"], functio
 			if (preventEvent) {
 				e.stopImmediatePropagation();
 				e.preventDefault();
-//				this.hostMethods.notifyChange();
 			}
 			return ! preventEvent;
 		},

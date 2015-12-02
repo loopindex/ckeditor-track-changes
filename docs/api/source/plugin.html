@@ -298,7 +298,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			}
 		} 
 		else if (year == date.getFullYear()) {
-			return lang.ON + &quot; &quot; + LITE_LABELS_DATE(date.getDate(), date.getMonth());
+			return lang.ON + &quot; &quot; + lang.LITE_LABELS_DATE(date.getDate(), date.getMonth());
 		}
 		else {
 			return lang.ON + &quot; &quot; + lang.LITE_LABELS_DATE(date.getDate(), date.getMonth(), date.getFullYear());
@@ -1152,8 +1152,8 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 					},
 					setHostRange: this._setHostRange.bind(this),
 					hostCopy: this._hostCopy.bind(this),
-					beforeEdit: this._beforeEdit.bind(this),
-					notifyChange: this._afterEdit.bind(this)
+					beforeEdit: this._beforeEdit.bind(this)/*,
+					notifyChange: this._afterEdit.bind(this)*/
 				}
 			};
 			if (debug.log) {
@@ -1663,11 +1663,11 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			}
 		},
 		
-		_afterEdit: function() {
+/*		_afterEdit: function() {
 			this._editor.fire('change');
 			this._editor.fire('saveSnapshot');
 		},
-		
+*/		
 		_beforeEdit: function() {
 			CKEDITOR.iscutting = true;
 			var e = this._editor,

@@ -281,7 +281,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			}
 		} 
 		else if (year == date.getFullYear()) {
-			return lang.ON + " " + LITE_LABELS_DATE(date.getDate(), date.getMonth());
+			return lang.ON + " " + lang.LITE_LABELS_DATE(date.getDate(), date.getMonth());
 		}
 		else {
 			return lang.ON + " " + lang.LITE_LABELS_DATE(date.getDate(), date.getMonth(), date.getFullYear());
