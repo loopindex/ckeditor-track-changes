@@ -201,7 +201,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 	function _findPluginIndex(editor) {
 		for (var i = _pluginMap.length; i--;) {
 			var rec = _pluginMap[i];
-			if (rec.editor == editor) {
+			if (rec.editor === editor) {
 				return i;
 			}
 		}
@@ -226,7 +226,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 	}
 
 	function padString(s, length, padWith, bSuffix) {
-		if (null === s || (typeof(s) == "undefined")) {
+		if (null === s || (typeof(s) === "undefined")) {
 			s = "";
 		}
 		else {
@@ -257,7 +257,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			minutes, hours; 
 		
 		var t = typeof(date);
-		if (t == "string" || t == "number") {
+		if (t === "string" || t === "number") {
 			date = new Date(date);
 		}
 		
@@ -363,6 +363,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 	/**
 	 * @member LITE.configuration
 	 * @property {Boolean} isTracking
+	 * Initial tracking state of the plugin. Default: <code>true</code>
 	 */
 	
 	/**
@@ -426,15 +427,15 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 	 * <li><strong>%a</strong>  The action, "added" or "deleted" (not internationalized yet)
 	 * <li><strong>%t</strong>  Timestamp of the first edit action in this change span (e.g. "now", "3 minutes ago", "August 15 1972")
 	 * <li><strong>%u</strong>  the name of the user who made the change
-	 * <li><strong>%dd</strong>  double digit date of change, e.g. 02
+	 * <li><strong>%dd</strong> double digit date of change, e.g. 02
 	 * <li><strong>%d</strong>  date of change, e.g. 2
-	 * <li><strong>%mm</strong>  double digit month of change, e.g. 09
+	 * <li><strong>%mm</strong> double digit month of change, e.g. 09
 	 * <li><strong>%m</strong>  month of change, e.g. 9
-	 * <li><strong>%yy</strong>    double digit year of change, e.g. 11
-	 * <li><strong>%y</strong>    full month of change, e.g. 2011
-	 * <li><strong>%nn</strong>    double digit minutes of change, e.g. 09
-	 * <li><strong>%n</strong>    minutes of change, e.g. 9
-	 * <li><strong>%hh</strong>    double digit hour of change, e.g. 05
+	 * <li><strong>%yy</strong> double digit year of change, e.g. 11
+	 * <li><strong>%y</strong>  full month of change, e.g. 2011
+	 * <li><strong>%nn</strong> double digit minutes of change, e.g. 09
+	 * <li><strong>%n</strong>  minutes of change, e.g. 9
+	 * <li><strong>%hh</strong> double digit hour of change, e.g. 05
 	 * <li><strong>%h</strong>  hour of change, e.g. 5
 	 * </ul>
 	 */
@@ -443,6 +444,16 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 	 * @member LITE.configuration
 	 * @property {Boolean} contextMenu
 	 * If false, don't add LITE commands to CKEditor's context menu
+	 */
+	
+	/**
+	 * @member LITE.configuration
+	 * @property {Array} ignoreSelectors
+	 * Array of CSS selector strings. When LITE processes insertion of html (e.g. clipboard paste or some other plugin
+	 * invoking CKEditor's <code>insertHtml()</code>, it will skip nodes that match any of these selectors plus
+	 * those that contain a non-empty value for the attribute <code>data-track-changes-ignore</code>. Note that mixing ignore
+	 * and unignored nodes in the same insertion is not very useful, since the insertion will be handled entirely by
+	 * LITE if at least one node is not ignored.
 	 */
 
 	/**
@@ -507,7 +518,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			}
 			
 			this._scriptsLoaded = false;
-			var	jQueryLoaded = (typeof(jQuery) == "function"),
+			var	jQueryLoaded = (typeof(jQuery) === "function"),
 				self = this,
 				jQueryPath = liteConfig.jQueryPath || "js/jquery.min.js",
 				scripts = (liteConfig.includeType ? liteConfig["includes_" + liteConfig.includeType] : liteConfig.includes) || ["lite-includes.js"];
@@ -783,7 +794,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		 * @param {Boolean} [bNotify=true] if not false, dispatch the TOGGLE_SHOW event
 		 */	
 		toggleShow : function(show, bNotify) {
-			var vis = (typeof(show) == "undefined") ? (! this._isVisible) : show,
+			var vis = (typeof(show) === "undefined") ? (! this._isVisible) : show,
 				lang = this._editor.lang.lite;
 			this._isVisible = vis;
 			if (this._isTracking) {
@@ -989,7 +1000,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			}
 			
 			var isBlock;
-			if (isBlock = ((e.nodeName && e.nodeName.toUpperCase() == "BR") || ("block" == jQuery(e).css("display")))) {
+			if (isBlock = ((e.nodeName && e.nodeName.toUpperCase() === "BR") || ("block" === jQuery(e).css("display")))) {
 				if (_emptyRegex.test(textFragments[textFragments.length - 1])) {
 					textFragments[textFragments.length - 1] = "";
 				}
@@ -1240,19 +1251,19 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		 */
 		_onAfterCommand: function(event) {
 			var name = this._tracker && this._isTracking && event.data && event.data.name;
-			if ("undo" == name || "redo" == name) {
+			if ("undo" === name || "redo" === name) {
 				this._tracker.reload();
 			}
 		},
 		
 		_onBeforeCommand: function(event) {
 			var name = this._tracker && this._tracker.isTracking() && event.data && event.data.name;
-			if ("cut" == name) {
+			if ("cut" === name) {
 				if (testClipboardCommand(this._editor, "copy")) {
 					this._tracker.prepareToCut();
 				}
 			}
-			else if ("copy" == name) {
+			else if ("copy" === name) {
 				if (testClipboardCommand(this._editor, "copy")) {
 					this._tracker.prepareToCopy();
 				}
@@ -1372,40 +1383,34 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		 * @private
 		 */
 		_onPaste : function(evt){
+			/* Test data
+			 * "<ins><div>man</div><p><del><div><ins>who is this guy</ins><del>this is deleted</del></div><div><del><span>text1</span><ins><div>calling all nature</div><del>inner del</del></ins></del></div><span>going again</span><h2>the thing</h2></del></p></ins>"
+			 */
 			if (! this._tracker || ! this._isTracking || ! evt) {
 				return true;
 			}
-			var data = //"<ins><div>man</div><p><del><div><ins>who is this guy</ins><del>this is deleted</del></div><div><del><span>text1</span><ins><div>calling all nature</div><del>inner del</del></ins></del></div><span>going again</span><h2>the thing</h2></del></p></ins>",
-				evt.data || {},
-				ignore = false,
+			var data = evt.data || {},
 				toInsert = null,
-				selectors = this._config.ignoreSelectors || [],
+				selectors = ["[data-track-changes-ignore]"].concat(this._config.ignoreSelectors || []),
 				$ = window.jQuery,
 				node = (evt.name == "insertElement") && data.$;
 			if (! data) {
 				return;
 			}
-			if ("string" == typeof data) {
+			if ("string" === typeof data) {
 				data = {
 					dataValue: data,
 					type: "text"
 				};
 			}
-			if (node) {
-				ignore = node.getAttribute("data-track-changes-ignore");
-			}
-			else if (data.dataValue && "html" == (data.type || data.mode)) {
+			if (data.dataValue && ("html" === (data.type || data.mode))) {
 				try {
 					node = jQuery(data.dataValue);
-					ignore = node && node.attr("data-track-changes-ignore");
 				}
 				catch (e) {}
 			}
 			
-			if (ignore) {
-				return true;
-			}
-			if ("string" == typeof data.dataValue) {
+			if ("string" === typeof data.dataValue) {
 				try {
 					var doc = this._editor.document.$,
 						container = doc.createElement("div");
@@ -1454,7 +1459,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		 * @private
 		 */
 		_setCommandsState: function(commands, state) {
-			if (typeof(commands) == "string") {
+			if (typeof(commands) === "string") {
 				commands = commands.split(",");
 			}
 			for (var i = commands.length - 1; i >= 0; --i) {
@@ -1717,7 +1722,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 					changeId: change.changeId});
 			}
 			if (config.show) {
-				var title = this._makeTooltipTitle(change, this._editor.lang.lite);
+				var title = this._makeTooltipTitle(change);
 				if (this._tooltipsHandler) {
 					this._tooltipsHandler.hideAll(this._getBody());
 					this._tooltipsHandler.showTooltip(node, title, this._editor.container.$);
@@ -1788,11 +1793,12 @@ Written by (David *)Frenkiel - https://github.com/imdfl
  * @ignore
  * @param change
  * @returns {Boolean}
- */		_makeTooltipTitle: function(change, lang) {
+ */		_makeTooltipTitle: function(change) {
 			var title = this._config.tooltipTemplate || defaultTooltipTemplate,
 				time = new Date(change.time),
-				lastTime = new Date(change.lastTime);
-			title = title.replace(/%a/g, "insert" == change.type ? lang.CHANGE_TYPE_ADDED : this._editor.lang.lite.CHANGE_TYPE_DELETED);
+				lastTime = new Date(change.lastTime),
+				lang = this._editor.lang.lite;
+			title = title.replace(/%a/g, "insert" === change.type ? lang.CHANGE_TYPE_ADDED : lang.CHANGE_TYPE_DELETED);
 			title = title.replace(/%t/g, relativeDateFormat(time, lang));
 			title = title.replace(/%u/g, change.userName);
 			title = title.replace(/%dd/g, padNumber(time.getDate(), 2));

@@ -89,6 +89,28 @@
 
 	Bookmark.prototype = {
 
+		selectStartAndCollapse: function() {
+			if (this.start) {
+				var range = this.selection.getRangeAt(0);
+				range.setStartBefore(this.start);
+				range.collapse(true);
+				ice.dom.remove([this.start, this.end]);
+				try {
+					this.selection.addRange(range);
+				} 
+				catch (e) {
+					// IE may throw exception for hidden elements..
+				}
+			}
+		},
+		
+		remove: function() {
+			if (this.start) { 
+				ice.dom.remove([this.start, this.end]);
+				this.start = this.end = null;
+			}
+		},
+		
 		selectBookmark: function() {
 			var range = this.selection.getRangeAt(0),
 				startPos = null,

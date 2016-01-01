@@ -397,7 +397,7 @@
 				range = this._isRangeInElement(_rng, this.element),
 				hostRange = range ? null : this.hostMethods.getHostRange(),
 				changeid = this._startBatchChange(),
-				hadSelection = !!(range && !range.collapsed),
+				hadSelection = Boolean(range && !range.collapsed),
 				ret = false;
 			
 			options = options || {};
@@ -436,7 +436,6 @@
 		 * Deletes the contents in the given range or the range from the Selection object. If the range
 		 * is not collapsed, then a selection delete is handled; otherwise, it deletes one character
 		 * to the left or right if the right parameter is false or true, respectively.
-		 * compared OK
 		 * @return true if deletion was handled.
 		 * @private
 		 */
@@ -1068,9 +1067,12 @@
 		_cleanupAroundNode: function(node, includeNode) {
 			var parent = node.parentNode,
 				anchor = node.nextSibling,
+				isEmpty,
 				tmp;
 			while (anchor) {
-				if (ice.dom.isEmptyTextNode(anchor)) {
+				isEmpty = (ice.dom.is(anchor, this._iceSelector) && ice.dom.hasNoTextOrStubContent(anchor)) 
+					|| ice.dom.isEmptyTextNode(anchor);
+				if (isEmpty) {
 					tmp = anchor;
 					anchor = anchor.nextSibling;
 					parent.removeChild(tmp);
@@ -1081,7 +1083,9 @@
 			}
 			anchor = node.previousSibling;
 			while (anchor) {
-				if (ice.dom.isEmptyTextNode(anchor)) {
+				isEmpty = (ice.dom.is(anchor, this._iceSelector) && ice.dom.hasNoTextOrStubContent(anchor)) 
+				|| ice.dom.isEmptyTextNode(anchor);
+				if (isEmpty) {
 					tmp = anchor;
 					anchor = anchor.previousSibling;
 					parent.removeChild(tmp);
@@ -1434,7 +1438,6 @@
 			}
 		},
 	
-// compared OK
 		_handleVoidEl: function(el, range) {
 			// If `el` is or is in a void element, but not a delete
 			// then collapse the `range` and return `true`.
@@ -1446,14 +1449,16 @@
 			return false;
 		},
 	
-// compared OK
 		_deleteSelection: function (range) {
 	
 			// Bookmark the range and get elements between.
 			var bookmark = new ice.Bookmark(this.env, range),
 				elements = ice.dom.getElementsBetween(bookmark.start, bookmark.end),
-				betweenBlocks = [];
-	// elements length may change during the loop so don't optimize
+				betweenBlocks = [],
+				deleteNodes = [], // used to collect the new deletion nodes
+				addDeleteOptions = { deleteNodesCollection: deleteNodes, moveLeft: true, range: null };
+
+			// elements length may change during the loop so don't optimize
 			for (var i = 0; i < elements.length; i++) {
 				var elem = elements[i];
 				if (! elem || ! elem.parentNode) { // maybe removed as a side effect of removing other stuff
@@ -1480,12 +1485,12 @@
 					if (elem.nodeType !== ice.dom.TEXT_NODE) {
 						// Browsers like to insert breaks into empty paragraphs - remove them
 						if (isBRNode(elem)) {
-							this._addDeleteTrackingToBreak(elem);
+							this._addDeleteTrackingToBreak(elem, addDeleteOptions);
 							continue;
 						}
 			
 						if (ice.dom.isStubElement(elem)) {
-							this._addDeleteTracking(elem, {range:null, moveLeft:true});
+							this._addDeleteTracking(elem, addDeleteOptions);
 							continue;
 						}
 						if (ice.dom.hasNoTextOrStubContent(elem)) {
@@ -1494,7 +1499,7 @@
 						}
 						
 //						if (isParagraphNode(elem)) {
-//							this._addDeleteTrackingToBreak(elem);
+//							this._addDeleteTrackingToBreak(elem, addDeleteOptions);
 //						}
 			
 						for (var j = 0; j < elem.childNodes.length; j++) {
@@ -1504,16 +1509,26 @@
 						continue;
 					}
 					var parentBlock = ice.dom.getBlockParent(elem);
-					this._addDeleteTracking(elem, {range:null, moveLeft:true});
+					this._addDeleteTracking(elem, addDeleteOptions);
 					if (ice.dom.hasNoTextOrStubContent(parentBlock)) {
 						ice.dom.remove(parentBlock);
 					}
 				}
 			}
-	
-			bookmark.selectBookmark();
-			if (range = this.getCurrentRange()) {
+			
+			if (deleteNodes.length) {
+				bookmark.remove();
+				this._cleanupAroundNode(deleteNodes[0]);
+				range.setStartBefore(deleteNodes[0]);
 				range.collapse(true);
+				this.selection.addRange(range);
+			}
+			else {	
+				bookmark.selectStartAndCollapse();
+				if (range = this.getCurrentRange()) {
+					this._cleanupSelection(range, false, false);
+					range = this.getCurrentRange();			
+				}
 			}
 			return range;
 		},
@@ -1739,7 +1754,7 @@
 				}
 		
 				// Firefox finds an ice node wrapped around an image instead of the image itself sometimes, so we make sure to look at the image instead.
-				if (ice.dom.is(prevContainer,	this._iceSelector) && prevContainer.childNodes.length > 0 && prevContainer.lastChild) {
+				if (ice.dom.is(prevContainer, this._iceSelector) && prevContainer.childNodes.length > 0 && prevContainer.lastChild) {
 					prevContainer = prevContainer.lastChild;
 				}
 				
@@ -1871,9 +1886,6 @@
 			}
 		},
 	
-		// Marks text and other nodes for deletion
-		// compared OK
-
 		/**
 		 * @private
 		 * Adds delete tracking to the provided node. The node is checked for containment in various tracking contexts
@@ -1881,15 +1893,16 @@
 		 */
 		_addDeleteTracking: function (contentNode, options) {
 	
-			var moveLeft = options && options.moveLeft;
-			var contentAddNode = this._getIceNode(contentNode, INSERT_TYPE),
-				ctNode;
+			var moveLeft = options && options.moveLeft,
+				contentAddNode = this._getIceNode(contentNode, INSERT_TYPE),
+				ctNode, range;
+			options = options || {};
 	
 			if (contentAddNode) {
 				return this._addDeletionInInsertNode(contentNode, contentAddNode, options);
 			}
 			
-			var range = options && options.range;
+			range = options.range;
 			if (range && this._getIceNode(contentNode, DELETE_TYPE)) {
 				return this._deleteInDeleted(contentNode, options);
 	
@@ -1920,6 +1933,9 @@
 			else { // not in the neighborhood of a delete node
 				var changeId = this.getAdjacentChangeId(contentNode, moveLeft);
 				ctNode = this._createIceNode(DELETE_TYPE, null, changeId);
+				if (options.deleteNodesCollection) {
+					options.deleteNodesCollection.push(ctNode);
+				}
 				contentNode.parentNode.insertBefore(ctNode, contentNode);
 				ctNode.appendChild(contentNode);
 			}
@@ -2057,11 +2073,12 @@
  * Adds delete tracking markup around a content node
  * @param contentNode the content to be marked as deleted
  * @param contentAddNode the insert node surrounding the content
- * @param options may contain range, moveLeft, merge
+ * @param options may contain range, moveLeft, deleteNodesCollection, merge
  */
 		_addDeletionInInsertNode: function(contentNode, contentAddNode, options) {
 			var range = options && options.range,
 				moveLeft = options && options.moveLeft;
+			options = options || {};
 			if (this._isCurrentUserIceNode(contentAddNode)) {
 				if (range) {
 					if (moveLeft) {
@@ -2103,13 +2120,17 @@
 					ctNode;
 				parent.removeChild(contentNode);
 				ctNode = this._createIceNode(DELETE_TYPE);
+				if (options.deleteNodesCollection) {
+					options.deleteNodesCollection.push(ctNode);
+				}
 				ctNode.appendChild(contentNode);
 				if (cInd > 0 && cInd >= (nChildren - 1)) {
 					ice.dom.insertAfter(contentAddNode, ctNode);
 				}
 				else {
 					if (cInd > 0) {
-						this._splitNode(contentAddNode, parent, cInd);
+						var splitNode = this._splitNode(contentAddNode, parent, cInd);
+						this._deleteEmptyNode(splitNode);
 					}
 					contentAddNode.parentNode.insertBefore(ctNode, contentAddNode);
 				}
@@ -2433,9 +2454,9 @@
 		},
 		
 		setShowChanges: function(bShow) {
-			bShow = !! bShow;
-			this._isVisible = bShow;
 			var $body = $(this.element);
+			bShow = Boolean(bShow);
+			this._isVisible = bShow;
 			$body.toggleClass("ICE-Tracking", bShow);
 			this._showTitles(bShow);
 			this._updateTooltipsState();
