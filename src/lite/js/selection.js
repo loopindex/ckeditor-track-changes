@@ -1,8 +1,9 @@
-(function () {
+(function (global) {
 
 	"use strict";
 
-	var exports = this,
+	var exports = global,
+		rangy = global.rangy,
 		Selection;
 
 	Selection = function (env) {
@@ -548,4 +549,4 @@
 
 	exports.Selection = Selection;
 
-}).call(this.ice);
+}(this.ice || window.ice));

@@ -282,7 +282,7 @@
 		<property name="lite.includes" value="${src.dir}/lite-includes.js" />
 		<echo message="Concatenating LITE includes into ${lite.includes}" />
 		<concat destfile="${lite.includes}">
-			<filelist dir="${src.dir}/js" files="rangy/rangy-core.js,ice.js,dom.js,selection.js,bookmark.js,../lite-interface.js" />
+			<filelist dir="${src.dir}/js" files="ns.js,rangy/rangy-core.js,ice.js,dom.js,selection.js,bookmark.js,../lite-interface.js" />
 		</concat>
 		<minify-one src="${lite.includes}" />
 	</target>

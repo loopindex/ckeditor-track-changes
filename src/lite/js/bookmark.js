@@ -1,6 +1,6 @@
-(function() {
+(function(ice) {
 
-	var exports = this,
+	var exports = ice,
 		Bookmark;
 
 	Bookmark = function(env, range, keepOldBookmarks) {
@@ -194,4 +194,4 @@
 
 	exports.Bookmark = Bookmark;
 
-}).call(this.ice);
+}(this.ice || window.ice));

@@ -7,7 +7,7 @@ You should have received a copy of the GNU Lesser General Public License along w
 
 Written by (David *)Frenkiel - https://github.com/imdfl
 */
-(function(CKEDITOR) {
+(function(CKEDITOR, global) {
 
 	"use strict";
 
@@ -133,6 +133,8 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 	
 	defaultTooltipTemplate = "%a by %u %t",
 	
+	ice = null,
+	
 	_emptyRegex = /^[\s\r\n]*$/, // for getting the clean text
 		_cleanRE = [
 		            {regex: /[\s]*title=\"[^\"]+\"/g, replace: "" },
@@ -144,7 +146,6 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 	cutKeystrokes = [CKEDITOR.CTRL + 88,  // CTRL+X
 			CKEDITOR.CTRL + 120,
 			CKEDITOR.SHIFT + 46],
-	_inited = false,
 	isOldCKEDITOR = false;
 
 	
@@ -288,14 +289,11 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		}
 	}
 	
-	function initModule() {
-		if (_inited) {
-			return;
-		}
-		_inited = true;
+	var initModule = function() {
 		var ckv = parseFloat(CKEDITOR.version);
 		isOldCKEDITOR = isNaN(ckv) || ckv < 4.4;
-	}
+		initModule = function(){};
+	};
 	
 	/**
 	 * returns true if the element matches one of the patterns
@@ -538,6 +536,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			var load1 = function() {
 				if (scripts.length < 1) {
 					self._scriptsLoaded = true;
+					ice = global.ice;
 					if (! jQueryLoaded) {
 						jQuery.noConflict();
 					}
@@ -1886,4 +1885,4 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		return success || enabled;
 	}
 
-})(window.CKEDITOR);
+})(window.CKEDITOR, this || window);

@@ -1,8 +1,8 @@
-(function ($) {
+(function (ice, $) {
 
 	"use strict";
 
-	var exports = this,
+	var exports = ice,
 		dom = {},
 		_browser = null,
 		wsrgx = /^\s*$/,
@@ -1212,4 +1212,4 @@
 
 	exports.dom = dom;
 
-}).call(this.ice, window.jQuery);
+}(this.ice || window.ice, window.jQuery));

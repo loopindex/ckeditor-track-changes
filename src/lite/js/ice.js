@@ -1,4 +1,4 @@
-(function ($) {
+(function (ice, $) {
 	/**
 	 * TODO
 	 * 1. Each time an ice node is removed, refresh change set
@@ -6,7 +6,8 @@
 
 	"use strict";
 
-	var exports = this,
+	var exports = ice,
+		rangy = ice.rangy,
 		defaults, InlineChangeEditor;
 	
 	/* constants */
@@ -3218,9 +3219,7 @@
 		return ret;
 	}
 
+	ice.printRange = printRange;
+	ice.InlineChangeEditor = InlineChangeEditor;
 
-	exports.ice = this.ice || {};
-	this.ice.printRange = printRange;
-	exports.ice.InlineChangeEditor = InlineChangeEditor;
-
-}).call(this, window.jQuery);
+}(this.ice || window.ice, window.jQuery));
