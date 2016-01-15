@@ -537,12 +537,12 @@
 				clonedSelection = this.cloneContents();
 			}
 			var div = self.env.document.createElement('div');
-			div.appendChild(clonedSelection.cloneNode(true));
+				div.appendChild(clonedSelection.cloneNode(true));
 			return div.innerHTML;
 			};
 	
 			rangy.rangePrototype.getHTMLContentsObj = function () {
-			return this.cloneContents();
+				return this.cloneContents();
 			};
 		}
 	};
