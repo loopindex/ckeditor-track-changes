@@ -1,8 +1,8 @@
-(function ($) {
+(function (ice, $) {
 
 	"use strict";
 
-	var exports = this,
+	var exports = ice,
 		dom = {},
 		_browser = null,
 		wsrgx = /^\s*$/,
@@ -953,14 +953,17 @@
 		return this._browserType;
 	};
 	dom.getWebkitType = function(){
-	if(dom.browser().type !== "webkit") {
-		console.log("Not a webkit!");
-		return false;
-	}
+		if(dom.browser().type !== "webkit") {
+			console.log("Not a webkit!");
+			return false;
+		}
 		var isSafari = Object.prototype.toString.call(window.HTMLElement).indexOf('Constructor') > 0;
-	if(isSafari) return "safari";
-	return "chrome";
+		if (isSafari) {
+			return "safari";
+		}
+		return "chrome";
 	};
+
 	dom.isBrowser = function (browser) {
 		return (dom.browser().type === browser);
 	};
@@ -983,6 +986,7 @@
 		}
 		return null;
 	};
+
 	dom.findNodeParent = function (node, selector, container) {
 		if (node) {
 			while (node.parentNode) {
@@ -998,9 +1002,10 @@
 		}
 		return null;
 	};
+
 	dom.onBlockBoundary = function (leftContainer, rightContainer, blockEls) {
 		if (!leftContainer || !rightContainer) {
-			return false
+			return false;
 		}
 		var bleft = dom.isChildOfTagNames(leftContainer, blockEls) || dom.is(leftContainer, blockEls.join(', ')) && leftContainer || null,
 			bright = dom.isChildOfTagNames(rightContainer, blockEls) || dom.is(rightContainer, blockEls.join(', ')) && rightContainer || null;
@@ -1207,4 +1212,4 @@
 
 	exports.dom = dom;
 
-}).call(this.ice, window.jQuery);
+}(this.ice || window.ice, window.jQuery));

@@ -41,16 +41,14 @@
 		
 		<script language="javascript">
 			project.setProperty('rar.native', project.getProperty('rar.target').
-			   replace("/", "\\"));
+			   replace(/\//g, "\\"));
 		</script>
 
 
 		<echo message="Deleting previous archive"/>
 		<exec executable="cmd.exe" dir="${lite.dir}">
 			<arg line="/c" />
-			<arg line="del /q ${rar.target}" />
-			<arg line=">NUL" />
-			<arg line="2>&amp;1" />
+			<arg line="del /q ${rar.native}" />
 		</exec>
 		<echo message="running ${rar.exe}" />
 		<exec executable="${rar.exe}" dir="${lite.dir}">
@@ -81,6 +79,40 @@
 		<exec executable="cmd.exe" dir="${lite.dir}/..">
 			<arg line="/c" />
 			<arg line='copy /y ${rar.targetfile} "${shared.dir}/${rar.targetfilePrefix}.${lite.version}._zip"' />
+      	</exec>
+	</target>
+	
+	<target name="zip-lite-dist" depends="init">
+		<local name="rar.native"/>
+		<local name="rar.targetfile"/>
+		<local name="rar.target" />
+		<property name="rar.targetBaseName" value="${rar.targetfilePrefix}.${lite.version}-dist" />
+		<property name="rar.targetfile" value="${rar.targetBaseName}.${rar.targetfileExtension}" />
+		<property name="rar.target" value="${lite.dir}/../${rar.targetfile}" />
+		
+		<script language="javascript">
+			project.setProperty('rar.native', project.getProperty('rar.target').
+			   replace(/\//g, "\\"));
+		</script>
+
+
+		<echo message="deleting previous version of ${rar.target}" />
+		<exec executable="cmd.exe" dir="${lite.dir}/..">
+			<arg line="/c" />
+			<arg line="del /q ${rar.targetfile}" />
+		</exec>
+		<echo message="running ${rar.exe}" />
+		
+		<exec executable="${rar.exe}" dir="${lite.dir}/src/dist">
+			<arg line="a" />
+			<arg line="${rar.target}" />
+			<arg line="lite" />
+		</exec>
+
+		<echo message="Copying ${rar.native} to ${shared.dir}" />
+		<exec executable="cmd.exe" dir="${lite.dir}/..">
+			<arg line="/c" />
+			<arg line='copy /y ${rar.targetfile} "${shared.dir}/${rar.targetBaseName}._zip"' />
       	</exec>
 	</target>
 
@@ -170,9 +202,9 @@
 
 			<script language="javascript">
 				project.setProperty('target.native', project.getProperty('target.value').
-				   replace("/", "\\"));
+				   replace(/\//g, "\\"));
 				project.setProperty('config.native', project.getProperty('jsdoc.config').
-				   replace("/", "\\"));
+				   replace(/\//g, "\\"));
 			</script>
 
 			<echo message="deleting minified files" />
@@ -226,6 +258,14 @@
 				<include name="js/*.min.js" />
 				<include name="css/*.min.css" />
 				<include name="css/*.min.css" />
+				<include name="lang/*.js" />
+			</fileset>
+		</copy>
+
+		<copy todir="${dist.dir}">
+			<fileset dir="${lite.dir}">
+				<include name="readme.html" />
+				<include name="LICENSE.md" />
 			</fileset>
 		</copy>
 
@@ -242,7 +282,7 @@
 		<property name="lite.includes" value="${src.dir}/lite-includes.js" />
 		<echo message="Concatenating LITE includes into ${lite.includes}" />
 		<concat destfile="${lite.includes}">
-			<filelist dir="${src.dir}/js" files="rangy/rangy-core.js,ice.js,dom.js,selection.js,bookmark.js,../lite-interface.js" />
+			<filelist dir="${src.dir}/js" files="ns.js,rangy/rangy-core.js,ice.js,dom.js,selection.js,bookmark.js,../lite-interface.js" />
 		</concat>
 		<minify-one src="${lite.includes}" />
 	</target>

@@ -1,4 +1,4 @@
-(function ($) {
+(function (ice, $) {
 	/**
 	 * TODO
 	 * 1. Each time an ice node is removed, refresh change set
@@ -6,7 +6,8 @@
 
 	"use strict";
 
-	var exports = this,
+	var exports = ice,
+		rangy = ice.rangy,
 		defaults, InlineChangeEditor;
 	
 	/* constants */
@@ -126,10 +127,10 @@
 		this._styles = {}; // dfl, moved from prototype
 		this._savedNodesMap = {};
 		this.$this = $(this);
+		this._obsertCount = 0;
 		this._browser = ice.dom.browser();
 		this._tooltipMouseOver = this._tooltipMouseOver.bind(this);
 		this._tooltipMouseOut = this._tooltipMouseOut.bind(this);
-		this._boundEventHandler = this.handleEvent.bind(this);
 		
 		ice.dom.extend(true, this, defaults, options);
 		if (options.tooltips && (! $.isFunction(options.hostMethods.showTooltip) || ! $.isFunction(options.hostMethods.hideTooltip))) {
@@ -152,14 +153,14 @@
 		this._deleteSelector = '.' + this._getIceNodeClass(DELETE_TYPE);
 		this._iceSelector = this._insertSelector + ',' + this._deleteSelector;
 		
-/*		this._domObserver = new window.MutationObserver(this._onDomMutation.bind(this));
+		this._domObserver = new window.MutationObserver(this._onDomMutation.bind(this));
 		this._domObserverConfig = {
 //			attributes: true,
 			childList: true,
-			characterData: false,
-			subtree: true
+			characterData: true,
+			subtree: true,
+			characterDataOldValue: true
 		};
-		this._domObserverTimeout = null; */
 	};
 
 	InlineChangeEditor.prototype = {
@@ -201,18 +202,17 @@
 	
 		/**
 		 * Removes contenteditability and stops event handling.
-		 * Changed by dfl to have the option of not setting contentEditable
+		 * @param {Boolean} onlyICE if true, stop tracking but don't remove the contenteditable property of the tracked element
 		 */
 		stopTracking: function (onlyICE) {
 	
 			this._isTracking = false;
+			this._obsertCount = 0;
 			try { // dfl added try/catch for ie
 				// If we are handling events setup the delegate to handle various events on `this.element`.
 				var e = this.element;
 				if (e) {
-					e.removeEventListener("keyup", this._boundEventHandler, true);
-					e.removeEventListener("keydown", this._boundEventHandler, true);
-					e.removeEventListener("keypress", this._boundEventHandler, true);
+					this.unlistenToEvents();
 				}
 		
 				// dfl:reset contenteditable unless requested not to do so
@@ -229,17 +229,22 @@
 		},
 		
 		listenToEvents: function() {
-			this.unlistenToEvents();
-			if (this.element) {
+			if (this.element && ! this._boundEventHandler) {
+				this.unlistenToEvents();
+				this._stopObservingDOM();
+				this._observeCount = 0;
+				this._boundEventHandler = this.handleEvent.bind(this);
 				this.element.addEventListener("keydown", this._boundEventHandler, true);
+				this._domObserver.observe(this.element, this._domObserverConfig);
 			}
 		},
 		
 		unlistenToEvents: function() {
-			// If we are handling events setup the delegate to handle various events on `this.element`.
-			if (this.element) {
+			if (this.element && this._boundEventHandler) {
 				this.element.removeEventListener("keydown", this._boundEventHandler, true);
 			}
+			this._boundEventHandler = null;
+			this._stopObservingDOM({force : true });
 		},
 	
 		/**
@@ -296,7 +301,7 @@
 		 * @param {Boolean} bTrack if undefined, the tracking state is toggled, otherwise set to the parameter
 		 */
 		toggleChangeTracking: function (bTrack) {
-			bTrack = (undefined === bTrack) ? ! this._isTracking : !!bTrack;
+			bTrack = (undefined === bTrack) ? ! this._isTracking : Boolean(bTrack);
 			this._isTracking = bTrack;
 		},
 		
@@ -399,7 +404,7 @@
 				range = this._isRangeInElement(_rng, this.element),
 				hostRange = range ? null : this.hostMethods.getHostRange(),
 				changeid = this._startBatchChange(),
-				hadSelection = !!(range && !range.collapsed),
+				hadSelection = Boolean(range && !range.collapsed),
 				ret = false;
 			
 			options = options || {};
@@ -407,6 +412,7 @@
 			
 		// If we have any nodes selected, then we want to delete them before inserting the new text.
 			try {
+				this._stopObservingDOM();
 				if (hadSelection) {
 					this._deleteContents(false, range); 
 				// Update the range
@@ -420,16 +426,18 @@
 			
 					// If we are in a non-tracking/void element, move the range to the end/outside.
 					this._moveRangeToValidTrackingPos(range, hostRange);
-			
+					if (nodes || options.text) {
 					// insertnodes returns true if the text was inserted
-					ret = this._insertNodes(range, hostRange, {nodes: nodes, text: options.text, insertStubText: options.insertStubText !== false});
+						ret = this._insertNodes(range, hostRange, {nodes: nodes, text: options.text, insertStubText: options.insertStubText !== false});
+					}
 				}
 			}
 			catch(e) {
 				logError(e, "while trying to insert nodes");
 			}
 			finally {
-				this._endBatchChange(changeid);
+				this._endBatchChange(changeid, nodes || options.text || !ret);
+				this._startObservingDOM();
 			}
 			return ret;//isPropagating;
 		},
@@ -438,7 +446,6 @@
 		 * Deletes the contents in the given range or the range from the Selection object. If the range
 		 * is not collapsed, then a selection delete is handled; otherwise, it deletes one character
 		 * to the left or right if the right parameter is false or true, respectively.
-		 * compared OK
 		 * @return true if deletion was handled.
 		 * @private
 		 */
@@ -566,17 +573,19 @@
 				range && this.selection.addRange(range);
 			}
 			finally {
-				this._endBatchChange(changeid);
+				this._endBatchChange(changeid, prevent);
 			}
 			return prevent;
 		},
 	
 		/**
 		 * Returns the changes - a hash of objects with the following properties:
-		 * [changeid] => {`type`, `time`, `userid`, `username`}
+		 * [changeid] => {`type`, `time`, `userid`, `username`, `lastTime`, `data`}
+		 * @param {LITE.AcceptRejectOptions} [options=null] filtering options for the changes to be accepted
 		 */
-		getChanges: function () {
-			return this._changes;
+		getChanges: function (options) {
+			var changes = options ? this._filterChanges(options) : this._changes;
+			return $.extend({}, changes);
 		},
 	
 		/**
@@ -625,9 +634,9 @@
 		 * change type tags are removed, leaving the html content in place. 
 		 * @param body If not null, the node or html to process
 		 * @param options may contain:
-		 * <ul><li>callback - executed after cleaning, should return the processed body
-		 * <li>clone If true, process a clone of the target element
-		 * <li>prepare function to run on body before the cleaning
+		 * <ul><li>callback - executed after cleaning, should return the processed body</li>
+		 * <li>clone If true, process a clone of the target element</li>
+		 * <li>prepare function to run on body before the cleaning</li>
 		 */
 		getCleanDOM : function(body, options) {
 			var classList = '',
@@ -675,7 +684,7 @@
 		/**
 		 * Accepts all changes in the element body - removes delete nodes, and removes outer
 		 * insert tags keeping the inner content in place.
-		 * dfl:added support for filtering
+		 * @param {LITE.AcceptRejectOptions} options=null filtering options for the changes to be accepted
 		 */
 		acceptAll: function (options) {
 			if (options) {
@@ -685,16 +694,15 @@
 				this.getCleanDOM(this.element, {
 					clone: false
 				});
-//				this.element.innerHTML = this.getCleanContent();
 				this._changes = {}; // dfl, reset the changes table
-				this._triggerChange(); // notify the world that our change count has changed
+				this._triggerChange({ isText: true }); // notify the world that our change count has changed
 			}
 		},
 	
 		/**
 		 * Rejects all changes in the element body - removes insert nodes, and removes outer
 		 * delete tags keeping the inner content in place.*
-		 * dfl:added support for filtering
+		 * @param {LITE.AcceptRejectOptions} options=null filtering options for the changes to be accepted
 		 */
 		rejectAll: function (options) {
 			if (options) {
@@ -717,7 +725,7 @@
 					});
 				});
 				this._changes = {}; // dfl, reset the changes table
-				this._triggerChange(); // notify the world that our change count has changed
+				this._triggerChange({ isText: true }); // notify the world that our change count has changed
 			}
 		},
 	
@@ -728,7 +736,7 @@
 		 * the case of delete, the node will be removed.
 		 */
 		acceptChange: function (node) {
-			this.acceptRejectChange(node, true);
+			this.acceptRejectChange(node, { isAccept: true });
 		},
 	
 		/**
@@ -738,20 +746,22 @@
 		 * the case of insert, the node will be removed.
 		 */
 		rejectChange: function (node) {
-			this.acceptRejectChange(node, false);
+			this.acceptRejectChange(node, { isAccept: false });
 		},
 	
 		/**
 		 * Handles accepting or rejecting tracking changes
 		 */
-		acceptRejectChange: function (node, isAccept) {
+		acceptRejectChange: function (node, options) {
 			var delSel, insSel, selector, removeSel, replaceSel, 
 				trackNode, changes, dom = ice.dom, nChanges,
 				self = this, changeId, content, userStyle,
 				userStyles = this._userStyles,
 				userId, userAttr = this.attributes.userId,
 				delClass = this._getIceNodeClass(DELETE_TYPE), 
-				insClass = this._getIceNodeClass(INSERT_TYPE);
+				insClass = this._getIceNodeClass(INSERT_TYPE),
+				isAccept = options && options.isAccept,
+				dontNotify = options && (options.notify === false);
 		
 			if (!node) {
 				var range = this.getCurrentRange();
@@ -813,8 +823,8 @@
 
 			/* begin dfl: if changes were accepted/rejected, remove change trigger change event */
 			delete this._changes[changeId];
-			if (nChanges > 0) {
-				this._triggerChange();
+			if (nChanges > 0 && ! dontNotify) {
+				this._triggerChange({ isText: true });
 			}
 			/* end dfl */
 		},
@@ -944,6 +954,7 @@
 		/**
 		 * Utility function
 		 * Returns the range if its startcontainer is a descendant of (or equal to) the given top element
+		 * @private
 		 */
 		_isRangeInElement: function(range, top) {
 			var start = range && range.startContainer;
@@ -1066,9 +1077,12 @@
 		_cleanupAroundNode: function(node, includeNode) {
 			var parent = node.parentNode,
 				anchor = node.nextSibling,
+				isEmpty,
 				tmp;
 			while (anchor) {
-				if (ice.dom.isEmptyTextNode(anchor)) {
+				isEmpty = (ice.dom.is(anchor, this._iceSelector) && ice.dom.hasNoTextOrStubContent(anchor)) 
+					|| ice.dom.isEmptyTextNode(anchor);
+				if (isEmpty) {
 					tmp = anchor;
 					anchor = anchor.nextSibling;
 					parent.removeChild(tmp);
@@ -1079,7 +1093,9 @@
 			}
 			anchor = node.previousSibling;
 			while (anchor) {
-				if (ice.dom.isEmptyTextNode(anchor)) {
+				isEmpty = (ice.dom.is(anchor, this._iceSelector) && ice.dom.hasNoTextOrStubContent(anchor)) 
+				|| ice.dom.isEmptyTextNode(anchor);
+				if (isEmpty) {
 					tmp = anchor;
 					anchor = anchor.previousSibling;
 					parent.removeChild(tmp);
@@ -1186,7 +1202,7 @@
 					username: this.currentUser.name,
 					data : this._changeData || ""
 				};
-				this._triggerChange(); //dfl
+				this._triggerChange({ text: false }); //dfl
 			}
 			ice.dom.foreach(ctNodes, function (i) {
 				self._addNodeToChange(changeid, ctNodes[i]);
@@ -1279,11 +1295,15 @@
 		 * End the batch change
 		 * @param changeid If not identical to the current change id, no action is taken
 		 * this allows callers to start a batch change but end it only if the change was really started by the caller
+		 * @param wasTextChanged if true, notify that text was changed in this batch
 		 */
-		_endBatchChange: function (changeid) {
+		_endBatchChange: function (changeid, wasTextChanged) {
 			if (changeid && (changeid === this._batchChangeId)) {
 				this._batchChangeId = null;
-				this._triggerChangeText();
+				
+				if (wasTextChanged) {
+					this._triggerChange({ isText: true });
+				}
 			}
 		},
 	
@@ -1428,7 +1448,6 @@
 			}
 		},
 	
-// compared OK
 		_handleVoidEl: function(el, range) {
 			// If `el` is or is in a void element, but not a delete
 			// then collapse the `range` and return `true`.
@@ -1440,14 +1459,16 @@
 			return false;
 		},
 	
-// compared OK
 		_deleteSelection: function (range) {
 	
 			// Bookmark the range and get elements between.
 			var bookmark = new ice.Bookmark(this.env, range),
 				elements = ice.dom.getElementsBetween(bookmark.start, bookmark.end),
-				betweenBlocks = [];
-	// elements length may change during the loop so don't optimize
+				betweenBlocks = [],
+				deleteNodes = [], // used to collect the new deletion nodes
+				addDeleteOptions = { deleteNodesCollection: deleteNodes, moveLeft: true, range: null };
+
+			// elements length may change during the loop so don't optimize
 			for (var i = 0; i < elements.length; i++) {
 				var elem = elements[i];
 				if (! elem || ! elem.parentNode) { // maybe removed as a side effect of removing other stuff
@@ -1474,12 +1495,12 @@
 					if (elem.nodeType !== ice.dom.TEXT_NODE) {
 						// Browsers like to insert breaks into empty paragraphs - remove them
 						if (isBRNode(elem)) {
-							this._addDeleteTrackingToBreak(elem);
+							this._addDeleteTrackingToBreak(elem, addDeleteOptions);
 							continue;
 						}
 			
 						if (ice.dom.isStubElement(elem)) {
-							this._addDeleteTracking(elem, {range:null, moveLeft:true});
+							this._addDeleteTracking(elem, addDeleteOptions);
 							continue;
 						}
 						if (ice.dom.hasNoTextOrStubContent(elem)) {
@@ -1488,7 +1509,7 @@
 						}
 						
 //						if (isParagraphNode(elem)) {
-//							this._addDeleteTrackingToBreak(elem);
+//							this._addDeleteTrackingToBreak(elem, addDeleteOptions);
 //						}
 			
 						for (var j = 0; j < elem.childNodes.length; j++) {
@@ -1498,16 +1519,26 @@
 						continue;
 					}
 					var parentBlock = ice.dom.getBlockParent(elem);
-					this._addDeleteTracking(elem, {range:null, moveLeft:true});
+					this._addDeleteTracking(elem, addDeleteOptions);
 					if (ice.dom.hasNoTextOrStubContent(parentBlock)) {
 						ice.dom.remove(parentBlock);
 					}
 				}
 			}
-	
-			bookmark.selectBookmark();
-			if (range = this.getCurrentRange()) {
+			
+			if (deleteNodes.length) {
+				bookmark.remove();
+				this._cleanupAroundNode(deleteNodes[0]);
+				range.setStartBefore(deleteNodes[0]);
 				range.collapse(true);
+				this.selection.addRange(range);
+			}
+			else {	
+				bookmark.selectStartAndCollapse();
+				if (range = this.getCurrentRange()) {
+					this._cleanupSelection(range, false, false);
+					range = this.getCurrentRange();			
+				}
 			}
 			return range;
 		},
@@ -1733,7 +1764,7 @@
 				}
 		
 				// Firefox finds an ice node wrapped around an image instead of the image itself sometimes, so we make sure to look at the image instead.
-				if (ice.dom.is(prevContainer,	this._iceSelector) && prevContainer.childNodes.length > 0 && prevContainer.lastChild) {
+				if (ice.dom.is(prevContainer, this._iceSelector) && prevContainer.childNodes.length > 0 && prevContainer.lastChild) {
 					prevContainer = prevContainer.lastChild;
 				}
 				
@@ -1865,9 +1896,6 @@
 			}
 		},
 	
-		// Marks text and other nodes for deletion
-		// compared OK
-
 		/**
 		 * @private
 		 * Adds delete tracking to the provided node. The node is checked for containment in various tracking contexts
@@ -1875,15 +1903,16 @@
 		 */
 		_addDeleteTracking: function (contentNode, options) {
 	
-			var moveLeft = options && options.moveLeft;
-			var contentAddNode = this._getIceNode(contentNode, INSERT_TYPE),
-				ctNode;
+			var moveLeft = options && options.moveLeft,
+				contentAddNode = this._getIceNode(contentNode, INSERT_TYPE),
+				ctNode, range;
+			options = options || {};
 	
 			if (contentAddNode) {
 				return this._addDeletionInInsertNode(contentNode, contentAddNode, options);
 			}
 			
-			var range = options && options.range;
+			range = options.range;
 			if (range && this._getIceNode(contentNode, DELETE_TYPE)) {
 				return this._deleteInDeleted(contentNode, options);
 	
@@ -1914,6 +1943,9 @@
 			else { // not in the neighborhood of a delete node
 				var changeId = this.getAdjacentChangeId(contentNode, moveLeft);
 				ctNode = this._createIceNode(DELETE_TYPE, null, changeId);
+				if (options.deleteNodesCollection) {
+					options.deleteNodesCollection.push(ctNode);
+				}
 				contentNode.parentNode.insertBefore(ctNode, contentNode);
 				ctNode.appendChild(contentNode);
 			}
@@ -1991,6 +2023,7 @@
 		
 		/**
 		 * Handle the case of deletion inside a delete element
+		 * @private
 		 */
 		_deleteInDeleted: function(contentNode, options) {
 			var range = options.range, 
@@ -2050,11 +2083,12 @@
  * Adds delete tracking markup around a content node
  * @param contentNode the content to be marked as deleted
  * @param contentAddNode the insert node surrounding the content
- * @param options may contain range, moveLeft, merge
+ * @param options may contain range, moveLeft, deleteNodesCollection, merge
  */
 		_addDeletionInInsertNode: function(contentNode, contentAddNode, options) {
 			var range = options && options.range,
 				moveLeft = options && options.moveLeft;
+			options = options || {};
 			if (this._isCurrentUserIceNode(contentAddNode)) {
 				if (range) {
 					if (moveLeft) {
@@ -2096,13 +2130,17 @@
 					ctNode;
 				parent.removeChild(contentNode);
 				ctNode = this._createIceNode(DELETE_TYPE);
+				if (options.deleteNodesCollection) {
+					options.deleteNodesCollection.push(ctNode);
+				}
 				ctNode.appendChild(contentNode);
 				if (cInd > 0 && cInd >= (nChildren - 1)) {
 					ice.dom.insertAfter(contentAddNode, ctNode);
 				}
 				else {
 					if (cInd > 0) {
-						this._splitNode(contentAddNode, parent, cInd);
+						var splitNode = this._splitNode(contentAddNode, parent, cInd);
+						this._deleteEmptyNode(splitNode);
 					}
 					contentAddNode.parentNode.insertBefore(ctNode, contentAddNode);
 				}
@@ -2139,6 +2177,7 @@
 	
 		/**
 		 * Merges a delete node with its siblings if they belong to the same user
+		 * @private
 		 */
 		_mergeDeleteNode: function(delNode) {
 			var siblingDel,
@@ -2178,7 +2217,6 @@
 			if (preventEvent) {
 				e.stopImmediatePropagation();
 				e.preventDefault();
-				this.hostMethods.notifyChange();
 			}
 			return ! preventEvent;
 		},
@@ -2262,7 +2300,6 @@
 		},
 
 
-	
 		/**
 		 * @private
 		 * @param e event
@@ -2311,7 +2348,7 @@
 						if (isIgnoredKeyCode(key))  {
 							return false;
 						}
-						c = String.fromCharCode(key);
+						c = e["char"] || String.fromCharCode(key);
 
 						if (c) { // covers null and empty string
 							var text = this._browser.msie ? {text: c} : null;
@@ -2332,7 +2369,6 @@
 			}
 /*
  			this._domObserver.observe(this.element, this._domObserverConfig);
-			this._setDomObserverTimeout();
 */
 		},
 
@@ -2427,9 +2463,9 @@
 		},
 		
 		setShowChanges: function(bShow) {
-			bShow = !! bShow;
-			this._isVisible = bShow;
 			var $body = $(this.element);
+			bShow = Boolean(bShow);
+			this._isVisible = bShow;
 			$body.toggleClass("ICE-Tracking", bShow);
 			this._showTitles(bShow);
 			this._updateTooltipsState();
@@ -2548,16 +2584,19 @@
 			  return node.previousSibling;
 		},
 		
-		_triggerChange: function() {
+		/**
+		 * Notify that the DOM has changed
+		 * if options.isText === true, also notify that text has changed
+		 */
+		_triggerChange: function(options) {
 			if (this._isTracking) {
 				this.$this.trigger("change");
+				if (options && options.isText) {
+					this.$this.trigger("textChange");
+				}
 			}
 		},
 	
-		_triggerChangeText: function() {
-			this.$this.trigger("textChange");
-		},
-		
 		_updateNodeTooltip: function(node) {
 			if (this.tooltips && this._isVisible) {
 				this._addTooltip(node);
@@ -2566,7 +2605,7 @@
 	
 		_acceptRejectSome: function(options, isAccept) {
 			var f = (function(index, node) {
-				this.acceptRejectChange(node, isAccept);
+				this.acceptRejectChange(node, { isAccept: isAccept, notify: false });
 			}).bind(this);
 			var changes = this._filterChanges(options);
 			for (var id in changes.changes) {
@@ -2574,7 +2613,7 @@
 				nodes.each(f);
 			}
 			if (changes.count) {
-				this._triggerChange();
+				this._triggerChange({ isText: true });
 			}
 		},
 		
@@ -2888,13 +2927,37 @@
 			}, 10);
 		},
 		
+		_startObservingDOM: function() {
+			if (++this._observeCount === 1) {
+				this._domObserver.observe(this.element, this._domObserverConfig);
+			};
+			
+		},
+		
+		_stopObservingDOM: function(options) {
+			if (options && options.force) {
+				this._observeCount = 0;
+				this._domObserver.disconnect();
+			}
+			else if (this._observeCount > 0) {
+				if (--this._obsertCount === 0) {
+					this._domObserver.disconnect();
+				}
+			}
+		},
+		
+	
 		_onDomMutation: function(mutations) {
+			this._stopObservingDOM();
 			var i, len = mutations.length, m,
 				nodeIndex, lst,
 				node;
 			for (i = 0; i < len; ++i) {
 				m = mutations[i];
 				switch (m.type) {
+					case "characterData":
+						this._onTextChangedInNode(m.target, m.oldValue);
+						break;
 					case "childList":
 						lst  = m.addedNodes;
 						for (nodeIndex = lst.length - 1; nodeIndex >= 0; --nodeIndex) {
@@ -2904,17 +2967,71 @@
 						break;
 				}
 			}
+			this._startObservingDOM();
 		},
 		
-		_setDomObserverTimeout: function() {
-			var self = this;
-			if (this._domObserverTimeout) {
-				window.clearTimeout(this._domObserverTimeout);
+		_onTextChangedInNode: function(node, oldValue) {
+			
+			if (this._isCurrentUserIceNode(this._getIceNode(node.parentNode, INSERT_TYPE))) {
+				return;
 			}
-			this._domObserverTimeout = window.setTimeout(function() {
-				self._domObserverTimeout = null;
-				self._domObserver.disconnect();
-			}, 1);
+			
+			var i, text = node.nodeValue, doc,
+			startIndex = -1, endIndex = -1, oldText = oldValue || "",
+			textLen = text.length, oldLen = oldText.length;
+
+			if (textLen <= oldLen) { // for now we handle only insertion
+				return;
+			}
+			for (i = 0; i < oldLen; ++i) {
+				if (oldText[i] !== text[i]) {
+					startIndex = i;
+					break;
+				}
+			}
+			if (startIndex === -1) {
+				startIndex = oldLen;
+				endIndex = textLen;
+			}
+			else {
+				endIndex = startIndex + (textLen - oldLen);
+			}
+			var left = text.substring(0, startIndex), doc = this.env.document,
+				range = this.getCurrentRange(), parent = node.parentNode,
+				mid = text.substring(startIndex, endIndex),
+				iceNode = this._createIceNode(INSERT_TYPE),
+				midNode = doc.createTextNode(mid), leftNode, rightNode,
+				right = text.substring(endIndex);
+			if (left) {
+				leftNode = doc.createTextNode(left);
+			}
+			if (right) {
+				rightNode = doc.createTextNode(right);
+			}
+			if (leftNode) {
+				parent.insertBefore(leftNode, node);
+			}
+			iceNode.appendChild(midNode);
+			parent.insertBefore(iceNode, node);
+			if (rightNode) {
+				parent.insertBefore(rightNode, node);
+			}
+			parent.removeChild(node);
+			if (range.startContainer === node) {
+				if (left && range.startOffset < left.length) {
+					range.setStart(leftNode, range.startOffset);
+				}
+				else if (range.startOffset <= left.length + mid.length) {
+					range.setStart(midNode, range.startOffset - left.length);
+				}
+				else if (rightNode) {
+					range.setStart(rightNode, range.startOffset - left.length - mid.length);
+				}
+				range.collapse(true);
+				this.selection.addRange(range);
+			}
+			
+			return {start: startIndex, end: endIndex };
 		},
 		
 		getAdjacentChangeId: function(node, left) {
@@ -3189,9 +3306,7 @@
 		return ret;
 	}
 
+	ice.printRange = printRange;
+	ice.InlineChangeEditor = InlineChangeEditor;
 
-	exports.ice = this.ice || {};
-	this.ice.printRange = printRange;
-	exports.ice.InlineChangeEditor = InlineChangeEditor;
-
-}).call(this, window.jQuery);
+}(this.ice || window.ice, window.jQuery));

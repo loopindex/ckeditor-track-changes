@@ -7,7 +7,7 @@ You should have received a copy of the GNU Lesser General Public License along w
 
 Written by (David *)Frenkiel - https://github.com/imdfl
 */
-(function(CKEDITOR) {
+(function(CKEDITOR, global) {
 
 	"use strict";
 
@@ -25,47 +25,40 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			 * @member LITE.Events
 			 * @event INIT
 			 * string value: "lite:init"
-			 * @param {LITE.LITEPlugin} an instance of a lite object associated with a ckeditor instance
+			 * @param {LITE.LITEPlugin} lite an instance of a lite object associated with a ckeditor instance
 			 */
 			INIT : "lite:init",
 			/**
 			 * @member LITE.Events
 			 * @event ACCEPT
 			 * string value: "lite:accept"
-			 * @param {Object} An object with the fields
-			 * <ul><li><code>options</code> passed to the accept method
-			 * <li><code>lite</code>The LITE instance with which this event is associated
-			 * </ul>
+			 * @param {LITE.LITEPlugin} lite an instance of a lite object associated with a ckeditor instance
+			 * @param {Object} options filtering options
 			 */
 			ACCEPT : "lite:accept",
 			/**
 			 * @member LITE.Events
 			 * @event REJECT
 			 * string value: "lite:reject"
-			 * @param {Object} An object with the fields
-			 * <ul><li><code>options</code> passed to the reject method
-			 * <li><code>lite</code>The LITE instance with which this event is associated
-			 * </ul>
+			 * @param {LITE.LITEPlugin} lite an instance of a lite object associated with a ckeditor instance
+			 * @param {Object} options filtering options
 			 */
+
 			REJECT : "lite:reject",
 			/**
 			 * @member LITE.Events
 			 * @event SHOW_HIDE
 			 * string value: "lite:showHide"
-			 * @param {Object} An object with the fields
-			 * <ul><li><code>show</code> indicating the new change tracking show status
-			 * <li><code>lite</code>The LITE instance with which this event is associated
-			 * </ul>
+			 * @param {LITE.LITEPlugin} lite an instance of a lite object associated with a ckeditor instance
+			 * @param {Boolean} show indicates the new change tracking show status
 			 */
 			SHOW_HIDE : "lite:showHide",
 			/**
 			 * @member LITE.Events
 			 * @event TRACKING
 			 * string value: "lite:tracking"
-			 * @param {Object} An object with the fields 
-			 * <ul><li><code>tracking</code> indicating the new tracking status
-			 * <li><code>lite</code>The LITE instance with which this event is associated
-			 * </ul>
+			 * @param {LITE.LITEPlugin} lite an instance of a lite object associated with a ckeditor instance
+			 * @param {Boolean} tracking indicates the new tracking status
 			 */
 			TRACKING : "lite:tracking",
 			
@@ -73,9 +66,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			 * @member LITE.Events
 			 * @event CHANGE
 			 * string value: "lite:change"
-			 * @param {Object} An object with the fields 
-			 * <ul><li><code>lite</code>The LITE instance with which this event is associated
-			 * </ul>
+			 * @param {LITE.LITEPlugin} lite an instance of a lite object associated with a ckeditor instance
 			 */
 			CHANGE : "lite:change",
 
@@ -83,11 +74,9 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			 * @member LITE.Events
 			 * @event HOVER_IN
 			 * string value: "lite:hover-in"
-			 * @param {Object} An object with the fields 
-			 * <ul><li><code>lite</code>The LITE instance with which this event is associated
-			 * <li><code>node</code>The DOM node hovered
-			 * <li><code>changeId</code>The relevant change id
-			 * </ul>
+			 * @param {LITE.LITEPlugin} lite an instance of a lite object associated with a ckeditor instance
+			 * @param {Object} node The DOM node hovered
+			 * @param {String} changeId The relevant change id
 			 */
 			HOVER_IN: "lite:hover-in",
 
@@ -95,11 +84,9 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			 * @member LITE.Events
 			 * @event HOVER_OUT
 			 * string value: "lite:hover-out"
-			 * @param {Object} An object with the fields 
-			 * <ul><li><code>lite</code>The LITE instance with which this event is associated
-			 * <li><code>node</code>The DOM node hovered
-			 * <li><code>changeId</code>The relevant change id
-			 * </ul>
+			 * @param {LITE.LITEPlugin} lite an instance of a lite object associated with a ckeditor instance
+			 * @param {Object} node The DOM node hovered
+			 * @param {String} changeId The relevant change id
 			 */
 			HOVER_OUT: "lite:hover-out"
 		},
@@ -123,6 +110,8 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		delay: 500
 	},
 	
+	defaultTooltipTemplate = null,
+
 	LITEConstants = {
 		deleteTag: 'del',
 		insertTag: 'ins',
@@ -144,6 +133,8 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 	
 	defaultTooltipTemplate = "%a by %u %t",
 	
+	ice = null,
+	
 	_emptyRegex = /^[\s\r\n]*$/, // for getting the clean text
 		_cleanRE = [
 		            {regex: /[\s]*title=\"[^\"]+\"/g, replace: "" },
@@ -155,7 +146,6 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 	cutKeystrokes = [CKEDITOR.CTRL + 88,  // CTRL+X
 			CKEDITOR.CTRL + 120,
 			CKEDITOR.SHIFT + 46],
-	_inited = false,
 	isOldCKEDITOR = false;
 
 	
@@ -212,7 +202,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 	function _findPluginIndex(editor) {
 		for (var i = _pluginMap.length; i--;) {
 			var rec = _pluginMap[i];
-			if (rec.editor == editor) {
+			if (rec.editor === editor) {
 				return i;
 			}
 		}
@@ -237,7 +227,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 	}
 
 	function padString(s, length, padWith, bSuffix) {
-		if (null === s || (typeof(s) == "undefined")) {
+		if (null === s || (typeof(s) === "undefined")) {
 			s = "";
 		}
 		else {
@@ -260,53 +250,50 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		return padString(s, length, '0');
 	}
 	
-	function relativeDateFormat(date) {
+	function relativeDateFormat(date, lang) {
 		var now = new Date(),
 			today = now.getDate(),
 			month = now.getMonth(),
 			year = now.getFullYear(),
-			minutes, hours;
+			minutes, hours; 
 		
 		var t = typeof(date);
-		if (t == "string" || t == "number") {
+		if (t === "string" || t === "number") {
 			date = new Date(date);
 		}
 		
-		var months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+		var months = lang.MONTHS;
 		
 		if (today == date.getDate() && month == date.getMonth() && year == date.getFullYear()) {
 			minutes = Math.floor((now.getTime() - date.getTime()) / 60000);
 			if (minutes < 1) {
-				return "now";
+				return lang.NOW;
 			}
 			else if (minutes < 2) {
-				return "1 minute ago";
+				return lang.MINUTE_AGO;
 			}
 			else if (minutes < 60) {
-				return (minutes + " minutes ago");
+				return (lang.MINUTES_AGO.replace("xMinutes", minutes));
 			}
 			else {
 				hours = date.getHours();
 				minutes = date.getMinutes();
-				return "on " + padNumber(hours, 2) + ":" + padNumber(minutes, 2, "0");
+				return lang.AT + " " + padNumber(hours, 2) + ":" + padNumber(minutes, 2, "0");
 			}
 		} 
 		else if (year == date.getFullYear()) {
-			return "on " + months[date.getMonth()] + " " + date.getDate();
+			return lang.ON + " " + lang.LITE_LABELS_DATE(date.getDate(), date.getMonth());
 		}
 		else {
-			return "on " + months[date.getMonth()] + " " + date.getDate() + ", " + date.getFullYear();
+			return lang.ON + " " + lang.LITE_LABELS_DATE(date.getDate(), date.getMonth(), date.getFullYear());
 		}
 	}
 	
-	function initModule() {
-		if (_inited) {
-			return;
-		}
-		_inited = true;
+	var initModule = function() {
 		var ckv = parseFloat(CKEDITOR.version);
 		isOldCKEDITOR = isNaN(ckv) || ckv < 4.4;
-	}
+		initModule = function(){};
+	};
 	
 	/**
 	 * returns true if the element matches one of the patterns
@@ -374,6 +361,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 	/**
 	 * @member LITE.configuration
 	 * @property {Boolean} isTracking
+	 * Initial tracking state of the plugin. Default: <code>true</code>
 	 */
 	
 	/**
@@ -423,41 +411,47 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 	
 	/**
 	 * @member LITE.configuration
-	 * @property {String} jQueryPath
+	 * @property {String} jQueryPath="js/jquery.min.js"
 	 * the path (relative to the LITE plugin.js file) to jQuery
-	 * @default js/jquery.min.js 
 	 */
 
 	/**
 	 * @member LITE.configuration
-	 * @property {String} tooltipTemplate
+	 * @property {String} tooltipTemplate="%a by %u %t"
 	 * A format string used to create the content of tooltips shown over change spans
-	 * @default "%a by %u %t"
 	 * <h3>formats</h3>
 	 * (use uppercase to apply the format to the last modification date of the change span rather than the first) 
 	 * <ul>
 	 * <li><strong>%a</strong>  The action, "added" or "deleted" (not internationalized yet)
 	 * <li><strong>%t</strong>  Timestamp of the first edit action in this change span (e.g. "now", "3 minutes ago", "August 15 1972")
 	 * <li><strong>%u</strong>  the name of the user who made the change
-	 * <li><strong>%dd</strong>  double digit date of change, e.g. 02
+	 * <li><strong>%dd</strong> double digit date of change, e.g. 02
 	 * <li><strong>%d</strong>  date of change, e.g. 2
-	 * <li><strong>%mm</strong>  double digit month of change, e.g. 09
+	 * <li><strong>%mm</strong> double digit month of change, e.g. 09
 	 * <li><strong>%m</strong>  month of change, e.g. 9
-	 * <li><strong>%yy</strong>    double digit year of change, e.g. 11
-	 * <li><strong>%y</strong>    full month of change, e.g. 2011
-	 * <li><strong>%nn</strong>    double digit minutes of change, e.g. 09
-	 * <li><strong>%n</strong>    minutes of change, e.g. 9
-	 * <li><strong>%hh</strong>    double digit hour of change, e.g. 05
+	 * <li><strong>%yy</strong> double digit year of change, e.g. 11
+	 * <li><strong>%y</strong>  full month of change, e.g. 2011
+	 * <li><strong>%nn</strong> double digit minutes of change, e.g. 09
+	 * <li><strong>%n</strong>  minutes of change, e.g. 9
+	 * <li><strong>%hh</strong> double digit hour of change, e.g. 05
 	 * <li><strong>%h</strong>  hour of change, e.g. 5
 	 * </ul>
-	 * 
 	 */
 	
 	/**
 	 * @member LITE.configuration
-	 * @property {String} jQueryPath
-	 * the path (relative to the LITE plugin.js file) to jQuery
-	 * @default js/jquery.min.js 
+	 * @property {Boolean} contextMenu
+	 * If false, don't add LITE commands to CKEditor's context menu
+	 */
+	
+	/**
+	 * @member LITE.configuration
+	 * @property {Array} ignoreSelectors
+	 * Array of CSS selector strings. When LITE processes insertion of html (e.g. clipboard paste or some other plugin
+	 * invoking CKEditor's <code>insertHtml()</code>, it will skip nodes that match any of these selectors plus
+	 * those that contain a non-empty value for the attribute <code>data-track-changes-ignore</code>. Note that mixing ignore
+	 * and unignored nodes in the same insertion is not very useful, since the insertion will be handled entirely by
+	 * LITE if at least one node is not ignored.
 	 */
 
 	/**
@@ -471,6 +465,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		
 		icons: "lite-acceptall,lite-acceptone,lite-rejectall,lite-rejectone,lite-toggleshow,lite-toggletracking",// %REMOVE_LINE_CORE%
 		hidpi: true,
+		lang: ["en", "de"],
 
 		_scriptsLoaded : null, // not false, which means we're loading
 		
@@ -521,7 +516,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			}
 			
 			this._scriptsLoaded = false;
-			var	jQueryLoaded = (typeof(jQuery) == "function"),
+			var	jQueryLoaded = (typeof(jQuery) === "function"),
 				self = this,
 				jQueryPath = liteConfig.jQueryPath || "js/jquery.min.js",
 				scripts = (liteConfig.includeType ? liteConfig["includes_" + liteConfig.includeType] : liteConfig.includes) || ["lite-includes.js"];
@@ -541,6 +536,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			var load1 = function() {
 				if (scripts.length < 1) {
 					self._scriptsLoaded = true;
+					ice = global.ice;
 					if (! jQueryLoaded) {
 						jQuery.noConflict();
 					}
@@ -559,8 +555,8 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		
 		/**
 		 * returns the plugin instance associated with an editor
-		 * @param editor
-		 * @returns {Object} A LITE plugin instance
+		 * @param {Object} editor A CKEditor instance. Each ckeditor instance has its own instance of a LITE plugin 
+		 * @returns {LITE.LITEPlugin} A LITE plugin instance
 		 */
 		findPlugin : function(editor) {
 			return _findPlugin(editor);
@@ -568,7 +564,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		
 		/**
 		 * starts a new session in the plugin instance associated with an editor
-		 * @param editor
+		 * @param {Object} editor a CKEditor instance, in which the associated LITE plugin will start the session
 		 */
 		startNewSession: function(editor) {
 			var plugin = _findPlugin(editor);
@@ -597,6 +593,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		 * @param {LITE.configuration} config a LITE configuration object, not null, ready to be used as a local copy
 		 */
 		init: function(ed, config) {
+			var lang = ed.lang.lite;
 			this._editor = ed;
 			this._domLoaded =  false;
 			this._editor =  null;
@@ -605,6 +602,10 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			this._liteCommandNames =  [];
 			this._canAcceptReject =  true; // enable state for accept reject overriding editor readonly
 			this._removeBindings = [];
+			
+			if (! defaultTooltipTemplate) {
+				defaultTooltipTemplate = "%a " + lang.lite.BY + " %u %t";
+			}
 
 			ed.ui.addToolbarGroup('lite');
 			this._setPluginFeatures(ed, LITEConstants);
@@ -619,42 +620,42 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 				{
 					command : LITE.Commands.TOGGLE_TRACKING,
 					exec : this._onToggleTracking, 
-					title: "Toggle Tracking Changes",
+					title: lang.TOGGLE_TRACKING,
 //					icon: "track_changes_on_off.png",
 					trackingOnly : false
 				},
 				{
 					command: LITE.Commands.TOGGLE_SHOW, 
 					exec: this._onToggleShow, 
-					title: "Toggle Tracking Changes",
+					title: lang.TOGGLE_SHOW,
 //					icon: "show_hide.png",
 					readOnly : true
 				},
 				{
 					command:LITE.Commands.ACCEPT_ALL, 
 					exec:this._onAcceptAll, 
-					title:"Accept all changes",
+					title: lang.ACCEPT_ALL,
 //					icon:"accept_all.png",
 					readOnly : allow
 				},
 				{
 					command:LITE.Commands.REJECT_ALL,
 					exec: this._onRejectAll,
-					title: "Reject all changes", 
+					title: lang.REJECT_ALL, 
 //					icon:"reject_all.png",
 					readOnly : allow
 				},
 				{
 					command:LITE.Commands.ACCEPT_ONE,
 					exec:this._onAcceptOne,
-					title:"Accept Change",
+					title: lang.ACCEPT_ONE,
 //					icon:"accept_one.png",
 					readOnly : allow
 				},
 				{
 					command:LITE.Commands.REJECT_ONE,
 					exec:this._onRejectOne,
-					title:"Reject Change",
+					title: lang.REJECT_ONE,
 //					icon:"reject_one.png",
 					readOnly : allow
 				},
@@ -665,7 +666,8 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 				}
 			];
 		
-			this._isTracking = config.isTracking !== false;
+			this._isTracking = config.isTracking !== false; // user preference for tracking state
+			this._trackingState = null; // reflects the real tracking state, not just the user pref
 			this._eventsBounds = false;
 		
 			ed.on("contentDom", (function(dom) {
@@ -686,7 +688,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 					readOnly: rec.readOnly || false
 				});
 		
-				if (/*rec.icon && */rec.title && commands.indexOf(rec.command) >= 0) { // configuration doens't include this command
+				if (rec.title && commands.indexOf(rec.command) >= 0) { // configuration doens't include this command
 					var name = self._commandNameToUIName(rec.command);
 					ed.ui.addButton(name, {
 						label : rec.title,
@@ -705,40 +707,42 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 				add1(commandsMap[i]);
 			}
 			
-
-			if ( ed.addMenuItems ) {
-				ed.addMenuGroup ( 'lite', 50);
-				var params = {};
-				params[LITE.Commands.ACCEPT_ONE] = {
-					label : 'Accept Change',
-					command : LITE.Commands.ACCEPT_ONE,
-					group : 'lite',
-					order : 1,
-					icon : path + 'icons/accept_one.png'
-				};
-				params[LITE.Commands.REJECT_ONE] = {
-					label : 'Reject Change',
-					command : LITE.Commands.REJECT_ONE,
-					group : 'lite',
-					order : 2,
-					icon : path + 'icons/reject_one.png'
-				};
-
-				ed.addMenuItems(params);
-			}
-
-			if ( ed.contextMenu ) {
-				ed.contextMenu.addListener( (function( element /*, selection */ ) {
-					 if (element && this._tracker && this._tracker.currentChangeNode(element)) {
-						 var ret = {};
-						 ret[LITE.Commands.ACCEPT_ONE] = CKEDITOR.TRISTATE_OFF;
-						 ret[LITE.Commands.REJECT_ONE]= CKEDITOR.TRISTATE_OFF;
-						 return ret;
-					 }
-					 else {
-						 return null;
-					 }
-				}).bind(this) );
+			if (config.contextMenu !== false) {
+				if ( ed.addMenuItems ) {
+					ed.addMenuGroup ( 'lite', 50);
+					var params = {};
+					if (commands.indexOf(LITE.Commands.ACCEPT_ONE) >= 0) {
+						params[LITE.Commands.ACCEPT_ONE] = {
+							label :  lang.ACCEPT_ONE,
+							command : LITE.Commands.ACCEPT_ONE,
+							group : 'lite',
+							order : 1
+						};
+					}
+					if (commands.indexOf(LITE.Commands.REJECT_ONE) >= 0) {
+						params[LITE.Commands.REJECT_ONE] = {
+							label : lang.REJECT_ONE,
+							command : LITE.Commands.REJECT_ONE,
+							group : 'lite',
+							order : 2
+						};
+					}
+					ed.addMenuItems(params);
+				}
+	
+				if ( ed.contextMenu ) {
+					ed.contextMenu.addListener( (function( element /*, selection */ ) {
+						 if (element && this._tracker && this._tracker.currentChangeNode(element)) {
+							 var ret = {};
+							 ret[LITE.Commands.ACCEPT_ONE] = CKEDITOR.TRISTATE_OFF;
+							 ret[LITE.Commands.REJECT_ONE]= CKEDITOR.TRISTATE_OFF;
+							 return ret;
+						 }
+						 else {
+							 return null;
+						 }
+					}).bind(this) );
+				}
 			}
 		},
 		
@@ -746,8 +750,8 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		 * Change the state of change tracking for the change editor associated with this plugin.
 		 * Toggles tracking visibility in accordance with the tracking state. 
 		 * @param {Boolean} track if undefined - toggle the state, otherwise set the tracking state to this value, 
-		 * @param {Object} options an optional object with the following fields: <ul><li>notify: boolean, if not false, dispatch the TRACKING event
-		 * <li>force: if true, don't check for pending changes and just toggle</ul>
+		 * @param {Object} options an optional object with the following fields: <ul><li>notify: boolean, if not false, dispatch the TRACKING event</li>
+		 * <li>force: if true, don't check for pending changes and just toggle</li></ul>
 		 */	
 		toggleTracking: function(track, options) {
 			if ("boolean" === typeof options) {
@@ -759,11 +763,12 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			
 			var tracking = (undefined === track) ? ! this._isTracking : track,
 				e = this._editor,
+				lang = this._editor.lang.lite,
 				force = options && options.force;
 			if (! tracking && this._isTracking && ! force) {
 				var nChanges = this._tracker.countChanges({verify: true});
 				if (nChanges) {
-					return window.alert("Your document containssome pending changes.\nPlease resolve them before turning off change tracking.");
+					return window.alert(lang.PENDING_CHANGES);
 				}
 			}
 			this._isTracking = tracking;
@@ -775,7 +780,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			this._setCommandsState(LITE.Commands.TOGGLE_TRACKING, tracking ? CKEDITOR.TRISTATE_ON : CKEDITOR.TRISTATE_OFF);
 			var ui = e.ui.get(this._commandNameToUIName(LITE.Commands.TOGGLE_TRACKING));
 			if (ui) {
-				this._setButtonTitle(ui, tracking ? 'Stop tracking changes' : 'Start tracking changes');
+				this._setButtonTitle(ui, tracking ? lang.STOP_TRACKING : lang.START_TRACKING);
 			}
 			if (options.notify !== false) {
 				e.fire(LITE.Events.TRACKING, {tracking:tracking, lite:this});
@@ -784,11 +789,12 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		
 		/**
 		 * Change the visibility of tracked changes for the change editor associated with this plugin
-		 * @param show if bool, set the visibility state to this value, otherwise toggle the state
-		 * @param bNotify if not false, dispatch the TOGGLE_SHOW event
+		 * @param {Boolean} [show=undefined] if show is a boolean value, set the visibility state to this value, otherwise toggle the state
+		 * @param {Boolean} [bNotify=true] if not false, dispatch the TOGGLE_SHOW event
 		 */	
 		toggleShow : function(show, bNotify) {
-			var vis = (typeof(show) == "undefined") ? (! this._isVisible) : show;
+			var vis = (typeof(show) === "undefined") ? (! this._isVisible) : show,
+				lang = this._editor.lang.lite;
 			this._isVisible = vis;
 			if (this._isTracking) {
 				this._setCommandsState(LITE.Commands.TOGGLE_SHOW, vis ? CKEDITOR.TRISTATE_ON : CKEDITOR.TRISTATE_OFF);
@@ -797,7 +803,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			
 			var ui = this._editor.ui.get(this._commandNameToUIName(LITE.Commands.TOGGLE_SHOW));
 			if (ui) {
-				this._setButtonTitle(ui, vis ? 'Hide tracked changes' : 'Show tracked changes');
+				this._setButtonTitle(ui, vis ? lang.HIDE_TRACKED : lang.SHOW_TRACKED);
 			}
 			if (bNotify !== false) {
 				this._editor.fire(LITE.Events.SHOW_HIDE, {show:vis, lite:this});
@@ -842,7 +848,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		
 		/**
 		 * Set the name & id of the current user
-		 * @param info an object with the fields name, id
+		 * @param {Object} info an object with the fields `name`, `id`
 		 */
 		setUserInfo: function(info) {
 			info = info || {};
@@ -867,8 +873,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		
 		/**
 		 * Return the count of pending changes
-		 * @param options optional list of user ids whose changes we include or exclude (only one of the two should be provided,
-		 * exclude has precdence).
+		 * @param {LITE.AcceptRejectOptions} [options=null] optional filtering for the changes we want to count.
 		 */
 		countChanges : function(options) {
 			return (this._tracker && this._tracker.countChanges(options)) || 0;		
@@ -876,10 +881,10 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		
 		/**
 		 * Enable or disable the accept changes ui. This does not affect the availabibility of the accept/reject api
-		 * @param bEnable
+		 * @param {Boolean} bEnable
 		 */
 		enableAcceptReject : function(bEnable) {
-			this._canAcceptReject  = !!bEnable;
+			this._canAcceptReject  = Boolean(bEnable);
 			this._onIceChange();
 		},
 		
@@ -932,10 +937,13 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		 * @returns
 		 */
 		getCleanText : function() {
-			var root = this._getBody();
-			if (! root){
+			var doc = this._getDocument();
+			if (! doc) {
 				return "";
 			}
+			var data = this._editor.getData(),
+				root = doc.createElement("DIV");
+			root.innerHTML = data;
 			var textFragments = [];
 			textFragments.push("");
 			var deleteClass = this._tracker.getDeleteClass();
@@ -973,6 +981,15 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			}
 		},
 		
+		/**
+		 * get a map of the pending changes. The keys are the change ids,
+		 * the values are objects with the type, time, lastTime, session id, user id, user name, data (arbitrary string associated with the change)
+		 * @param {LITE.AcceptRejectOptions} [options=null] filtering options for the returned changes
+		 */
+		getChanges: function(options) {
+			return (this._tracker && this._tracker.getChanges(options)) || {}; 
+		},
+		
 		////////////// Implementation ///////////////
 
 		_getCleanText : function(e, textFragments, deleteClass) { // assumed never to be called with a text node
@@ -982,7 +999,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			}
 			
 			var isBlock;
-			if (isBlock = ((e.nodeName && e.nodeName.toUpperCase() == "BR") || ("block" == jQuery(e).css("display")))) {
+			if (isBlock = ((e.nodeName && e.nodeName.toUpperCase() === "BR") || ("block" === jQuery(e).css("display")))) {
 				if (_emptyRegex.test(textFragments[textFragments.length - 1])) {
 					textFragments[textFragments.length - 1] = "";
 				}
@@ -1064,6 +1081,10 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			}
 		},
 		
+		_getDocument: function() {
+			return this._editor && this._editor.document && this._editor.document.$;		
+		},
+		
 		_afterReady : function() {
 			var e = this._editor,
 				doc = e.document.$,
@@ -1124,8 +1145,8 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 					},
 					setHostRange: this._setHostRange.bind(this),
 					hostCopy: this._hostCopy.bind(this),
-					beforeEdit: this._beforeEdit.bind(this),
-					notifyChange: this._afterEdit.bind(this)
+					beforeEdit: this._beforeEdit.bind(this)/*,
+					notifyChange: this._afterEdit.bind(this)*/
 				}
 			};
 			if (debug.log) {
@@ -1158,7 +1179,9 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 				this._tracker.startTracking();
 				this.toggleTracking(this._isTracking, false);
 				this._updateTrackingState();
-				jQuery(this._tracker).on("change", this._onIceChange.bind(this)).on("textChange", this._onIceTextChanged.bind(this));
+				jQuery(this._tracker)
+					.on("change", this._onIceChange.bind(this))
+					.on("textChange", this._onIceTextChanged.bind(this));
 				e.fire(LITE.Events.INIT, {lite: this});
 				this._onSelectionChanged(null);
 				this._onIceChange(null);
@@ -1227,19 +1250,19 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		 */
 		_onAfterCommand: function(event) {
 			var name = this._tracker && this._isTracking && event.data && event.data.name;
-			if ("undo" == name || "redo" == name) {
+			if ("undo" === name || "redo" === name) {
 				this._tracker.reload();
 			}
 		},
 		
 		_onBeforeCommand: function(event) {
 			var name = this._tracker && this._tracker.isTracking() && event.data && event.data.name;
-			if ("cut" == name) {
+			if ("cut" === name) {
 				if (testClipboardCommand(this._editor, "copy")) {
 					this._tracker.prepareToCut();
 				}
 			}
-			else if ("copy" == name) {
+			else if ("copy" === name) {
 				if (testClipboardCommand(this._editor, "copy")) {
 					this._tracker.prepareToCopy();
 				}
@@ -1320,7 +1343,11 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		 */
 		_updateTrackingState: function() {
 			if (this._tracker) {
-				var track = this._isTracking && this._editor.mode == "wysiwyg" && ! this._editor.readOnly;
+				var track = this._isTracking && this._editor.mode === "wysiwyg" && ! this._editor.readOnly;
+				if (track === this._trackingState) {
+					return;
+				}
+				this._trackingState = track;
 				this._tracker.toggleChangeTracking(track);
 				for (var i = this._removeBindings.length - 1; i >= 0; --i) {
 					this._removeBindings[i].removeListener();
@@ -1330,10 +1357,10 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 				if (track) {
 					var handler = this._onSelectionChanged.bind(this),
 						editable = this._editor.editable();
-					if (isOldCKEDITOR) {
+//					if (isOldCKEDITOR) {
 						this._tracker.listenToEvents();
-					}
-					else {
+//					}
+/*					else {
 						this._removeBindings.push(this._editor.on("key", function(e) {
 							if (this._tracker) {
 								var event = e.data.domEvent && e.data.domEvent.$;
@@ -1342,7 +1369,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 							}
 							return true;
 						}.bind(this)));
-					}
+					} */
 					this._removeBindings.push(editable.on("keyup", this._onSelectionChanged.bind(this, null, false)));
 					this._removeBindings.push(editable.on("click", handler));
 					this._removeBindings.push(this._editor.on("selectionChange", handler));					
@@ -1355,40 +1382,34 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		 * @private
 		 */
 		_onPaste : function(evt){
+			/* Test data
+			 * "<ins><div>man</div><p><del><div><ins>who is this guy</ins><del>this is deleted</del></div><div><del><span>text1</span><ins><div>calling all nature</div><del>inner del</del></ins></del></div><span>going again</span><h2>the thing</h2></del></p></ins>"
+			 */
 			if (! this._tracker || ! this._isTracking || ! evt) {
 				return true;
 			}
-			var data = //"<ins><div>man</div><p><del><div><ins>who is this guy</ins><del>this is deleted</del></div><div><del><span>text1</span><ins><div>calling all nature</div><del>inner del</del></ins></del></div><span>going again</span><h2>the thing</h2></del></p></ins>",
-				evt.data || {},
-				ignore = false,
+			var data = evt.data || {},
 				toInsert = null,
-				selectors = this._config.ignoreSelectors || [],
+				selectors = ["[data-track-changes-ignore]"].concat(this._config.ignoreSelectors || []),
 				$ = window.jQuery,
 				node = (evt.name == "insertElement") && data.$;
 			if (! data) {
 				return;
 			}
-			if ("string" == typeof data) {
+			if ("string" === typeof data) {
 				data = {
 					dataValue: data,
 					type: "text"
 				};
 			}
-			if (node) {
-				ignore = node.getAttribute("data-track-changes-ignore");
-			}
-			else if (data.dataValue && "html" == (data.type || data.mode)) {
+			if (data.dataValue && ("html" === (data.type || data.mode))) {
 				try {
 					node = jQuery(data.dataValue);
-					ignore = node && node.attr("data-track-changes-ignore");
 				}
 				catch (e) {}
 			}
 			
-			if (ignore) {
-				return true;
-			}
-			if ("string" == typeof data.dataValue) {
+			if ("string" === typeof data.dataValue) {
 				try {
 					var doc = this._editor.document.$,
 						container = doc.createElement("div");
@@ -1424,7 +1445,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 					this._editor.editable().focus();
 				}
 				evt.stop();
-				this._onIceTextChanged();
+//				this._onIceTextChanged();
 			}
 
 			return true;
@@ -1437,7 +1458,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		 * @private
 		 */
 		_setCommandsState: function(commands, state) {
-			if (typeof(commands) == "string") {
+			if (typeof(commands) === "string") {
 				commands = commands.split(",");
 			}
 			for (var i = commands.length - 1; i >= 0; --i) {
@@ -1480,7 +1501,8 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		 * @param ignore event
 		 */
 		_onIceTextChanged : function(ignore) {
-			this._triggerChange();
+			this._editor.fire("change");
+			this._editor.fire('saveSnapshot');
 		},
 		
 		/**
@@ -1628,11 +1650,11 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			}
 		},
 		
-		_afterEdit: function() {
+/*		_afterEdit: function() {
 			this._editor.fire('change');
 			this._editor.fire('saveSnapshot');
 		},
-		
+*/		
 		_beforeEdit: function() {
 			CKEDITOR.iscutting = true;
 			var e = this._editor,
@@ -1773,9 +1795,10 @@ Written by (David *)Frenkiel - https://github.com/imdfl
  */		_makeTooltipTitle: function(change) {
 			var title = this._config.tooltipTemplate || defaultTooltipTemplate,
 				time = new Date(change.time),
-				lastTime = new Date(change.lastTime);
-			title = title.replace(/%a/g, "insert" == change.type ? "added" : "deleted");
-			title = title.replace(/%t/g, relativeDateFormat(time));
+				lastTime = new Date(change.lastTime),
+				lang = this._editor.lang.lite;
+			title = title.replace(/%a/g, "insert" === change.type ? lang.CHANGE_TYPE_ADDED : lang.CHANGE_TYPE_DELETED);
+			title = title.replace(/%t/g, relativeDateFormat(time, lang));
 			title = title.replace(/%u/g, change.userName);
 			title = title.replace(/%dd/g, padNumber(time.getDate(), 2));
 			title = title.replace(/%d/g, time.getDate());
@@ -1788,7 +1811,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			title = title.replace(/%hh/g, padNumber(time.getHours(), 2));
 			title = title.replace(/%h/g, time.getHours());
 
-			title = title.replace(/%T/g, relativeDateFormat(lastTime));
+			title = title.replace(/%T/g, relativeDateFormat(lastTime, lang));
 			title = title.replace(/%DD/g, padNumber(lastTime.getDate(), 2));
 			title = title.replace(/%D/g, lastTime.getDate());
 			title = title.replace(/%MM/g, padNumber(lastTime.getMonth() + 1, 2));
@@ -1862,4 +1885,4 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		return success || enabled;
 	}
 
-})(window.CKEDITOR);
+})(window.CKEDITOR, this || window);

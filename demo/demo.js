@@ -2,8 +2,8 @@ function f() {
 
 	var users = [{name: "Roger", id : 18}, {name: "David", id : 15}, {name : "Syd", id : 21}],
 		html = '',
-		version = (location.search.match(/(\d\.\d)/) || ["4.4"])[0],
-		ckeditorConfigUrl = version == "4.2" ? "../ckeditor4.2-conf-debug.js" : "../ckeditor-conf.js"; 
+		version = (location.search.match(/(\d\.\d)/) || ["4.5"])[0],
+		ckeditorConfigUrl = version == "4.2" ? "../ckeditor4.2-conf.js" : "../ckeditor-conf.js"; 
 	
 	for (var i = 0, len = users.length; i < len; ++i) {
 		var user = users[i];
@@ -31,7 +31,7 @@ function f() {
 		$versions = $sidebar.find("#ckeditor-version-select"),
 		_options = $versions[0].options;
 	
-	jQuery.each(["4.2","4.3","4.4"], function(i, v) {
+	jQuery.each(["4.2","4.3","4.4", "4.5"], function(i, v) {
 		_options[i] = new Option("Version " + v, v);
 	});
 	
