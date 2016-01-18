@@ -127,10 +127,13 @@
 		this._styles = {}; // dfl, moved from prototype
 		this._savedNodesMap = {};
 		this.$this = $(this);
-		this._obsertCount = 0;
+		this._observeCount = 0;
+		this._postDeleteTimeout = null; // timeout id for cleaning up after deleted change nodes
+		this._deletedChangeIds = []; // collection of deleted change ids 
 		this._browser = ice.dom.browser();
 		this._tooltipMouseOver = this._tooltipMouseOver.bind(this);
 		this._tooltipMouseOut = this._tooltipMouseOut.bind(this);
+		this._postDeleteHandler = this._postDeleteHandler.bind(this);
 		
 		ice.dom.extend(true, this, defaults, options);
 		if (options.tooltips && (! $.isFunction(options.hostMethods.showTooltip) || ! $.isFunction(options.hostMethods.hideTooltip))) {
@@ -207,7 +210,7 @@
 		stopTracking: function (onlyICE) {
 	
 			this._isTracking = false;
-			this._obsertCount = 0;
+			this._stopObservingDOM({ force: true });
 			try { // dfl added try/catch for ie
 				// If we are handling events setup the delegate to handle various events on `this.element`.
 				var e = this.element;
@@ -231,11 +234,10 @@
 		listenToEvents: function() {
 			if (this.element && ! this._boundEventHandler) {
 				this.unlistenToEvents();
-				this._stopObservingDOM();
-				this._observeCount = 0;
+				this._stopObservingDOM({ force: true });
 				this._boundEventHandler = this.handleEvent.bind(this);
 				this.element.addEventListener("keydown", this._boundEventHandler, true);
-				this._domObserver.observe(this.element, this._domObserverConfig);
+				this._startObservingDOM();
 			}
 		},
 		
@@ -412,7 +414,6 @@
 			
 		// If we have any nodes selected, then we want to delete them before inserting the new text.
 			try {
-				this._stopObservingDOM();
 				if (hadSelection) {
 					this._deleteContents(false, range); 
 				// Update the range
@@ -428,7 +429,9 @@
 					this._moveRangeToValidTrackingPos(range, hostRange);
 					if (nodes || options.text) {
 					// insertnodes returns true if the text was inserted
+						this._stopObservingDOM();
 						ret = this._insertNodes(range, hostRange, {nodes: nodes, text: options.text, insertStubText: options.insertStubText !== false});
+						this._startObservingDOM();
 					}
 				}
 			}
@@ -437,7 +440,6 @@
 			}
 			finally {
 				this._endBatchChange(changeid, nodes || options.text || !ret);
-				this._startObservingDOM();
 			}
 			return ret;//isPropagating;
 		},
@@ -450,18 +452,19 @@
 		 * @private
 		 */
 		_deleteContents: function (right, range) {
-			var prevent = true,
+			var prevent = true, changeid,
 				browser = this._browser;
 			
-			this.hostMethods.beforeDelete && this.hostMethods.beforeDelete();
-			if (range) {
-				this.selection.addRange(range);
-			} 
-			else {
-				range = this.getCurrentRange();
-			}
-			var changeid = this._startBatchChange();
+			this._stopObservingDOM();
 			try {
+				this.hostMethods.beforeDelete && this.hostMethods.beforeDelete();
+				if (range) {
+					this.selection.addRange(range);
+				} 
+				else {
+					range = this.getCurrentRange();
+				}
+				changeid = this._startBatchChange();
 				if (range.collapsed === false) {
 					range = this._deleteSelection(range);
 	/*				if(this._browser.mozilla){
@@ -573,6 +576,7 @@
 				range && this.selection.addRange(range);
 			}
 			finally {
+				this._startObservingDOM();
 				this._endBatchChange(changeid, prevent);
 			}
 			return prevent;
@@ -1024,10 +1028,12 @@
 				var parent = start.parentNode, 
 					ind = ice.dom.getNodeIndex(start),
 					f = isHostRange ? this.hostMethods.makeHostElement : nativeElement;
+				this._stopObservingDOM();
 				parent.removeChild(start);
 				ind = Math.max(0, ind);
 				range.setStart(f(parent), ind);
 				range.setEnd(f(parent), ind);
+				this._startObservingDOM();
 			}
 		},
 
@@ -1064,8 +1070,10 @@
 			}
 			var ind = ice.dom.getNodeIndex(start) + 1;
 			if (ice.dom.isEmptyTextNode(start)) {
+				this._stopObservingDOM();
 				ind = Math.max(0, ind - 1);
 				parent.removeChild(start);
+				this._startObservingDOM();
 			}
 			if (parent.childNodes.length !== childCount) {
 				var f = isHostRange ? this.hostMethods.makeHostElement : nativeElement;
@@ -1077,12 +1085,20 @@
 		_cleanupAroundNode: function(node, includeNode) {
 			var parent = node.parentNode,
 				anchor = node.nextSibling,
-				isEmpty,
+				isEmpty, self = this,
+				changed = false,
+				beforeChange = function() {
+					if (changed === false) {
+						changed = true;
+						self._stopObservingDOM();
+					}
+				},
 				tmp;
 			while (anchor) {
 				isEmpty = (ice.dom.is(anchor, this._iceSelector) && ice.dom.hasNoTextOrStubContent(anchor)) 
 					|| ice.dom.isEmptyTextNode(anchor);
 				if (isEmpty) {
+					beforeChange();
 					tmp = anchor;
 					anchor = anchor.nextSibling;
 					parent.removeChild(tmp);
@@ -1096,6 +1112,7 @@
 				isEmpty = (ice.dom.is(anchor, this._iceSelector) && ice.dom.hasNoTextOrStubContent(anchor)) 
 				|| ice.dom.isEmptyTextNode(anchor);
 				if (isEmpty) {
+					beforeChange();
 					tmp = anchor;
 					anchor = anchor.previousSibling;
 					parent.removeChild(tmp);
@@ -1105,7 +1122,11 @@
 				}
 			}
 			if (includeNode && ice.dom.isEmptyTextNode(node)) {
+				beforeChange();
 				parent.removeChild(node);
+			}
+			if (changed) {
+				this._startObservingDOM();
 			}
 		},
 	
@@ -1324,7 +1345,7 @@
 				start = (_start && _start.$) || _start,
 				f = hostRange ? this.hostMethods.makeHostElement : nativeElement,
 				nodes = data.nodes,
-				insertStubText = data.insertStubText !== false,
+				insertStubText = false, //data.insertStubText !== false,
 				text = data.text, i, len,
 				doc= this.env.document,
 				inserted = false;
@@ -1368,7 +1389,7 @@
 					}
 				}
 				else {
-					prepareSelectionForInsert(null, range, doc, insertStubText);
+//					prepareSelectionForInsert(null, range, doc, insertStubText);
 				}
 				// even if there was no data to insert, we are probably setting up for a char insertion
 				this._updateChangeTime(changeId);
@@ -1886,12 +1907,56 @@
 	
 		},
 		
+		/**
+		 * Remove a node from the DOM and remove its empty parents, if any
+		 * @param node
+		 * @private
+		 */
 		_removeNode: function(node) {
 			var parent = node && node.parentNode;
+			this._removeNodeFromDOM(node);
 			if (parent) {
 				parent.removeChild(node);
 				if (parent !== this.element && ice.dom.hasNoTextOrStubContent(parent)) {
 					this._removeNode(parent);
+				}
+			}
+		},
+		
+		/**
+		 * Removes a node from the DOM and sets a timeout for cleaning up the change set
+		 * if there are no more nodes with this node's change id
+		 * @param node The node to remove
+		 * @private
+		 */
+		_removeNodeFromDOM: function(node) {
+			var parent = node && node.parentNode;
+			if (parent) {
+				var changeId = node.getAttribute(this.attributes.changeId);
+				if (changeId) {
+					this._deletedChangeIds.piush(changeId);
+					if (!this._postDeleteTimeout) {
+						this._postDeleteTimeout = setTimeout(this._postDeleteHandler, 1);
+					}
+				}
+			}
+		},
+		
+		/**
+		 * iterates the deleted change ids and removes each change that has no more
+		 * change nodes in the DOM
+		 * @private 
+		 */
+		_postDeleteHandler: function() {
+			var ids = this._deletedChangeIds, nodes,
+				i, len = ids.length, changeId;
+			this._deletedChangeIds = [];
+			this._postDeleteTimeout = null;
+			for (i = 0; i < len; ++i) {
+				changeId = ids[i];
+				nodes = ice.dom.find(this.element, '[' + this.attributes.changeId + '=' + changeId + ']');
+				if (nodes.length < 1) {
+					delete this._changes[changeId];
 				}
 			}
 		},
@@ -2928,7 +2993,7 @@
 		},
 		
 		_startObservingDOM: function() {
-			if (++this._observeCount === 1) {
+			if ((++this._observeCount) === 1) {
 				this._domObserver.observe(this.element, this._domObserverConfig);
 			};
 			
@@ -2940,7 +3005,7 @@
 				this._domObserver.disconnect();
 			}
 			else if (this._observeCount > 0) {
-				if (--this._obsertCount === 0) {
+				if ((--this._observeCount) === 0) {
 					this._domObserver.disconnect();
 				}
 			}
@@ -2948,10 +3013,20 @@
 		
 	
 		_onDomMutation: function(mutations) {
-			this._stopObservingDOM();
-			var i, len = mutations.length, m,
+			var i, len = mutations.length, m, j, addedLen,
 				nodeIndex, lst,
 				node;
+			for (i = 0; i < len; ++i) {
+				m = mutations[i];
+				if (m.type === "childList" && m.addedNodes) {
+					for (j = m.addedNodes.length - 1; j >= 0; --j) {
+						node = m.addedNodes[j];
+						if (node && node.getAttribute("data-cke-bookmark")) {
+							return;
+						}
+					}
+				}
+			}
 			for (i = 0; i < len; ++i) {
 				m = mutations[i];
 				switch (m.type) {
@@ -2967,12 +3042,15 @@
 						break;
 				}
 			}
-			this._startObservingDOM();
 		},
 		
 		_onTextChangedInNode: function(node, oldValue) {
 			
-			if (this._isCurrentUserIceNode(this._getIceNode(node.parentNode, INSERT_TYPE))) {
+			var changeNode = this._getIceNode(node.parentNode, INSERT_TYPE),
+				changeId;
+			if (this._isCurrentUserIceNode(changeNode)) {
+				changeId = changeNode.getAttribute(this.attributes.changeId);
+				this._updateChangeTime(changeId);
 				return;
 			}
 			
@@ -2983,6 +3061,7 @@
 			if (textLen <= oldLen) { // for now we handle only insertion
 				return;
 			}
+			this._stopObservingDOM();
 			for (i = 0; i < oldLen; ++i) {
 				if (oldText[i] !== text[i]) {
 					startIndex = i;
@@ -3031,7 +3110,7 @@
 				this.selection.addRange(range);
 			}
 			
-			return {start: startIndex, end: endIndex };
+			this._startObservingDOM();
 		},
 		
 		getAdjacentChangeId: function(node, left) {
@@ -3209,7 +3288,7 @@
 				return;
 			}
 		// create empty node and select it, to be replaced with the typed char
-			console.log("prepareSelectionForInsert: appending filler node");
+			this._stopObservingDOM();
 			var tn = doc.createTextNode('\uFEFF');
 			if (node) {
 				node.appendChild(tn);
@@ -3217,6 +3296,7 @@
 			else {
 				range.insertNode(tn);
 			}
+			this._startObservingDOM();
 			range.selectNode(tn);
 		}
 		else if (node) {
