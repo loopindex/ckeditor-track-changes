@@ -39,7 +39,7 @@
 	
 	var stubElementsString = dom.CONTENT_STUB_ELEMENTS.join(', ');
 	
-	function isEmptyString(str) {
+	dom.isEmptyString = function(str) {
 		if (! str) {
 			return true;
 		}
@@ -87,42 +87,20 @@
 	};
 	dom.getElementDimensions = function (element) {
 		return {
-			'width': dom.getElementWidth(element),
-			'height': dom.getElementHeight(element)
+			width: dom.getElementWidth(element),
+			height: dom.getElementHeight(element)
 		};
 	};
-	dom.empty = function (element) {
-		if (element) {
-			return $(element).empty();
-		}
-	};
-	dom.remove = function (element) {
-		if (element) {
-			return $(element).remove();
-		}
-	};
-	dom.prepend = function (parent, elem) {
-		$(parent).prepend(elem);
-	};
-	dom.append = function (parent, elem) {
-		$(parent).append(elem);
-	};
+
 	dom.insertBefore = function (before, elem) {
 		$(before).before(elem);
 	};
+	
 	dom.insertAfter = function (after, elem) {
 		if (after && elem) {
 			var sibling = after.nextSibling,
 				parent = after.parentNode;
 			return sibling ? parent.insertBefore(elem, sibling) : parent.appendChild(elem);
-		}
-	};
-	dom.getHtml = function (element) {
-		return $(element).html();
-	};
-	dom.setHtml = function (element, content) {
-		if (element) {
-			$(element).html(content);
 		}
 	};
 	// Remove whitespace/newlines between nested block elements
@@ -168,7 +146,7 @@
 // dfl switch to DOM node from dom.js node
 		node = node.$ || node;
 // dfl don't test text nodes
-		return (node.nodeType != dom.TEXT_NODE && dom.is(node, selector)) ? 
+		return (node.nodeType != dom.TEXT_NODE && $(node).is(selector)) ? 
 				node 
 				: dom.parents(node, selector)[0] || null;
 	};
@@ -258,7 +236,7 @@
 	};
 	dom.hasNoTextOrStubContent = function (node) {
 		var str = dom.getNodeTextContent(node);
-		if (! isEmptyString(str)) {
+		if (! dom.isEmptyString(str)) {
 			return false;
 		}
 		if (! node.firstChild) { // no children shortcut
@@ -274,7 +252,7 @@
 		if (node.length === 0) {
 			return true;
 		}
-		return isEmptyString(node.nodeValue);
+		return dom.isEmptyString(node.nodeValue);
 	};
 
 	dom.getNodeCharacterLength = function (node) {
@@ -363,30 +341,9 @@
 		} catch (e) {}
 		return null;
 	};
-	dom.cloneNode = function (elems, cloneEvents) {
-		if (cloneEvents === undefined) {
-			cloneEvents = true;
-		}
-		return $(elems).clone(cloneEvents);
-	};
 
-	dom.bind = function (element, event, callback) {
-		return $(element).bind(event, callback);
-	};
-
-	dom.unbind = function (element, event, callback) {
-		return $(element).unbind(event, callback);
-	};
-
-	dom.attr = function (elements, key, val) {
-		if (val) return $(elements).attr(key, val);
-		else return $(elements).attr(key);
-	};
 	dom.replaceWith = function (node, replacement) {
 		return $(node).replaceWith(replacement);
-	};
-	dom.removeAttr = function (elements, name) {
-		$(elements).removeAttr(name);
 	};
 	dom.getElementsBetween = function (fromElem, toElem) {
 		var elements = [];
@@ -534,7 +491,6 @@
 		return null;
 	};
 	
-	/* Begin dfl */
 	
 	function _findNextTextContainer(node, container){
 		while (node) {
@@ -693,9 +649,6 @@
 	dom.create = function (html) {
 		return $(html)[0];
 	};
-	dom.find = function (parent, exp) {
-		return $(parent).find(exp);
-	};
 	dom.children = function (parent, exp) {
 		return $(parent).children(exp);
 	};
@@ -704,12 +657,6 @@
 	};
 	dom.parents = function (child, exp) {
 		return $(child).parents(exp);
-	};
-	dom.is = function (node, exp) {
-		return $(node).is(exp);
-	};
-	dom.extend = function (deep, target, object1, object2) {
-		return $.extend.apply(this, arguments);
 	};
 	dom.walk = function (elem, callback, lvl) {
 		if (!elem) {
@@ -771,33 +718,6 @@
 		e.stopPropagation();
 	};
 
-	dom.each = function (val, callback) {
-		$.each(val, function (i, el) {
-			callback.call(this, i, el);
-		});
-	};
-
-	dom.foreach = function (value, cb) {
-		var res, len;
-		if (value instanceof Array || value instanceof NodeList || typeof value.length != 'undefined' && typeof value.item != 'undefined') {
-			len = value.length;
-			for (var i = 0; i < len; i++) {
-				res = cb.call(this, i, value[i]);
-				if (res === false) {
-					break;
-				}
-			}
-		} else {
-			for (var id in value) {
-				if (value.hasOwnProperty(id) === true) {
-					res = cb.call(this, id);
-					if (res === false) {
-						break;
-					}
-				}
-			}
-		}
-	};
 	dom.isBlank = function (value) {
 		return (!value || wsrgx.test(value));
 	};
@@ -994,7 +914,7 @@
 					return null;
 				}
 
-				if (dom.is(node, selector) === true) {
+				if ($(node).is(selector) === true) {
 					return node;
 				}
 				node = node.parentNode;
@@ -1007,8 +927,9 @@
 		if (!leftContainer || !rightContainer) {
 			return false;
 		}
-		var bleft = dom.isChildOfTagNames(leftContainer, blockEls) || dom.is(leftContainer, blockEls.join(', ')) && leftContainer || null,
-			bright = dom.isChildOfTagNames(rightContainer, blockEls) || dom.is(rightContainer, blockEls.join(', ')) && rightContainer || null;
+		var sBlocks = blockEls.join(', '),
+			bleft = dom.isChildOfTagNames(leftContainer, blockEls) || $(leftContainer).is(sBlocks) && leftContainer || null,
+			bright = dom.isChildOfTagNames(rightContainer, blockEls) || $(rightContainer).is(sBlocks) && rightContainer || null;
 		return (bleft !== bright);
 	};
 
@@ -1035,7 +956,7 @@
 				mergeToNode.appendChild(node.firstChild);
 			}
 
-			dom.remove(node);
+			$(node).remove();
 		}
 		return true;
 	};

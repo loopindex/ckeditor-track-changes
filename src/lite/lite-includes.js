@@ -3828,7 +3828,7 @@
 		this._tooltipMouseOver = this._tooltipMouseOver.bind(this);
 		this._tooltipMouseOut = this._tooltipMouseOut.bind(this);
 		
-		ice.dom.extend(true, this, defaults, options);
+		$.extend(true, this, defaults, options);
 		if (options.tooltips && (! $.isFunction(options.hostMethods.showTooltip) || ! $.isFunction(options.hostMethods.hideTooltip))) {
 			throw new Error("hostMethods.showTooltip and hostMethods.hideTooltip must be defined if tooltips is true");
 		}
@@ -4125,7 +4125,7 @@
 				logError(e, "while trying to insert nodes");
 			}
 			finally {
-				this._endBatchChange(changeid, nodes || options.text || !ret);
+				this._endBatchChange(changeid, nodes || options.text || ret);
 			}
 			return ret;//isPropagating;
 		},
@@ -4138,7 +4138,7 @@
 		 * @private
 		 */
 		_deleteContents: function (right, range) {
-			var prevent = true,
+			var prevent = true, changeid,
 				browser = this._browser;
 			
 			this.hostMethods.beforeDelete && this.hostMethods.beforeDelete();
@@ -4148,7 +4148,7 @@
 			else {
 				range = this.getCurrentRange();
 			}
-			var changeid = this._startBatchChange();
+			changeid = this._startBatchChange();
 			try {
 				if (range.collapsed === false) {
 					range = this._deleteSelection(range);
@@ -4195,9 +4195,9 @@
 							// Calibrate Cursor before deleting
 							if(range.endOffset === ice.dom.getNodeCharacterLength(range.endContainer)){
 								var next = range.startContainer.nextSibling;
-								if (ice.dom.is(next,  this._deleteSelector)) {
+								if ($(next).is(this._deleteSelector)) {
 									while(next){
-										if (ice.dom.is(next,  this._deleteSelector)) {
+										if ($(next).is(this._deleteSelector)) {
 											next = next.nextSibling;
 											continue;
 										}
@@ -4213,7 +4213,7 @@
 			
 							// Calibrate Cursor after deleting
 							if(!this.visible(range.endContainer)){
-								if (ice.dom.is(range.endContainer.parentNode,  this._iceSelector)) {
+								if ($(range.endContainer.parentNode).is(this._iceSelector)) {
 			//						range.setStart(range.endContainer.parentNode.nextSibling, 0);
 									range.setStartAfter(range.endContainer.parentNode);
 									range.collapse(true);
@@ -4240,9 +4240,9 @@
 							if(!this.visible(range.startContainer)){
 								if(range.endOffset === ice.dom.getNodeCharacterLength(range.endContainer)){
 									var prev = range.startContainer.previousSibling;
-									if (ice.dom.is(prev,  this._deleteSelector)) {
+									if ($(prev).is(this._deleteSelector)) {
 										while(prev){
-											if (ice.dom.is(prev,  this._deleteSelector)) {
+											if ($(prev).is(this._deleteSelector)) {
 												prev = prev.prevSibling;
 												continue;
 											}
@@ -4330,7 +4330,7 @@
 			var classList = '',
 				self = this;
 			options = options || {};
-			ice.dom.each(this.changeTypes, function (type, i) {
+			$.each(this.changeTypes, function (type, i) {
 				if (type !== DELETE_TYPE) {
 					if (i > 0) {
 						classList += ',';
@@ -4340,29 +4340,30 @@
 			});
 			if (body) {
 				if (typeof body === 'string') {
-					body = ice.dom.create('<div>' + body + '</div>');
+					body = $('<div>' + body + '</div>');
 				}
 				else if (options.clone){
-					body = ice.dom.cloneNode(body, false)[0];
+					body = $(body).clone()[0];
 				}
 			} 
 			else {
-				body = options.clone? ice.dom.cloneNode(this.element, false)[0] : this.element;
+				body = options.clone? $(this.element).clone()[0] : this.element;
 			}
 			return this._cleanBody(body, classList, options);
 		},
 		
 		_cleanBody: function(body, classList, options) {
 			body = options.prepare ? options.prepare.call(this, body) : body;
-			var changes = ice.dom.find(body, classList);
-			ice.dom.each(changes, function (i,el) {
+			var $body = $(body), deletes,
+				changes = $body.find(classList);
+			$.each(changes, function (i,el) {
 				while (el.firstChild) {
 					el.parentNode.insertBefore(el.firstChild, el);
 				}
 				el.parentNode.removeChild(el);
 			});
-			var deletes = ice.dom.find(body, this._deleteSelector);
-			ice.dom.remove(deletes);
+			
+			$body.find(this._deleteSelector).remove();
 	
 			body = options.callback ? options.callback.call(this, body) : body;
 	
@@ -4399,12 +4400,14 @@
 			else {
 				var insSel = this._insertSelector,
 					delSel = this._deleteSelector,
-					content, self = this;
+					content, self = this,
+					$element = $(this.element);
 		
-				ice.dom.find(this.element, insSel).each(function(i,e) {
+				$element.find(insSel).each(function(i,e) {
 					self._removeNode(e);
 				});
-				ice.dom.each(ice.dom.find(this.element, delSel), function (i, el) {
+				$element.find(delSel).each(
+					function (i, el) {
 					content = ice.dom.contents(el);
 					ice.dom.replaceWith(el, content);
 					$.each(content, function(i,e) {
@@ -4444,6 +4447,7 @@
 			var delSel, insSel, selector, removeSel, replaceSel, 
 				trackNode, changes, dom = ice.dom, nChanges,
 				self = this, changeId, content, userStyle,
+				$element = $(this.element),
 				userStyles = this._userStyles,
 				userId, userAttr = this.attributes.userId,
 				delClass = this._getIceNodeClass(DELETE_TYPE), 
@@ -4468,20 +4472,20 @@
 	
 			selector = delSel + ',' + insSel;
 			trackNode = dom.getNode(node, selector);
-			changeId = dom.attr(trackNode, this.attributes.changeId);
+			changeId = trackNode.getAttribute(this.attributes.changeId);
 				// Some changes are done in batches so there may be other tracking
 				// nodes with the same `changeIdAttribute` batch number.
-			changes = dom.find(this.element, removeSel + '[' + this.attributes.changeId + '=' + changeId + ']');
+			changes = $element.find(removeSel + '[' + this.attributes.changeId + '=' + changeId + ']');
 			nChanges = changes.length;
 			changes.each(function(i, changeNode) {
 				self._removeNode(changeNode);
 			});
 
 			// we handle the replaced nodes after the deleted nodes because, well, the engine may b buggy, resulting in some nesting
-			changes = dom.find(this.element, replaceSel + '[' + this.attributes.changeId + '=' + changeId + ']');
+			changes = $element.find(replaceSel + '[' + this.attributes.changeId + '=' + changeId + ']');
 			nChanges += changes.length;
 		
-			dom.each(changes, function (i, node) {
+			$.each(changes, function (i, node) {
 				if (isNewlineNode(node)) {
 					return stripNode(node);
 				}
@@ -4540,7 +4544,7 @@
 		getIceNodes : function() {
 			var classList = [];
 			var self = this;
-			ice.dom.each(this.changeTypes, // iterate over type map
+			$.each(this.changeTypes, // iterate over type map
 				function (type) {
 					classList.push('.' + self._getIceNodeClass(type));
 				});
@@ -4562,7 +4566,7 @@
 				return false;
 			}
 			var selector = '.' + this._getIceNodeClass(changeType);
-			return ice.dom.is(node.$ || node, selector);
+			return $(node.$ || node).is(selector);
 		},
 		
 		_isInsertNode: function(node) {
@@ -4768,7 +4772,7 @@
 				isEmpty,
 				tmp;
 			while (anchor) {
-				isEmpty = (ice.dom.is(anchor, this._iceSelector) && ice.dom.hasNoTextOrStubContent(anchor)) 
+				isEmpty = ($(anchor).is(this._iceSelector) && ice.dom.hasNoTextOrStubContent(anchor)) 
 					|| ice.dom.isEmptyTextNode(anchor);
 				if (isEmpty) {
 					tmp = anchor;
@@ -4781,7 +4785,7 @@
 			}
 			anchor = node.previousSibling;
 			while (anchor) {
-				isEmpty = (ice.dom.is(anchor, this._iceSelector) && ice.dom.hasNoTextOrStubContent(anchor)) 
+				isEmpty = ($(anchor).is(this._iceSelector) && ice.dom.hasNoTextOrStubContent(anchor)) 
 				|| ice.dom.isEmptyTextNode(anchor);
 				if (isEmpty) {
 					tmp = anchor;
@@ -4802,9 +4806,9 @@
 		 * @private
 		 */
 		_isCurrentUserIceNode: function (node) {
-			var ret = Boolean(node && (ice.dom.attr(node, this.attributes.userId) === this.currentUser.id));
+			var ret = Boolean(node && $(node).attr(this.attributes.userId) === this.currentUser.id);
 			if (ret && this._sessionId) {
-				ret = ice.dom.attr(node, this.attributes.sessionId) === this._sessionId;
+				ret = node.getAttribute(this.attributes.sessionId) === this._sessionId;
 			}
 			return ret;
 		},
@@ -4892,7 +4896,7 @@
 				};
 				this._triggerChange({ text: false }); //dfl
 			}
-			ice.dom.foreach(ctNodes, function (i) {
+			$.each(ctNodes, function (i) {
 				self._addNodeToChange(changeid, ctNodes[i]);
 			});
 	
@@ -5056,7 +5060,7 @@
 					}
 				}
 				else {
-					prepareSelectionForInsert(null, range, doc, insertStubText);
+					prepareSelectionForInsert(null, range, doc, true);
 				}
 				// even if there was no data to insert, we are probably setting up for a char insertion
 				this._updateChangeTime(changeId);
@@ -5127,7 +5131,7 @@
 			var change = this._changes[changeId];
 			if (change) {
 				var now = (new Date()).getTime(),
-					nodes = ice.dom.find(this.element, '[' + this.attributes.changeId + '=' + changeId + ']'),
+					nodes = $(this.element).find('[' + this.attributes.changeId + '=' + changeId + ']'),
 					attr = this.attributes.lastTime;
 				change.lastTime = now; 
 				nodes.each(function(index, node) {
@@ -5355,7 +5359,7 @@
 			}
 	
 			if (ice.dom.isOnBlockBoundary(range.startContainer, range.endContainer, this.element)) {
-				if (this.mergeBlocks && ice.dom.is(ice.dom.getBlockParent(nextContainer, this.element), this.blockEl)) {
+				if (this.mergeBlocks && $(ice.dom.getBlockParent(nextContainer, this.element)).is(this.blockEl)) {
 					// Since the range is moved by character, it may have passed through empty blocks.
 					// <p>text {RANGE.START}</p><p></p><p>{RANGE.END} text</p>
 					if (nextBlock !== ice.dom.getBlockParent(range.endContainer, this.element)) {
@@ -5452,7 +5456,7 @@
 				}
 		
 				// Firefox finds an ice node wrapped around an image instead of the image itself sometimes, so we make sure to look at the image instead.
-				if (ice.dom.is(prevContainer, this._iceSelector) && prevContainer.childNodes.length > 0 && prevContainer.lastChild) {
+				if ($(prevContainer).is(this._iceSelector) && prevContainer.childNodes.length > 0 && prevContainer.lastChild) {
 					prevContainer = prevContainer.lastChild;
 				}
 				
@@ -5620,7 +5624,7 @@
 				ctNode.appendChild(contentNode);
 				if (nextDelNode && this._isCurrentUserIceNode(nextDelNode)) {
 					var nextDelContents = ice.dom.extractContent(nextDelNode);
-					ice.dom.append(ctNode, nextDelContents);
+					ctNode.appendChild(nextDelContents);
 					nextDelNode.parentNode.removeChild(nextDelNode);
 				}
 			} 
@@ -5791,11 +5795,12 @@
 				if (! this._browser.msie) {
 					this._normalizeNode(contentAddNode);	
 				}
-				var bmCount = ice.dom.find(contentAddNode, ".iceBookmark").length,
+				var $can = $(contentAddNode),
+					bmCount = $can.find(".iceBookmark").length,
 					cleanNode;
 				if (bmCount > 0) {
-					cleanNode = ice.dom.cloneNode(contentAddNode);
-					ice.dom.remove(ice.dom.find(cleanNode, '.iceBookmark'));
+					cleanNode = $can.clone();
+					cleanNode.find('.iceBookmark').remove();
 					cleanNode = cleanNode[0];
 				}
 				else {
@@ -5874,13 +5879,13 @@
 			if (this._isCurrentUserIceNode(siblingDel = this._getIceNode(delNode.previousSibling, DELETE_TYPE))) {
 				content = ice.dom.extractContent(delNode);
 				delNode.parentNode.removeChild(delNode);
-				ice.dom.append(siblingDel, content);
+				siblingDel.appendChild(content);
 				this._mergeDeleteNode(siblingDel);
 			}
 			else if (this._isCurrentUserIceNode(siblingDel = this._getIceNode(delNode.nextSibling, DELETE_TYPE))) {
 					content = ice.dom.extractContent(siblingDel);
 					delNode.parentNode.removeChild(siblingDel);
-					ice.dom.append(delNode, content);
+					delNode.appendChild(content);
 					this._mergeDeleteNode(delNode);
 			} 
 		},
@@ -6119,7 +6124,7 @@
 				}
 			}
 			
-			var ret = onlyNode ? ice.dom.is(node, selector) && node : ice.dom.getNode(node, selector);
+			var ret = onlyNode ? $(node).is(selector) && node : ice.dom.getNode(node, selector);
 			if ((! ret) && range && range.collapsed) {
 				var end = range.endContainer,
 					endOffset = range.endOffset,
@@ -6138,14 +6143,14 @@
 					}
 					else if (end.childNodes.length > endOffset) {
 						end = end.childNodes[endOffset - 1];
-						if (ice.dom.is(end, selector)) {
+						if ($(end).is(selector)) {
 							return end;
 						}
 						nextNode = ice.dom.getNextNode(end);
 					}
 				}
 				if (nextNode) {
-					ret = ice.dom.is(nextNode, selector);
+					ret = $(nextNode).is(selector);
 				}
 			}
 			return ret;
@@ -6298,7 +6303,7 @@
 			}).bind(this);
 			var changes = this._filterChanges(options);
 			for (var id in changes.changes) {
-				var nodes = ice.dom.find(this.element, '[' + this.attributes.changeId + '=' + id + ']');
+				var nodes = $(this.element).find('[' + this.attributes.changeId + '=' + id + ']');
 				nodes.each(f);
 			}
 			if (changes.count) {
@@ -6334,7 +6339,7 @@
 						(include && include.indexOf(change.userid) < 0);
 					if (! skip) {
 						if (verify) {
-							elements = ice.dom.find(this.element, "[" + this.attributes.changeId + "]");
+							elements = $(this.element).find("[" + this.attributes.changeId + "]");
 							skip = ! elements.length;
 						}
 						if (! skip) {
@@ -6380,7 +6385,7 @@
 						ctnType = this._getChangeTypeFromAlias(ctnReg[1]);
 					}
 				}
-				var userid = ice.dom.attr(el, this.attributes.userId);
+				var userid = el.getAttribute(this.attributes.userId);
 				var userName;
 				if (myUserId && (userid == myUserId)) {
 					userName = myUserName;
@@ -6390,7 +6395,7 @@
 					userName = el.getAttribute(this.attributes.userName);
 				}
 				this._setUserStyle(userid, Number(styleIndex));
-				var changeid = parseInt(ice.dom.attr(el, this.attributes.changeId) || "");
+				var changeid = parseInt(el.getAttribute(this.attributes.changeId) || "");
 				if (isNaN(changeid)) {
 					changeid = this.getNewChangeId();
 					el.setAttribute(this.attributes.changeId, changeid);
@@ -6405,7 +6410,7 @@
 				}
 				var sessionId = el.getAttribute(this.attributes.sessionId);
 			
-				var changeData = ice.dom.attr(el, this.attributes.changeData) || "";
+				var changeData = el.getAttribute(this.attributes.changeData) || "";
 				this._changes[changeid] = {
 					type: ctnType,
 					style: styleName,
@@ -6657,7 +6662,7 @@
 				}
 			}
 			if (nextChange && this._isCurrentUserIceNode(nextChange)) {
-				changeId = ice.dom.attr(nextChange, this.attributes.changeId);
+				changeId = nextChange.getAttribute(this.attributes.changeId);
 			}
 			return changeId;
 		}
@@ -6961,7 +6966,7 @@
 	
 	var stubElementsString = dom.CONTENT_STUB_ELEMENTS.join(', ');
 	
-	function isEmptyString(str) {
+	dom.isEmptyString = function(str) {
 		if (! str) {
 			return true;
 		}
@@ -7009,42 +7014,20 @@
 	};
 	dom.getElementDimensions = function (element) {
 		return {
-			'width': dom.getElementWidth(element),
-			'height': dom.getElementHeight(element)
+			width: dom.getElementWidth(element),
+			height: dom.getElementHeight(element)
 		};
 	};
-	dom.empty = function (element) {
-		if (element) {
-			return $(element).empty();
-		}
-	};
-	dom.remove = function (element) {
-		if (element) {
-			return $(element).remove();
-		}
-	};
-	dom.prepend = function (parent, elem) {
-		$(parent).prepend(elem);
-	};
-	dom.append = function (parent, elem) {
-		$(parent).append(elem);
-	};
+
 	dom.insertBefore = function (before, elem) {
 		$(before).before(elem);
 	};
+	
 	dom.insertAfter = function (after, elem) {
 		if (after && elem) {
 			var sibling = after.nextSibling,
 				parent = after.parentNode;
 			return sibling ? parent.insertBefore(elem, sibling) : parent.appendChild(elem);
-		}
-	};
-	dom.getHtml = function (element) {
-		return $(element).html();
-	};
-	dom.setHtml = function (element, content) {
-		if (element) {
-			$(element).html(content);
 		}
 	};
 	// Remove whitespace/newlines between nested block elements
@@ -7090,7 +7073,7 @@
 // dfl switch to DOM node from dom.js node
 		node = node.$ || node;
 // dfl don't test text nodes
-		return (node.nodeType != dom.TEXT_NODE && dom.is(node, selector)) ? 
+		return (node.nodeType != dom.TEXT_NODE && $(node).is(selector)) ? 
 				node 
 				: dom.parents(node, selector)[0] || null;
 	};
@@ -7180,7 +7163,7 @@
 	};
 	dom.hasNoTextOrStubContent = function (node) {
 		var str = dom.getNodeTextContent(node);
-		if (! isEmptyString(str)) {
+		if (! dom.isEmptyString(str)) {
 			return false;
 		}
 		if (! node.firstChild) { // no children shortcut
@@ -7196,7 +7179,7 @@
 		if (node.length === 0) {
 			return true;
 		}
-		return isEmptyString(node.nodeValue);
+		return dom.isEmptyString(node.nodeValue);
 	};
 
 	dom.getNodeCharacterLength = function (node) {
@@ -7285,30 +7268,9 @@
 		} catch (e) {}
 		return null;
 	};
-	dom.cloneNode = function (elems, cloneEvents) {
-		if (cloneEvents === undefined) {
-			cloneEvents = true;
-		}
-		return $(elems).clone(cloneEvents);
-	};
 
-	dom.bind = function (element, event, callback) {
-		return $(element).bind(event, callback);
-	};
-
-	dom.unbind = function (element, event, callback) {
-		return $(element).unbind(event, callback);
-	};
-
-	dom.attr = function (elements, key, val) {
-		if (val) return $(elements).attr(key, val);
-		else return $(elements).attr(key);
-	};
 	dom.replaceWith = function (node, replacement) {
 		return $(node).replaceWith(replacement);
-	};
-	dom.removeAttr = function (elements, name) {
-		$(elements).removeAttr(name);
 	};
 	dom.getElementsBetween = function (fromElem, toElem) {
 		var elements = [];
@@ -7456,7 +7418,6 @@
 		return null;
 	};
 	
-	/* Begin dfl */
 	
 	function _findNextTextContainer(node, container){
 		while (node) {
@@ -7615,9 +7576,6 @@
 	dom.create = function (html) {
 		return $(html)[0];
 	};
-	dom.find = function (parent, exp) {
-		return $(parent).find(exp);
-	};
 	dom.children = function (parent, exp) {
 		return $(parent).children(exp);
 	};
@@ -7626,12 +7584,6 @@
 	};
 	dom.parents = function (child, exp) {
 		return $(child).parents(exp);
-	};
-	dom.is = function (node, exp) {
-		return $(node).is(exp);
-	};
-	dom.extend = function (deep, target, object1, object2) {
-		return $.extend.apply(this, arguments);
 	};
 	dom.walk = function (elem, callback, lvl) {
 		if (!elem) {
@@ -7693,33 +7645,6 @@
 		e.stopPropagation();
 	};
 
-	dom.each = function (val, callback) {
-		$.each(val, function (i, el) {
-			callback.call(this, i, el);
-		});
-	};
-
-	dom.foreach = function (value, cb) {
-		var res, len;
-		if (value instanceof Array || value instanceof NodeList || typeof value.length != 'undefined' && typeof value.item != 'undefined') {
-			len = value.length;
-			for (var i = 0; i < len; i++) {
-				res = cb.call(this, i, value[i]);
-				if (res === false) {
-					break;
-				}
-			}
-		} else {
-			for (var id in value) {
-				if (value.hasOwnProperty(id) === true) {
-					res = cb.call(this, id);
-					if (res === false) {
-						break;
-					}
-				}
-			}
-		}
-	};
 	dom.isBlank = function (value) {
 		return (!value || wsrgx.test(value));
 	};
@@ -7916,7 +7841,7 @@
 					return null;
 				}
 
-				if (dom.is(node, selector) === true) {
+				if ($(node).is(selector) === true) {
 					return node;
 				}
 				node = node.parentNode;
@@ -7929,8 +7854,9 @@
 		if (!leftContainer || !rightContainer) {
 			return false;
 		}
-		var bleft = dom.isChildOfTagNames(leftContainer, blockEls) || dom.is(leftContainer, blockEls.join(', ')) && leftContainer || null,
-			bright = dom.isChildOfTagNames(rightContainer, blockEls) || dom.is(rightContainer, blockEls.join(', ')) && rightContainer || null;
+		var sBlocks = blockEls.join(', '),
+			bleft = dom.isChildOfTagNames(leftContainer, blockEls) || $(leftContainer).is(sBlocks) && leftContainer || null,
+			bright = dom.isChildOfTagNames(rightContainer, blockEls) || $(rightContainer).is(sBlocks) && rightContainer || null;
 		return (bleft !== bright);
 	};
 
@@ -7957,7 +7883,7 @@
 				mergeToNode.appendChild(node.firstChild);
 			}
 
-			dom.remove(node);
+			$(node).remove();
 		}
 		return true;
 	};
@@ -8687,7 +8613,7 @@
 	exports.Selection = Selection;
 
 }(this.ice || window.ice));
-(function(ice) {
+(function(ice, $) {
 
 	var exports = ice,
 		Bookmark;
@@ -8714,9 +8640,9 @@
 
 		var endBookmark = this.env.document.createElement('span');
 		endBookmark.style.display = 'none';
-		ice.dom.setHtml(endBookmark, '&nbsp;');
-		ice.dom.addClass(endBookmark, 'iceBookmark iceBookmark_end');
-		endBookmark.setAttribute('iceBookmark', 'end');
+		$(endBookmark).html('&nbsp;')
+			.addClass('iceBookmark iceBookmark_end')
+			.attr('iceBookmark', 'end');
 		range.insertNode(endBookmark);
 		if (!ice.dom.isChildOf(endBookmark, this.element)) {
 			this.element.appendChild(endBookmark);
@@ -8729,9 +8655,9 @@
 		// Create the start bookmark.
 		var startBookmark = this.env.document.createElement('span');
 		startBookmark.style.display = 'none';
-		ice.dom.addClass(startBookmark, 'iceBookmark iceBookmark_start');
-		ice.dom.setHtml(startBookmark, '&nbsp;');
-		startBookmark.setAttribute('iceBookmark', 'start');
+		$(startBookmark).addClass('iceBookmark iceBookmark_start')
+			.html('&nbsp;')
+			.attr('iceBookmark', 'start');
 		try {
 			range.insertNode(startBookmark);
 
@@ -8783,7 +8709,7 @@
 				var range = this.selection.getRangeAt(0);
 				range.setStartBefore(this.start);
 				range.collapse(true);
-				ice.dom.remove([this.start, this.end]);
+				$([this.start, this.end]).remove()
 				try {
 					this.selection.addRange(range);
 				} 
@@ -8795,7 +8721,7 @@
 		
 		remove: function() {
 			if (this.start) { 
-				ice.dom.remove([this.start, this.end]);
+				$([this.start, this.end]).remove();
 				this.start = this.end = null;
 			}
 		},
@@ -8843,7 +8769,7 @@
 				}
 			}
 
-			ice.dom.remove([this.start, this.end]);
+			$([this.start, this.end]).remove();
 			try {
 				ice.dom.normalize(parent);
 			} 
@@ -8877,13 +8803,13 @@
 		},
 
 		removeBookmarks: function(elem) {
-			ice.dom.remove(ice.dom.getClass('iceBookmark', elem, 'span'));
+			$(elem).find('span.iceBookmark').remove();
 		}
 	};
 
 	exports.Bookmark = Bookmark;
 
-}(this.ice || window.ice));/**
+}(this.ice || window.ice, window.jQuery));/**
 Copyright 2015 LoopIndex, This file is part of the Track Changes plugin for CKEditor.
 
 The track changes plugin is free software; you can redistribute it and/or modify it under the terms of the GNU Lesser General Public License, version 2, as published by the Free Software Foundation.
