@@ -1,4 +1,4 @@
-(function(ice) {
+(function(ice, $) {
 
 	var exports = ice,
 		Bookmark;
@@ -25,9 +25,9 @@
 
 		var endBookmark = this.env.document.createElement('span');
 		endBookmark.style.display = 'none';
-		ice.dom.setHtml(endBookmark, '&nbsp;');
-		ice.dom.addClass(endBookmark, 'iceBookmark iceBookmark_end');
-		endBookmark.setAttribute('iceBookmark', 'end');
+		$(endBookmark).html('&nbsp;')
+			.addClass('iceBookmark iceBookmark_end')
+			.attr('iceBookmark', 'end');
 		range.insertNode(endBookmark);
 		if (!ice.dom.isChildOf(endBookmark, this.element)) {
 			this.element.appendChild(endBookmark);
@@ -40,9 +40,9 @@
 		// Create the start bookmark.
 		var startBookmark = this.env.document.createElement('span');
 		startBookmark.style.display = 'none';
-		ice.dom.addClass(startBookmark, 'iceBookmark iceBookmark_start');
-		ice.dom.setHtml(startBookmark, '&nbsp;');
-		startBookmark.setAttribute('iceBookmark', 'start');
+		$(startBookmark).addClass('iceBookmark iceBookmark_start')
+			.html('&nbsp;')
+			.attr('iceBookmark', 'start');
 		try {
 			range.insertNode(startBookmark);
 
@@ -94,7 +94,7 @@
 				var range = this.selection.getRangeAt(0);
 				range.setStartBefore(this.start);
 				range.collapse(true);
-				ice.dom.remove([this.start, this.end]);
+				$([this.start, this.end]).remove()
 				try {
 					this.selection.addRange(range);
 				} 
@@ -106,7 +106,7 @@
 		
 		remove: function() {
 			if (this.start) { 
-				ice.dom.remove([this.start, this.end]);
+				$([this.start, this.end]).remove();
 				this.start = this.end = null;
 			}
 		},
@@ -154,7 +154,7 @@
 				}
 			}
 
-			ice.dom.remove([this.start, this.end]);
+			$([this.start, this.end]).remove();
 			try {
 				ice.dom.normalize(parent);
 			} 
@@ -188,10 +188,10 @@
 		},
 
 		removeBookmarks: function(elem) {
-			ice.dom.remove(ice.dom.getClass('iceBookmark', elem, 'span'));
+			$(elem).find('span.iceBookmark').remove();
 		}
 	};
 
 	exports.Bookmark = Bookmark;
 
-}(this.ice || window.ice));
+}(this.ice || window.ice, window.jQuery));
