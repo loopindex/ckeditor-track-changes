@@ -907,7 +907,7 @@
 				}
 				elNode = fnode(el);
 				visited.push(el);
-				voidEl = this._getVoidElement(elNode);
+				voidEl = this._getVoidElement({ node: elNode, checkEmpty: false });
 				if (voidEl) {
 					if ((voidEl !== el) && (visited.indexOf(voidEl) >= 0)) {
 						return; // loop
@@ -968,12 +968,17 @@
 		 * dfl: added try/catch
 		 * @private
 		 */
-		_getVoidElement: function (node) {
+		_getVoidElement: function (options) {
+			if (! options) {
+				return null;
+			}
+			var node = options.node,
+				checkEmpty = options.checkEmpty !== false;
 			
 			try {
 				var voidParent = this._getIceNode(node, DELETE_TYPE);
 				if (! voidParent) {
-					if (3 == node.nodeType && node.nodeValue == '\u200B') {
+					if (3 == node.nodeType && (checkEmpty && node.nodeValue == '\u200B')) {
 						return node;
 					}
 				}
@@ -1446,7 +1451,7 @@
 		_handleVoidEl: function(el, range) {
 			// If `el` is or is in a void element, but not a delete
 			// then collapse the `range` and return `true`.
-			var voidEl = el && this._getVoidElement(el);
+			var voidEl = el && this._getVoidElement({ node: el });
 			if (voidEl && !this._getIceNode(voidEl, DELETE_TYPE)) {
 				range.collapse(true);
 				return true;
@@ -1485,7 +1490,7 @@
 					continue;
 				}
 		
-				if (!this._getVoidElement(elem)) {
+				if (!this._getVoidElement({ node: elem })) {
 					// If the element is not a text or stub node, go deeper and check the children.
 					if (elem.nodeType !== ice.dom.TEXT_NODE) {
 						// Browsers like to insert breaks into empty paragraphs - remove them
