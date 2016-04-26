@@ -130,20 +130,17 @@ Copyright (c) LoopIndex.
 
 <h4>GPL</h4>
 
-This Source Code Form is subject to the terms of the GNU General Public License.
-You should have received a copy of the GNU General Public License along with this program as the file gpl.txt. If not, see <http://www.gnu.org/licenses/gpl.txt>
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License, version 2, as
+published by the Free Software Foundation.
 
-<h4>LGPL</h4>
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU General Public License for more details.
 
-This program is free software; you can redistribute it and/or modify it under the terms of the GNU Lesser General Public License as published by the Free Software Foundation.
+You should have received a copy of the GNU General Public License
+along with this program as the file gpl.txt. If not, see
+<http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt>
 
-This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more details.
-
-You should have received a copy of the GNU Lesser General Public License along with this program as the file lgpl.txt. If not, see <http://www.gnu.org/licenses/lgpl.txt>
-
-<h4>MPL</h4>
-
-This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0. If a copy of the MPL was not distributed with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-<br>
 Written by (David *)Frenkiel (https://github.com/imdfl)
