@@ -128,7 +128,7 @@ LITE has been tested on Firefox 15+, Chrome 13+ and MSIE 9+. Support for MSIE 8 
 
 Copyright (c) LoopIndex.
 
-<h4>GPL</h4>
+<h4>GPL 2.0</h4>
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License, version 2, as
