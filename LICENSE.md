@@ -1,9 +1,13 @@
 Software License Agreement
 ==========================
 
-Copyright (c) 2013 Loopindex.com, (David *)Frenkiel
+Copyright (c) 2016 Loopindex.com, (David *)Frenkiel
 The ICE system Copyright (c) The New York Times, CMS Group, Matthew 
 DeLambo, see the LICENSE file in the ice folder.
+
+LGPL
+
+This Source Code Form is subject to the terms of the GNU General Public License. You should have received a copy of the GNU General Public License along with this program as the file gpl.txt. If not, see http://www.gnu.org/licenses/gpl.txt
 
 LGPL
 
