@@ -22,9 +22,9 @@
 ```javascript
 	config.extraPlugins = 'lite';
 ```
-- Optionally include <code>lite_interfaces.js</code> in your source, so you can use the various constants defined in it rather than string literals.
+- Optionally include <code>lite-interface.js</code> in your source, so you can use the various constants defined in it rather than string literals.
 ```javascript
-	<script type="text/javascript" src="ckeditor/plugins/lite/lite_interface.js"></script>
+	<script type="text/javascript" src="ckeditor/plugins/lite/lite-interface.js"></script>
 ```
 
 - See the <a href="http://www.loopindex.com/lite/docs/" target="_blank">documentation</a> for all the configuration options.
@@ -102,7 +102,7 @@ Associates an arbitrary string with the changes made from now on. This string is
 </ul>
 
 ## Events
-The LITE plugin events are listed in <code>lite_interface.js</code> under <code>LITE.Events</code>. The following events are fired by the LITE plugin instance through its instance of <code>ckeditor</code>, with the parameter in the <code>data</code> member of the event info:
+The LITE plugin events are listed in <code>lite-interface.js</code> under <code>LITE.Events</code>. The following events are fired by the LITE plugin instance through its instance of <code>ckeditor</code>, with the parameter in the <code>data</code> member of the event info:
 <ul>
 <li>INIT (parameters: lite, the LITE instance)<div>Fired each time <code>LITE</code> creates and initializes an instance of the <code>ICE</code> change tracker. This happens, e.g., when you switch back from <code>Source</code> mode to <code>Wysiwyg</code>.</div>
 <li>ACCEPT(parameter : the <code>options</code> object passed to acceptAll, if relevant)<div>Fired after some changes (possibly all) were accepted.
