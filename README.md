@@ -128,6 +128,11 @@ LITE has been tested on Firefox 15+, Chrome 13+ and MSIE 9+. Support for MSIE 8 
 
 Copyright (c) LoopIndex.
 
+<h4>GPL</h4>
+
+This Source Code Form is subject to the terms of the GNU General Public License.
+You should have received a copy of the GNU General Public License along with this program as the file gpl.txt. If not, see <http://www.gnu.org/licenses/gpl.txt>
+
 <h4>LGPL</h4>
 
 This program is free software; you can redistribute it and/or modify it under the terms of the GNU Lesser General Public License as published by the Free Software Foundation.
