@@ -58,7 +58,7 @@
 			<arg line="demo" />
 			<arg line="docs" />
 			<arg line="src" />
-			<arg line="lgpl.txt" />
+			<!-- arg line="lgpl.txt" / -->
 			<arg line="readme.md" />
 			<arg line="license.md" />
 			<arg line="readme.html" />
