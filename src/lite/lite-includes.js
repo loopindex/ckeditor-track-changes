@@ -2877,38 +2877,48 @@
 				sel.removeAllRanges();
 	
 				// Test whether the native selection is capable of supporting multiple ranges
-					if (!selectionHasMultipleRanges) {
-				var r2 = r1.cloneRange();
-				r1.setStart(textNode, 0);
-						r2.setEnd(textNode, 3);
-						r2.setStart(textNode, 2);
-				sel.addRange(r1);
-	
-	                    // Next line causes Chrome 36 to print a console error of
-	                    // "Discontiguous selection is not supported.".
-	                    // https://code.google.com/p/chromium/issues/detail?id=353069#c4
-				sel.addRange(r2);
-	
-				selectionSupportsMultipleRanges = (sel.rangeCount == 2);
-						r2.detach();
-					}
-	
-				// Clean up
-					body.removeChild(testEl);
-					sel.removeAllRanges();
-	
-					for (i = 0; i < originalSelectionRangeCount; ++i) {
-						if (i == 0 && originalSelectionBackward) {
-							if (addRangeBackwardToNative) {
-								addRangeBackwardToNative(sel, originalSelectionRanges[i]);
-							} else {
-	                            api.warn("Rangy initialization: original selection was backwards but selection has been restored forwards because the browser does not support Selection.extend");
-	                            sel.addRange(originalSelectionRanges[i]);
-							}
-						} else {
-	                        sel.addRange(originalSelectionRanges[i]);
-						}
-					}
+				if (!selectionHasMultipleRanges) {
+                    // Doing the original feature test here in Chrome 36 (and presumably later versions) prints a
+                    // console error of "Discontiguous selection is not supported." that cannot be suppressed. There's
+                    // nothing we can do about this while retaining the feature test so we have to resort to a browser
+                    // sniff. I'm not happy about it. See
+                    // https://code.google.com/p/chromium/issues/detail?id=399791
+                    var chromeMatch = window.navigator.appVersion.match(/Chrome\/(.*?) /);
+                    if (chromeMatch && parseInt(chromeMatch[1]) >= 36) {
+                        selectionSupportsMultipleRanges = false;
+                    } else {
+        				var r2 = r1.cloneRange();
+        				r1.setStart(textNode, 0);
+    					r2.setEnd(textNode, 3);
+    					r2.setStart(textNode, 2);
+    			        sel.addRange(r1);
+
+                        // Next line causes Chrome 36 to print a console error of
+                        // "Discontiguous selection is not supported.".
+                        // https://code.google.com/p/chromium/issues/detail?id=353069#c4
+    			        sel.addRange(r2);
+
+        				selectionSupportsMultipleRanges = (sel.rangeCount == 2);
+    						r2.detach();
+    					}
+
+    				    // Clean up
+    					body.removeChild(testEl);
+    					sel.removeAllRanges();
+    	
+    					for (i = 0; i < originalSelectionRangeCount; ++i) {
+    						if (i == 0 && originalSelectionBackward) {
+    							if (addRangeBackwardToNative) {
+    								addRangeBackwardToNative(sel, originalSelectionRanges[i]);
+    							} else {
+    	                            api.warn("Rangy initialization: original selection was backwards but selection has been restored forwards because the browser does not support Selection.extend");
+    	                            sel.addRange(originalSelectionRanges[i]);
+    							}
+    						} else {
+    	                        sel.addRange(originalSelectionRanges[i]);
+    						}
+    					}
+                    }
 				}
 			})();
 		}
