@@ -1485,7 +1485,8 @@
 					}
 				}
 				// Ignore empty space nodes
-				if (ice.dom.isEmptyTextNode(elem) || elem.getAttribute('data-cke-widget-wrapper') === '1') {
+				if (ice.dom.isEmptyTextNode(elem) 
+						|| elem.nodeType == ice.dom.ELEMENT_NODE && elem.getAttribute('data-cke-widget-wrapper') === '1') {
 					this._removeNode(elem);
 					continue;
 				}
