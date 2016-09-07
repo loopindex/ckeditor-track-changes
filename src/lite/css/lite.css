@@ -8,7 +8,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 **/
 
 ins, del {
-	text-decoration: none !important;
+	/*text-decoration: none !important;*/
 }
 
 del.ice-del {
@@ -17,11 +17,11 @@ del.ice-del {
 
 ins.ice-ins, ins.ice-del {
 	white-space:pre-wrap;
-	text-decoration: none !important;
+	/*text-decoration: none !important;*/
 }
 
 ins.ice-no-decoration, del.ice-no-decoration {
-	text-decoration: none !important;
+	/*text-decoration: none !important;*/
 }
 
 .ICE-Tracking span.ice-ins, .ICE-Tracking ins.ice-ins,
@@ -34,19 +34,20 @@ ins.ice-no-decoration, del.ice-no-decoration {
 	display: inline;
 	text-decoration: line-through !important;
 	color: #555;
-	background-color: #e5ffcd !important;
+	/*background-color: #e5ffcd !important;*/
 }
 
 .ICE-Tracking .ice-ins, .ICE-Tracking .ice-ins>*  {
-	background-color: #e5ffcd !important;
+	/*background-color: #e5ffcd !important;*/
 }
 
 .ICE-Tracking .ice-ins.ice-cts-1, .ICE-Tracking .ice-ins.ice-cts-1>*  {
-	background-color: #e5ffcd !important;
+	/*background-color: #e5ffcd !important;*/
 }
 
 .ICE-Tracking .ice-ins.ice-cts-2, .ICE-Tracking .ice-ins.ice-cts-2>*  {
-	background-color: #e3ffff !important;
+	background-color: none !important;
+	color: #0000ff !important;
 }
 
 .ICE-Tracking .ice-ins.ice-cts-3, .ICE-Tracking .ice-ins.ice-cts-3>*  {
@@ -54,11 +55,12 @@ ins.ice-no-decoration, del.ice-no-decoration {
 }
 
 .ICE-Tracking .ice-del.ice-cts-1 {
-	background-color: #e5ffcd !important;
+	/*background-color: #e5ffcd !important;*/
 }
 
 .ICE-Tracking .ice-del.ice-cts-2 {
-	background-color: #e3ffff !important;
+	background-color: none !important;
+	color: #0000ff !important;
 }
 
 .ICE-Tracking .ice-del.ice-cts-3 {
