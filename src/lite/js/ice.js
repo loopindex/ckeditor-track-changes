@@ -6,9 +6,11 @@
 
 	"use strict";
 
-	var exports = ice,
-		rangy = ice.rangy,
+	var win = window || {},
+		rangy = ice.rangy || win.rangy,
 		defaults, InlineChangeEditor;
+	
+	ice.rangy = rangy;
 	
 	/* constants */
 	var BREAK_ELEMENT = "br",

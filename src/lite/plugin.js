@@ -110,8 +110,6 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		delay: 500
 	},
 	
-	defaultTooltipTemplate = null,
-
 	LITEConstants = {
 		deleteTag: 'del',
 		insertTag: 'ins',
@@ -150,8 +148,8 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 
 	
 	function cleanNode(node) {
-		var ret, name, parent,
-			i, len, child;
+		var ret, name,
+			i, child;
 		if (node.nodeType === ice.dom.ELEMENT_NODE) {
 			var children = node.childNodes;
 			for (i = 0; i < children.length; ++i) {
@@ -289,9 +287,22 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		}
 	}
 	
-	var initModule = function() {
-		var ckv = parseFloat(CKEDITOR.version);
+	var initModule = function(props) {
+		var ckv = parseFloat(CKEDITOR.version),
+			dtd = CKEDITOR.dtd || {},
+			ins = props.insertTag,
+			del = props.deleteTag,
+			insDTD = dtd[ins] || {},
+			delDTD = dtd[del] || {},
+			divDTD = dtd.div || {};
+
 		isOldCKEDITOR = isNaN(ckv) || ckv < 4.4;
+		
+		Object.keys(divDTD).forEach(function(key) {
+			insDTD[key] = delDTD[key] = divDTD[key];
+		});
+		insDTD[ins] = delDTD[ins] = insDTD[del] = delDTD[del] = 0;
+		
 		initModule = function(){};
 	};
 	
@@ -475,7 +486,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		 * @param ed an instance of CKEditor
 		 */
 		init: function(ed) {
-			initModule();
+			initModule(LITEConstants);
 			var rec = _findPluginRec(ed);
 			if (rec) { // should not happen
 				return;
@@ -1614,7 +1625,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			}
 			
 			try {	
-				var features = [], feature, fields;
+				var features = [], feature, fields
 				
 				feature = {};
 				fields = {};
@@ -1649,12 +1660,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 				selection.selectRanges([range]);
 			}
 		},
-		
-/*		_afterEdit: function() {
-			this._editor.fire('change');
-			this._editor.fire('saveSnapshot');
-		},
-*/		
+
 		_beforeEdit: function() {
 			CKEDITOR.iscutting = true;
 			var e = this._editor,
