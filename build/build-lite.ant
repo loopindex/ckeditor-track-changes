@@ -2,8 +2,8 @@
 <project name="LoopIndex LITE Build and Deploy" basedir="..">
 
  <!-- Load Environment specific properties from properties file -->
-	<property file="ant/local.properties" />
-	<property file="ant/build-lite.properties" />
+	<property file="build/local.properties" />
+	<property file="build/build-lite.properties" />
 	
 	<taskdef resource="net/sf/antcontrib/antlib.xml"/>
 	
@@ -138,17 +138,6 @@
 			</exec>
 			<echo message="concatenating text into ${srcdir}/${outputfile}" />
 			<concat destfile="${srcdir}/${outputfile}">
-				<header>/* Source version: ${project.version}.${project.build} */
-</header>
-				<footer>
-/* Copyright (C) 2015 LoopIndex - All Rights Reserved
- * You may use, distribute and modify this code under the
- * terms of the LoopIndex Comments CKEditor plugin license.
- *
- * You should have received a copy of the LoopIndex Comments CKEditor plugin license with
- * this file. If not, please write to: loopindex@gmail.com, or visit http://www.loopindex.com
- * written by (David *)Frenkiel (https://github.com/imdfl) 
- */</footer>
 				<filelist dir="${srcdir}" files="${outputfile}.tmp" />
 			</concat>
 			<delete>
@@ -252,10 +241,11 @@
 		<copy todir="${dist.dir}">
 			<fileset dir="${src.dir}">
 				<include name="icons/**" />
-				<include name="plugin.min.js" />
-				<include name="lite-interface.js" />
+				<!--include name="plugin.min.js" />
 				<include name="lite-includes.min.js" />
-				<include name="js/*.min.js" />
+				<include name="js/*.min.js" / -->
+				<include name="lite-interface.js" />
+				<include name="js/jquery.min.js" />
 				<include name="css/*.min.css" />
 				<include name="css/*.min.css" />
 				<include name="lang/*.js" />
@@ -269,22 +259,54 @@
 			</fileset>
 		</copy>
 
-		<move file="${dist.dir}/plugin.min.js" tofile="${dist.dir}/plugin.js" overwrite="true"/>
+		<concat destfile="${dist.dir}/plugin.js">
+			<header>/*! Source version: ${project.version}.${project.build}
+ * Copyright (C) 2016 LoopIndex - All Rights Reserved
+ * You may use, distribute and modify this code under the
+ * terms of the LoopIndex Comments CKEditor plugin license.
+ * Attributions
+ * Rangy library:
+ * Copyright 2015, Tim Down
+ * https://github.com/timdown/rangy
+ * ice code:
+ * based on work by Matthew DeLambo Copyright (c) The New York Times, CMS Group
+ * https://github.com/NYTimes/ice
+ * Opentip adapter
+ * Copyright (c) 2012, Matias Meno  
+ * http://www.opentip.org
+ * You should have received a copy of the LoopIndex Comments CKEditor plugin license with
+ * this file. If not, please write to: loopindex@gmail.com, or visit http://www.loopindex.com
+ * written by (David *)Frenkiel (https://github.com/imdfl) 
+ */</header>
+			<fileset dir="${src.dir}">
+				<include name="lite-includes.min.js" />
+				<include name="plugin.min.js" />
+			</fileset>
+		</concat>
+		<!-- move file="${dist.dir}/plugin.min.js" tofile="${dist.dir}/plugin.js" overwrite="true"/>
 		<copy file="${dist.dir}/lite-includes.min.js" tofile="${dist.dir}/lite-includes.js" overwrite="true"/>
-		<move file="${dist.dir}/js/opentip-adapter.min.js" tofile="${dist.dir}/js/opentip-adapter.js" overwrite="true"/>
+		<move file="${dist.dir}/js/opentip-adapter.min.js" tofile="${dist.dir}/js/opentip-adapter.js" overwrite="true"/ -->
 		<move file="${dist.dir}/css/opentip.min.css" tofile="${dist.dir}/css/opentip.css" overwrite="true"/>
 		<move file="${dist.dir}/css/lite.min.css" tofile="${dist.dir}/css/lite.css" overwrite="true"/>
 	</target>
 	
-	<target name="build-version" depends="init,clean,set-version,build-docs,minify-lite,minify-all,make-dist,zip-lite" />
-
 	<target name="minify-lite" description="Builds the include files for the LITE plugin" depends="init">
 		<property name="lite.includes" value="${src.dir}/lite-includes.js" />
 		<echo message="Concatenating LITE includes into ${lite.includes}" />
 		<concat destfile="${lite.includes}">
-			<filelist dir="${src.dir}/js" files="ns.js,rangy/rangy-core.js,ice.js,dom.js,selection.js,bookmark.js,../lite-interface.js" />
+			<filelist dir="${src.dir}/js" files="ns.js,rangy-core.js,ice.js,dom.js,selection.js,bookmark.js,../lite-interface.js,opentip-adapter.js" />
 		</concat>
 		<minify-one src="${lite.includes}" />
 	</target>
+
+	<target name="webpack-lite" description="Packs all the lite sources into the distribution plugin.js">
+		<exec executable="cmd.exe" dir="${basedir}">
+			<env key="LITE_VERSION" value="${project.version}.${project.build}" />
+			<arg line="/c" />
+			<arg line="webpack --config build/webpack.config.js" />
+		</exec>
+	</target>
+
+	<target name="build-version" depends="init,clean,set-version,build-docs,minify-lite,minify-all,make-dist,zip-lite" />
 
 </project>

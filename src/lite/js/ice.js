@@ -659,7 +659,7 @@
 		
 		_cleanBody: function(body, classList, options) {
 			body = options.prepare ? options.prepare.call(this, body) : body;
-			var $body = $(body), deletes,
+			var $body = $(body),
 				changes = $body.find(classList);
 			$.each(changes, function (i,el) {
 				while (el.firstChild) {

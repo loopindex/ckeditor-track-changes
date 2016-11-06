@@ -849,7 +849,7 @@
 			if (! browser.msie) {
 				browser.msie = Boolean( /trident/.test(ua)); 
 			}
-			
+
 			return browser;
 		})();
 		

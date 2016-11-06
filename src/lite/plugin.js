@@ -530,20 +530,22 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			var	jQueryLoaded = (typeof(jQuery) === "function"),
 				self = this,
 				jQueryPath = liteConfig.jQueryPath || "js/jquery.min.js",
-				scripts = (liteConfig.includeType ? liteConfig["includes_" + liteConfig.includeType] : liteConfig.includes) || ["lite-includes.js"];
+				scripts = [];
 			
-			scripts = scripts.slice(); // create a copy not referenced by the config
-			
-			for (var i = 0, len = scripts.length; i < len; ++i) {
-				scripts[i] = path + scripts[i]; 
+			if (!global.ice) {
+				var sources = ["ns.js", "rangy-core.js", "ice.js", "dom.js", "selection.js", "bookmark.js", "opentip-adapter.js"];
+				for (var i = 0, len = sources.length; i < len; ++i) {
+					scripts.push(path + "js/" + sources[i]); 
+				}
 			}
+			
 			if (! jQueryLoaded) {
 				scripts.splice(0, 0, this.path + jQueryPath);
 			}
-			if (ttConfig.path) {
+			if (ttConfig.path && typeof global[ttConfig.classPath] === 'undefined') {
 				scripts.push(this.path + ttConfig.path);
 			}
-			
+
 			var load1 = function() {
 				if (scripts.length < 1) {
 					self._scriptsLoaded = true;
@@ -1172,7 +1174,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 				iceprops.hostMethods.beforeDelete = iceprops.hostMethods.beforeInsert = hideTT;
 				if (config.tooltips.classPath) {
 					try {
-						this._tooltipsHandler = new window[config.tooltips.classPath]();
+						this._tooltipsHandler = new global[config.tooltips.classPath]();
 						iceprops.tooltipsDelay = config.tooltips.delay;
 					}
 					catch (e){}
