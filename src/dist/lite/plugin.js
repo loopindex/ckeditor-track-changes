@@ -1,4 +1,4 @@
-/*! Source version: 1.2.27
+/*! Source version: 1.2.28
  * Copyright (C) 2016 LoopIndex - All Rights Reserved
  * You may use, distribute and modify this code under the
  * terms of the LoopIndex Comments CKEditor plugin license.
