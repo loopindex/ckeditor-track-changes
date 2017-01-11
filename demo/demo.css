@@ -153,6 +153,11 @@ body{
 	 background-color: #336149;
 }
 
+.container-fluid {
+    padding-right: 60px;
+    padding-left: 60px;
+}
+
 .navbar-default{
 	background-color: transparent;
 	border-color: transparent;
@@ -233,6 +238,11 @@ body{
 	background-color: #ffb03b; 
 }
 
+hr{
+	border-top: 1px solid #fff;
+	width:70%;
+}
+
 #second-hr{
 	margin-top:85px;
 	margin-bottom: 65px;	
@@ -240,6 +250,10 @@ body{
 
 .lance-reference{
 	margin: 0 auto;
+}
+
+.lance-image{
+  text-align: right;
 }
 
 .lance-cta{
