@@ -256,6 +256,11 @@ hr{
   text-align: right;
 }
 
+.lance-image img{
+  width: 100%;
+  max-width:550px;
+}
+
 .lance-cta{
 	color: #fff;
 }
