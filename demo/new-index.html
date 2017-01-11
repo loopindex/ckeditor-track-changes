@@ -1,0 +1,170 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+	<head>
+		<script>
+		  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+		  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+		  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+		  })(window,document,'script','http://www.google-analytics.com/analytics.js','ga');
+
+		  ga('create', 'UA-41992149-1', 'loopindex.com');
+		  ga('send', 'pageview');
+
+		</script>	
+		<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+		<title>Track Changes CKEditor Plugin Demo | LoopIndex.com</title>
+
+		<!-- Latest compiled and minified CSS -->
+		<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+		<!-- jQuery library -->
+		<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
+		<!-- Latest compiled JavaScript -->
+		<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+		<link rel="stylesheet" type="text/css" href="https://fonts.googleapis.com/css?family=Lato">
+		<link rel="stylesheet" href="jquery-ui-1.9.2.custom/css/cupertino/jquery-ui-1.9.2.custom.min.css" />
+		<link rel="stylesheet" href="demo.css" />
+			
+		<script type="text/javascript">
+			(function() {
+				var	version = (location.search.match(/(\d\.\d)/) || ["4.5"])[0],
+					paths = ["plugins/lite/js/jquery.min.js", "ckeditor.js", "plugins/lite/lite-interface.js"];
+				
+				for (var i = 0; i < paths.length; ++i) {
+					document.write("<sc" + "r" + "ipt type=\"text/ja" + "vascr" + "ipt\" src=\"ckeditor" + version + "/" + paths[i] + "\"></scr" + "ipt>");
+				}
+				
+			})();
+		</script>
+
+		<script type="text/javascript" src="jquery-ui-1.9.2.custom/js/jquery-ui-1.9.2.custom.min.js"></script>
+	</head>
+	<body>
+		<nav class="navbar navbar-default">
+		  <div class="container">
+		    <!-- Brand and toggle get grouped for better mobile display -->
+		    <div class="navbar-header">
+		      <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#top-navbar" aria-expanded="false">
+		        <span class="sr-only">Toggle navigation</span>
+		        <span class="icon-bar"></span>
+		        <span class="icon-bar"></span>
+		        <span class="icon-bar"></span>
+		      </button>
+		      <a class="navbar-brand" href="http://www.loopindex.com">
+		      	<img alt="LoopIndex logo" src="http://www.loopindex.com/wp-content/uploads/2017/01/Horizontal-Smaller-White.png">
+		      </a>
+		    </div>
+
+		    <!-- Collect the nav links, forms, and other content for toggling -->
+		    <div class="collapse navbar-collapse" id="top-navbar">
+		      <ul class="nav navbar-nav navbar-right">
+		        <li><a href="http://www.loopindex.com">HOME</a></li>
+		        <li><a href="http://www.loopindex.com/inline-comments/">LANCE PRICING</a></li>
+		        <li><a href="http://www.loopindex.com/track-changes/">LITE PRICING</a></li>
+		        <li><a href="http://www.loopindex.com/contact-us/">CONTACT US</a></li>
+		      </ul>
+		    </div><!-- /.navbar-collapse -->
+		  </div><!-- /.container-fluid -->
+		</nav>
+		
+		<div class="container">
+			<div class="row lite-heading text-center">
+				<span>LITE</span>
+			</div>
+
+			<div class="row lite-title text-center">
+				<span>A Track Changes Plugin by LoopIndex</span>
+			</div>
+			<hr>
+
+
+			<table id="main-ui">
+				<tr>
+					<td colspan="2">
+					</td>
+				</tr>
+				<tr>
+					<td id="editor-container">
+						<div id="editor-tabs">
+				 			<ul>
+								<li><a href="#editor-tab-1">Editor 1</a></li>
+								<li><a href="#editor-tab-2">Another(!) editor</a></li>
+							</ul>
+							<div id="editor-tab-1">
+								<textarea cols="80" id="editor1" name="editor1" rows="10">
+									Add or delete text to unleash the power of the &lt;b&gt;Track 	Changes CKEditor Plugin&lt;/b&gt;.
+								</textarea>
+							</div>
+							<div id="editor-tab-2">
+								<textarea cols="80" id="editor2" name="editor2" rows="10">
+									LITE supports multiple editors, but only in the technical sense.&lt;br /&gt;&lt;br /&gt;Your mileage may vary.
+								</textarea>
+							</div>
+						</div>
+					</td>
+					<td id="sidebar">
+						<div>
+							<label class="title">current user:</label>
+							<select id="users"></select>
+						</div>
+						<div>Changes: <span id="show-status"></span>
+						</div>
+						<div id="accept-controls">
+							<div id="accept-title">Process changes by </div>
+							<div id="filters"></div>
+							<div id="links">
+								<div>
+									<label>Accept</label><br/>
+									<a class="btn" href="" id="accept-match" title="accept matching changes">matching</a><br/>
+									<a class="btn" href="" id="accept-non-match" title="accept non-matching changes">not matching</a>
+								</div>
+								<div>
+									<label>Reject</label><br/>
+									<a class="btn" href="" id="reject-match" title="reject matching changes">matching</a><br/>
+									<a class="btn" href="" id="reject-non-match" title="reject non-matching changes">not matching</a>
+								</div>
+								<br/>
+							</div>
+						</div>
+						<div>
+							<a class="btn" href="#" id="test-data">insert test data</a>
+						</div>
+						<div>	
+							<a class="btn" href="#" id="reload-editor">reload editor</a>
+						</div>
+						<label class="title">CKEditor version</label>
+						<div><select id="ckeditor-version-select"></select>
+						</div>
+					</td>
+				</tr>
+			</table>
+
+			<div class="row cta-buttons text-center">
+				<button class="btn btn-lg btn-buy"><a href="http://www.loopindex.com/track-changes">BUY NOW</a></button>
+				<button class="btn btn-lg btn-more-details"><a href="http://www.loopindex.com/track-changes">MORE DETAILS</a></button>
+			</div>
+			<hr id="second-hr">
+			<div class="row lance-reference">
+				<div class="col-xs-6 lance-image">
+					<img alt="LoopIndex logo" src="http://www.loopindex.com/wp-content/uploads/2017/01/Lance.png">
+				</div>
+				<div class="col-xs-6 lance-cta">
+					<span id="lance-cta-title">LITE</span>
+					<span id="lance-cta-subtitle">A Comments CKEditor Plugin by LoopIndex</span>
+					<button class="btn btn-primary btn-lg lance-cta-btn"><a href="http://www.loopindex.com/inline-comments">CHECK IT OUT</a></button>
+				</div>
+			</div>
+			<div class="row copyright text-center">
+				<span>© Copyright 2017 LoopIndex, This file is part of the Track Changes plugin for CKEditor.
+
+The track changes plugin is free software subject to the terms of GPL 2.0 license. 
+Written by (David *)Frenkiel (https://github.com/imdfl)</span>
+			</div>
+		</div>
+
+
+
+
+
+		<script type="text/javascript" src="demo.js"></script>
+	</body>
+</html>

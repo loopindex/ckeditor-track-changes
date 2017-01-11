@@ -137,3 +137,134 @@ a.btn:hover {
 	background: linear-gradient(top, #2989d8 0%, #1e5799 100%);
 	filter: progid: DXImageTransform.Microsoft.gradient(startColorstr='#2989d8', endColorstr='#1e5799', GradientType=0);
 }
+
+
+
+
+/******************************************************************************/
+/*                                                                            */
+/*                                                                            */
+/******************************* NEW DEMO PAGE ********************************/
+/*                                                                            */
+/*                                                                            */
+/******************************************************************************/
+body{
+	font-family: Lato;
+	 background-color: #336149;
+}
+
+.navbar-default{
+	background-color: transparent;
+	border-color: transparent;
+}
+
+.navbar-default .navbar-nav>li>a{
+	color: #fff;
+}
+
+.navbar-default .navbar-nav>li>a:hover{
+	color: #ffb03b;
+}
+
+#top-navbar{
+	margin-top: 25px;
+}
+
+.lite-heading {
+  width:100%;
+  font-family: Lato;
+  font-size: 145px;
+  font-weight: normal;
+  font-style: normal;
+  font-stretch: normal;
+  color: #fff0a5;
+}
+
+.lite-title {
+	width: 100%;
+  font-family: Lato;
+  font-size: 35px;
+  font-weight: normal;
+  font-style: normal;
+  font-stretch: normal;
+  color: #ffb03b;
+}
+
+.cta-buttons{
+	margin-top: 80px;
+}
+
+.btn{
+	border-radius: 0px;
+	color: #ffffff;
+	font-weight: 800;
+	width:170px;
+}
+
+.btn a{
+	text-decoration: none;
+	color: #fff;
+}
+
+.btn a:hover, .btn a:focus{
+	text-decoration: none;
+	color: #fff;
+}
+
+.btn-buy, .lance-cta-btn{
+	background-color: #ffb03b;
+	border-color: #ffb03b;
+}
+
+.btn-buy:hover, .lance-cta-btn:hover{
+	background-color: transparent;
+	border-color: #ffb03b;
+}
+
+
+.btn-more-details{
+	background-color: transparent;
+	border-color: #ffb03b;
+	margin-left: 30px;
+}
+
+.btn-more-details:hover{
+	color: #ffffff;
+	background-color: #ffb03b; 
+}
+
+#second-hr{
+	margin-top:85px;
+	margin-bottom: 65px;	
+} 
+
+.lance-reference{
+	margin: 0 auto;
+}
+
+.lance-cta{
+	color: #fff;
+}
+
+.lance-cta span{
+	display:block;
+}
+
+#lance-cta-title{
+	font-size: 45px;
+	font-weight: 600;
+}
+
+#lance-cta-subtitle{
+	font-size: 25px;
+	font-weight: 400;
+	margin-top:25px;
+	margin-bottom: 44px;
+}
+
+.copyright{
+	color: #fefefe;
+	font-size: 11px;
+	margin-top: 99px;
+	margin-bottom: 59px;
+}
