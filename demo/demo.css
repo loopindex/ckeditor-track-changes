@@ -175,14 +175,12 @@ body{
 	margin-top: 25px;
 }
 
-.lite-heading {
-  width:100%;
-  font-family: Lato;
-  font-size: 145px;
-  font-weight: normal;
-  font-style: normal;
-  font-stretch: normal;
-  color: #fff0a5;
+.lite-heading{
+  margin-top: 50px;
+}
+
+.lite-heading img {
+  width:270px;
 }
 
 .lite-title {
@@ -193,6 +191,8 @@ body{
   font-style: normal;
   font-stretch: normal;
   color: #ffb03b;
+  margin-top:20px;
+  margin-bottom:40px;
 }
 
 .cta-buttons{
@@ -241,6 +241,10 @@ body{
 hr{
 	border-top: 1px solid #fff;
 	width:70%;
+}
+
+#first-hr{
+	margin-bottom: 40px;
 }
 
 #second-hr{
