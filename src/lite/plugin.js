@@ -289,21 +289,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 	
 	var initModule = function(props) {
 		var ckv = parseFloat(CKEDITOR.version),
-			dtd = CKEDITOR.dtd || {},
-			ins = props.insertTag,
-			del = props.deleteTag,
-			insDTD = dtd[ins] || {},
-			delDTD = dtd[del] || {},
-			divDTD = dtd.div || {};
-
-		isOldCKEDITOR = isNaN(ckv) || ckv < 4.4;
-		
-		Object.keys(divDTD).forEach(function(key) {
-			insDTD[key] = delDTD[key] = divDTD[key];
-		});
-		insDTD[ins] = delDTD[ins] = insDTD[del] = delDTD[del] = 0;
-		
-		initModule = function(){};
+			isOldCKEDITOR = isNaN(ckv) || ckv < 4.4;
 	};
 	
 	/**
@@ -486,7 +472,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		 * @param ed an instance of CKEditor
 		 */
 		init: function(ed) {
-			initModule(LITEConstants);
+			initModule();
 			var rec = _findPluginRec(ed);
 			if (rec) { // should not happen
 				return;
