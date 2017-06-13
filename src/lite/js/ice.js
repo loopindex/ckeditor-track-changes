@@ -645,7 +645,7 @@
 			});
 			if (body) {
 				if (typeof body === 'string') {
-					body = $('<div>' + body + '</div>');
+					body = $('<div>' + body + '</div>')[0];
 				}
 				else if (options.clone){
 					body = $(body).clone()[0];
@@ -749,16 +749,18 @@
 		 * Handles accepting or rejecting tracking changes
 		 */
 		acceptRejectChange: function (node, options) {
+			options = options || {};
 			var delSel, insSel, selector, removeSel, replaceSel, 
 				trackNode, changes, dom = ice.dom, nChanges,
+				removeChange = options.removeChange !== false,
 				self = this, changeId, content, userStyle,
 				$element = $(this.element),
 				userStyles = this._userStyles,
 				userId, userAttr = this.attributes.userId,
 				delClass = this._getIceNodeClass(DELETE_TYPE), 
 				insClass = this._getIceNodeClass(INSERT_TYPE),
-				isAccept = options && options.isAccept,
-				dontNotify = options && (options.notify === false);
+				isAccept = options.isAccept,
+				notify = (options.notify !== false);
 		
 			if (!node) {
 				var range = this.getCurrentRange();
@@ -819,8 +821,10 @@
 			});
 
 			/* begin dfl: if changes were accepted/rejected, remove change trigger change event */
-			delete this._changes[changeId];
-			if (nChanges > 0 && ! dontNotify) {
+			if (removeChange) {
+				delete this._changes[changeId];
+			}
+			if (nChanges > 0 && notify) {
 				this._triggerChange({ isText: true });
 			}
 			/* end dfl */
@@ -2609,11 +2613,12 @@
 	
 		_acceptRejectSome: function(options, isAccept) {
 			var f = (function(index, node) {
-				this.acceptRejectChange(node, { isAccept: isAccept, notify: false });
-			}).bind(this);
-			var changes = this._filterChanges(options);
-			for (var id in changes.changes) {
-				var nodes = $(this.element).find('[' + this.attributes.changeId + '=' + id + ']');
+					this.acceptRejectChange(node, { isAccept: isAccept, notify: false });
+				}).bind(this), 
+				id, nodes,
+				changes = this._filterChanges(options);
+			for (id in changes.changes) {
+				nodes = $(this.element).find('[' + this.attributes.changeId + '=' + id + ']');
 				nodes.each(f);
 			}
 			if (changes.count) {
