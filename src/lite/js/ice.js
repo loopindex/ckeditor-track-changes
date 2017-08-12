@@ -24,7 +24,13 @@
 			{start: 91, end: 93}, // windows keys
 			{start: 112, end: 123}, // function keys
 			{start: 144, end: 145}
-		];
+		],
+		BLOCK_DISPLAY_MODES = {
+			"block": 1,
+			"table": 1,
+			"flex": 1,
+			"grid": 1
+		},
 
 	defaults = {
 	// ice node attribute names:
@@ -37,6 +43,10 @@
 			lastTime: "data-last-change-time",
 			changeData: "data-changedata" // arbitrary data to associate with the node, e.g. version
 		},
+
+			classes: {
+				block: "lite-block"
+			},
 		// Prepended to `changeType.alias` for classname uniqueness, if needed
 		attrValuePrefix: '',
 		
@@ -1120,9 +1130,9 @@
 		 * @private
 		 */
 		_isCurrentUserIceNode: function (node) {
-			var ret = Boolean(node && $(node).attr(this.attributes.userId) === this.currentUser.id);
+			var ret = Boolean(node && $(node).attr(this.attributes.userId) === String(this.currentUser.id));
 			if (ret && this._sessionId) {
-				ret = node.getAttribute(this.attributes.sessionId) === this._sessionId;
+				ret = node.getAttribute(this.attributes.sessionId) === String(this._sessionId);
 			}
 			return ret;
 		},
@@ -1406,7 +1416,6 @@
 					range.collapse(true);
 				}
 
-				
 				range.insertNode(f(node));
 				len = (nodes && nodes.length) || 0;
 				if (len) {

@@ -101,6 +101,9 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			TOGGLE_TOOLTIPS: "lite-toggletooltips"
 		}
 	},
+
+	$ = window.jQuery,
+
 	
 	tooltipDefaults = {
 		show: true,
@@ -128,6 +131,8 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		preserveOnPaste: 'p',
 		css: 'css/lite.css'
 	},
+
+	IS_LITE_CLASS_RE = new RegExp("(?:^|\s)(?:" + LITEConstants.deleteClass + '|' + LITEConstants.insertClass + ")(?:\s|$)"),
 	
 	defaultTooltipTemplate = "%a by %u %t",
 	
@@ -146,6 +151,10 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			CKEDITOR.SHIFT + 46],
 	isOldCKEDITOR = false;
 
+	function isLITENode(node) {
+		return node && node.className && IS_LITE_CLASS_RE(node.className);
+	}
+
 	
 	function cleanNode(node) {
 		var ret, name,
@@ -155,8 +164,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			for (i = 0; i < children.length; ++i) {
 				child = children[i];
 				cleanNode(child);
-				name = child.nodeName.toLowerCase();
-				if (name === LITEConstants.insertTag || name === LITEConstants.deleteTag) {
+				if (isLITENode(child)) {
 					while (child.firstChild) {
 						node.insertBefore(child.firstChild, child);
 					}
@@ -164,8 +172,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 				}
 			}
 		}
-		name = node.nodeName.toLowerCase();
-		if (name === 'ins' || name === 'del') {
+		if (isLITENode(node)) {
 			ret = jQuery.makeArray(node.childNodes);
 		}
 		else {
@@ -535,6 +542,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			var load1 = function() {
 				if (scripts.length < 1) {
 					self._scriptsLoaded = true;
+					$ = window.jQuery;
 					ice = global.ice;
 					if (! jQueryLoaded) {
 						jQuery.noConflict();
@@ -1534,7 +1542,8 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		 */
 		_processContent: function() {
 			var body = this._getBody(),
-				$ = window.jQuery,
+//				$ = window.jQuery,
+				$body = $(body),
 				insTag = LITEConstants.insertTag,
 				delTag = LITEConstants.deleteTag,
 				nodes, doc;
@@ -1561,7 +1570,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 				});
 			}
 			if (delTag !== "span") {
-				nodes = $(body).find("span." + LITEConstants.deleteClass);
+				nodes = $body.find("span." + LITEConstants.deleteClass);
 				nodes.each(function(i, node) {
 					replaceNode(node, delTag);
 				});
