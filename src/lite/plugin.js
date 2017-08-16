@@ -469,7 +469,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 		
 		icons: "lite-acceptall,lite-acceptone,lite-rejectall,lite-rejectone,lite-toggleshow,lite-toggletracking",// %REMOVE_LINE_CORE%
 		hidpi: true,
-		lang: ["en", "de"],
+		lang: ["en", "de", "fr"],
 
 		_scriptsLoaded : null, // not false, which means we're loading
 		
