@@ -523,10 +523,17 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			var	jQueryLoaded = (typeof(jQuery) === "function"),
 				self = this,
 				jQueryPath = liteConfig.jQueryPath || "js/jquery.min.js",
-				scripts = [];
+				scripts = [],
+				required = [];
 			
 			if (!global.ice) {
-				var sources = ["ns.js", "rangy-core.js", "ice.js", "dom.js", "selection.js", "bookmark.js", "opentip-adapter.js"];
+				var sources = ["ns.js", "ice.js", "dom.js", "selection.js", "bookmark.js", "opentip-adapter.js"];
+				if (window.requirejs && typeof window.require === "function") {
+					required.push({ name: "rangy", globalName: "rangy" });
+				}
+				else {
+					sources.splice(1, 0, "rangy-core.js");
+				}
 				for (var i = 0, len = sources.length; i < len; ++i) {
 					scripts.push(path + "js/" + sources[i]); 
 				}
@@ -540,7 +547,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 			}
 
 			var load1 = function() {
-				if (scripts.length < 1) {
+				if (scripts.length < 1 && required.length < 1) {
 					self._scriptsLoaded = true;
 					$ = window.jQuery;
 					ice = global.ice;
@@ -557,7 +564,25 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 				}
 			};
 			
-			load1(scripts);		
+			if (required.length) {
+				function loadRequired(rec) {
+					require([ rec.name], function(module) {
+						window[rec.globalName] = module;
+						if (window.ice) {
+							window.ice[rec.globalName] = module;
+						}
+						var ind = required.indexOf(rec);
+						if (ind >= 0) {
+							required.splice(ind, 1);
+							if (required.length < 1) {
+								load1();
+							}
+						}
+					});
+				}
+				required.forEach(loadRequired);
+			}
+			load1(scripts);
 		},
 		
 		/**
