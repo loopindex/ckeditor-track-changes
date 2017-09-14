@@ -152,7 +152,7 @@ Written by (David *)Frenkiel - https://github.com/imdfl
 	isOldCKEDITOR = false;
 
 	function isLITENode(node) {
-		return node && node.className && IS_LITE_CLASS_RE(node.className);
+		return node && node.className && IS_LITE_CLASS_RE.test(node.className);
 	}
 
 	
