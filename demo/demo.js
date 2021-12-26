@@ -140,9 +140,8 @@ function f() {
 	function loadEditor(id, focus) {
 		
 		var state = editorStates[id];
-		if (state) {
-			$('#'+id).val("This editor was <strong>reloaded</strong>");
-		}
+        $('#' + id).val(state ? "This editor was <strong>reloaded</strong>" : "<p>Add or delete text to unleash the power of the <strong>Track Changes CKEditor Plugin</strong>.</p><p><ins class=\"ice-cts-1 ice-ins\" data-changedata=\"\" data-cid=\"2\" data-last-change-time=\"1502268617909\" data-time=\"1502268615033\" data-userid=\"18\" data-username=\"Roger\">This is Roger</ins></p>");
+
 		
 		var editor = CKEDITOR.replace( id , { 
 			height: "400" ,

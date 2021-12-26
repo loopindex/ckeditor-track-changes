@@ -1536,7 +1536,7 @@
 					var parentBlock = ice.dom.getBlockParent(elem);
 					this._addDeleteTracking(elem, addDeleteOptions);
 					if (ice.dom.hasNoTextOrStubContent(parentBlock)) {
-						ice.dom.remove(parentBlock);
+					    this._removeNode(parentBlock);
 					}
 				}
 			}
