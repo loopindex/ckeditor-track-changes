@@ -1,6 +1,10 @@
 # Track Changes Plugin for CKEditor
 
-* Track changes plugin for CKEditor, based on <a href="https://github.com/NYTimes/ice" target="_blank">ICE</a> (NYTimes track changes for <code>contentEditable</code> documents). 
+## Not maintained since 2018
+
+(but we do accept pull requests...)
+
+Track changes plugin for CKEditor, based on <a href="https://github.com/NYTimes/ice" target="_blank">ICE</a> (NYTimes track changes for <code>contentEditable</code> documents). 
 
 ## Main Features
 
@@ -10,14 +14,14 @@
 - Accept/Reject a single change
 - Display customizable tooltips for each change
 
-##Demo
+## Demo
 
 [Demo Page](http://www.loopindex.com/lite/demo)
 
 ##Site
 [LoopIndex](http://www.loopindex.com/lite)
 
-##Getting Started
+## Getting Started
 - Add the lite plugin to ckeditor. The simplest way to do this is by adding the following line to ckeditor's <code>config.js</code>:
 ```javascript
 	config.extraPlugins = 'lite';
@@ -29,7 +33,7 @@
 
 - See the <a href="http://www.loopindex.com/lite/docs/" target="_blank">documentation</a> for all the configuration options.
 
-##Configuration
+## Configuration
 The LITE plugin is automatically activated after you install it and edit <code>config.js</code> as described above. For the full details of tweaking the loading process, toolbar commands, users and more, see the <a href="http://www.loopindex.com/lite/docs/" target="_blank">documentation</a>.
 
 ## API
@@ -115,16 +119,16 @@ The LITE plugin events are listed in <code>lite-interface.js</code> under <code>
 </ul>
 
 
-##Known Issues
+## Known Issues
 * Adjacent changes from different collaborators may affect each other if you accept/reject a single change in the sequence. This is related to an issue in ICE which we hope to resolve with the developers.
 * See the <a href="https://github.com/NYTimes/ice/blob/master/README.md" target="_blank">ICE page</a> for known issues related to ICE.
 * Note that the ICE engine adds markup to the editor content. 
 * LITE tracks only text insertion and deletion. Other changes, such as style edits, are not tracked.
 
-##Browser Compatibility
+## Browser Compatibility
 LITE has been tested on Firefox 15+, Chrome 13+ and MSIE 9+. Support for MSIE 8 is not guaranteed, although the current version seems to work on it.
 
-##License
+## License
 
 Copyright (c) LoopIndex.
 
